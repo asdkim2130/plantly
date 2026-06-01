@@ -38,6 +38,7 @@ out/
 
 ### env
 .env
+src/main/resources/application-local.properties
 
 ### DB (postgres runtime data)
 /db/postgres/data/
