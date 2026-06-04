@@ -1,6 +1,6 @@
 package project.plantly.domain.user.enums;
 
-public enum UserState {
+public enum UserStatus {
     ACTIVE,
     SUSPENDED,
     WITHDRAWN
