@@ -10,7 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import project.plantly.domain.user.enums.UserGrade;
 import project.plantly.domain.user.enums.UserRole;
-import project.plantly.domain.user.enums.UserState;
+import project.plantly.domain.user.enums.UserStatus;
 
 import java.time.LocalDateTime;
 
@@ -42,7 +42,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserState userState;
+    private UserStatus userStatus;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -63,13 +63,13 @@ public class User {
     private LocalDateTime deletedAt;
 
     @Builder
-    public User(String email, String password, String name, String phone, String nickname, UserState userState, UserGrade userGrade, UserRole userRole, LocalDateTime trialEndDate, LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime deletedAt) {
+    public User(String email, String password, String name, String phone, String nickname, UserStatus userStatus, UserGrade userGrade, UserRole userRole, LocalDateTime trialEndDate, LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime deletedAt) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.phone = phone;
         this.nickname = nickname;
-        this.userState = (userState != null) ? userState : UserState.ACTIVE;
+        this.userStatus = (userStatus != null) ? userStatus : UserStatus.ACTIVE;
         this.userGrade = (userGrade != null) ? userGrade : UserGrade.BASIC;
         this.userRole = (userRole != null) ? userRole : UserRole.MEMBER;
         this.trialEndDate = trialEndDate;

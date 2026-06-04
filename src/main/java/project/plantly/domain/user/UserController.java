@@ -14,6 +14,7 @@ public class UserController {
 
     private final UserService userService;
 
+    // 회원가입
     @PostMapping("/api/v1/users/sign-up")
     public ApiResponse signUp (@Valid @RequestBody SignUpRequest request){
 

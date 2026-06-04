@@ -6,8 +6,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import project.plantly.domain.user.dto.request.SignUpRequest;
+import project.plantly.domain.user.exception.UserErrorCode;
 import project.plantly.global.exception.BusinessException;
-import project.plantly.global.exception.ErrorCode;
 import project.plantly.global.security.jwt.JwtProvider;
 
 @Service
@@ -22,7 +22,7 @@ public class UserService {
     public void createUser (SignUpRequest request){
 
         if(userRepository.existsByEmail(request.email())){
-            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+            throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
         }
 
         User user = User.create(
@@ -34,7 +34,7 @@ public class UserService {
         try {
             userRepository.save(user);
         }catch (DataIntegrityViolationException e){
-            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+            throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
         }
 
     }

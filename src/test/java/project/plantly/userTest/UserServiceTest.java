@@ -13,8 +13,8 @@ import project.plantly.domain.user.User;
 import project.plantly.domain.user.UserRepository;
 import project.plantly.domain.user.UserService;
 import project.plantly.domain.user.dto.request.SignUpRequest;
+import project.plantly.domain.user.exception.UserErrorCode;
 import project.plantly.global.exception.BusinessException;
-import project.plantly.global.exception.ErrorCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 
@@ -77,7 +77,7 @@ public class UserServiceTest {
         assertThatThrownBy(() -> userService.createUser(request))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
+                .isEqualTo(UserErrorCode.DUPLICATE_EMAIL);
 
         verify(userRepository, never()).save(any(User.class));  // 저장 없음
         verify(passwordEncoder, never()).encode(anyString());  // 비밀번호 인코딩 없음

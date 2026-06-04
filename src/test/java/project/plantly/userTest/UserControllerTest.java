@@ -15,8 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import project.plantly.domain.user.UserController;
 import project.plantly.domain.user.UserService;
 import project.plantly.domain.user.dto.request.SignUpRequest;
+import project.plantly.domain.user.exception.UserErrorCode;
 import project.plantly.global.exception.BusinessException;
-import project.plantly.global.exception.ErrorCode;
 import project.plantly.global.security.jwt.JwtAuthenticationFilter;
 import tools.jackson.databind.ObjectMapper;
 
@@ -65,7 +65,7 @@ public class UserControllerTest {
     public void signup_duplicateEmail () throws Exception {
         SignUpRequest request = new SignUpRequest("test@example.com", "rawPassword!", "홍길동", "01012345678");
 
-        willThrow(new BusinessException(ErrorCode.DUPLICATE_EMAIL))
+        willThrow(new BusinessException(UserErrorCode.DUPLICATE_EMAIL))
                 .given(userService).createUser(any(SignUpRequest.class));
 
         mockMvc.perform(post("/api/v1/users/sign-up")
