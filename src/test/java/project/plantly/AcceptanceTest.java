@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
-import project.plantly.global.security.jwt.JwtProvider;
 import io.restassured.RestAssured;
 
 @ActiveProfiles("test")
@@ -17,9 +16,6 @@ public class AcceptanceTest {
 
     @Autowired
     DatabaseCleanup databaseCleanup;
-
-    @Autowired
-    protected JwtProvider jwtProvider;
 
     @BeforeEach
     void setUp() {
