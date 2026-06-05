@@ -14,7 +14,6 @@ import project.plantly.domain.user.enums.UserStatus;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.not;
 
 
 // 세션 기반 인증의 전체 흐름을 실제 서버(RANDOM_PORT) + 실제 필터 체인으로 검증하는 인수 테스트.
@@ -43,24 +42,27 @@ class AuthAcceptanceTest extends AcceptanceTest {
                 .statusCode(200)
                 .body("success", equalTo(true));
 
-        // 2) 로그인: 200 + 사용자 정보 5개 + JSESSIONID 발급
+        // 2) 로그인: 200 + ApiResponse(data에 사용자 정보) + JSESSIONID 발급
         Response loginRes = login(cookies, csrf, "flow@example.com", VALID_PASSWORD, false);
 
         loginRes.then()
                 .statusCode(200)
-                .body("email", equalTo("flow@example.com"))
-                .body("name", equalTo("홍길동"))
-                .body("userStatus", equalTo("ACTIVE"))
-                .body("userGrade", equalTo("BASIC"));
+                .body("success", equalTo(true))
+                .body("data.email", equalTo("flow@example.com"))
+                .body("data.name", equalTo("홍길동"))
+                .body("data.userStatus", equalTo("ACTIVE"))
+                .body("data.userGrade", equalTo("BASIC"));
 
         assertThat(loginRes.cookie("JSESSIONID")).isNotNull();
 
-        // 3) 세션 쿠키로 보호 자원 접근 → 인증 게이트 통과(401 아님)
+        // 3) 세션 쿠키로 본인 프로필 조회 → 200 + 인증 주체 본인 정보 반환(IDOR 방지: 외부 id 입력 불가)
         given().filter(cookies)
                 .when()
                 .get(PROTECTED_PATH)
                 .then()
-                .statusCode(not(equalTo(401)));
+                .statusCode(200)
+                .body("success", equalTo(true))
+                .body("data.email", equalTo("flow@example.com"));
 
         // 4) 로그아웃: 200 성공 응답
         given().filter(cookies).header("X-XSRF-TOKEN", csrf)

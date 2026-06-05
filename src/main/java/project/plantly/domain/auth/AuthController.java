@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import project.plantly.domain.user.dto.request.LoginRequest;
 import project.plantly.domain.user.dto.response.LoginResponse;
+import project.plantly.global.response.ApiResponse;
 
 @RestController
 @RequiredArgsConstructor
@@ -30,10 +31,10 @@ public class AuthController {
 
     // 로그인 (세션 기반): 인증 성공 시 SecurityContext를 세션에 저장하고 사용자 정보를 응답
     @PostMapping("/api/v1/auth/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest request,
-                               HttpServletRequest httpRequest,
-                               HttpServletResponse httpResponse) {
-        return authService.login(request, httpRequest, httpResponse);
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request,
+                                            HttpServletRequest httpRequest,
+                                            HttpServletResponse httpResponse) {
+        return ApiResponse.success("로그인 되었습니다.", authService.login(request, httpRequest, httpResponse));
     }
 
     // 로그아웃은 Spring Security LogoutFilter가 처리: POST /api/v1/auth/logout

@@ -16,7 +16,7 @@ public record ProfileResponse(
         LocalDateTime createdAt
 ) {
 
-    public static ProfileResponse form (User user){
+    public static ProfileResponse from (User user){
 
         return ProfileResponse.builder()
                 .email(user.getEmail())

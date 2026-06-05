@@ -16,7 +16,7 @@ public class GlobalExceptionHandler {
 
     // 409, 500 중 의도된 비즈니스 예외
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse> handleBusiness(BusinessException e){
+    public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException e){
         ErrorCode code = e.getErrorCode();
 
         return ResponseEntity.status(code.getStatus())
@@ -25,7 +25,7 @@ public class GlobalExceptionHandler {
 
     // 400 검증실패
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse> handleValidation(MethodArgumentNotValidException e){
+    public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException e){
         String firstMessage = e.getBindingResult().getFieldErrors().get(0).getDefaultMessage();
 
         return ResponseEntity.badRequest().body(ApiResponse.failure(firstMessage));
@@ -33,7 +33,7 @@ public class GlobalExceptionHandler {
 
     // 500 서버 오류 - 예상치 못한 모든 예외의 fallback
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse> handleUnexpected (Exception e){
+    public ResponseEntity<ApiResponse<Void>> handleUnexpected (Exception e){
         log.error("예상치 못한 서버 오류", e);  //실제 원인은 로그로 기록
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -44,7 +44,7 @@ public class UserService {
                 () -> new BusinessException(UserErrorCode.USER_NOT_FOUND)
         );
 
-        return ProfileResponse.form(user);
+        return ProfileResponse.from(user);
     }
 
 }
