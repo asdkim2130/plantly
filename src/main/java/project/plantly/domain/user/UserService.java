@@ -5,6 +5,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import project.plantly.domain.user.dto.request.SignUpRequest;
+import project.plantly.domain.user.dto.response.ProfileResponse;
 import project.plantly.domain.user.exception.UserErrorCode;
 import project.plantly.global.exception.BusinessException;
 
@@ -34,6 +35,16 @@ public class UserService {
             throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
         }
 
+    }
+
+    // 회원 자신의 프로필 조회
+    public ProfileResponse getUserProfile (Long userId){
+
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new BusinessException(UserErrorCode.USER_NOT_FOUND)
+        );
+
+        return ProfileResponse.form(user);
     }
 
 }
