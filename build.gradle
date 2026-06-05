@@ -24,9 +24,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
-	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
-	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
-	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'com.h2database:h2'
@@ -43,6 +40,17 @@ dependencies {
 
 	// RestAssured
 	testImplementation 'io.rest-assured:rest-assured:5.4.0'
+}
+
+// rest-assured 5.4.0은 Groovy 4와 호환된다. Spring Boot 4의 의존성 관리가 Groovy를 5.x로
+// 끌어올리면 rest-assured 내부 Groovy 메타클래스에서 NPE가 발생하므로, 테스트 클래스패스에서
+// Groovy를 4.0.16으로 고정한다.
+configurations.matching { it.name.toLowerCase().contains('test') }.configureEach {
+	resolutionStrategy.eachDependency {
+		if (it.requested.group == 'org.apache.groovy') {
+			it.useVersion '4.0.16'
+		}
+	}
 }
 
 tasks.named('test') {
