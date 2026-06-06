@@ -8,13 +8,21 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.BeanUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.UserRepository;
 import project.plantly.domain.user.UserService;
 import project.plantly.domain.user.dto.request.SignUpRequest;
+import project.plantly.domain.user.dto.response.ProfileResponse;
+import project.plantly.domain.user.enums.UserStatus;
 import project.plantly.domain.user.exception.UserErrorCode;
 import project.plantly.global.exception.BusinessException;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 
@@ -81,6 +89,56 @@ public class UserServiceTest {
 
         verify(userRepository, never()).save(any(User.class));  // 저장 없음
         verify(passwordEncoder, never()).encode(anyString());  // 비밀번호 인코딩 없음
+    }
+
+    @Test
+    @DisplayName("사용자가 프로필 조회 성공시 ProfileResponse 반환")
+    public void getUserProfile_success (){
+        //given
+        Long userId = 1L;
+        given(userRepository.findById(userId)).willReturn(Optional.of(userFixture(userId)));
+
+        //when
+        ProfileResponse result = userService.getUserProfile(userId);
+
+        //then
+        assertThat(result.email()).isEqualTo("email@example.com");
+        assertThat(result.name()).isEqualTo("홍길동");
+        assertThat(result.phone()).isEqualTo("01012345678");
+        assertThat(result.userStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(result.trialEndDate()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
+        assertThat(result.createdAt()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
+    }
+
+    @Test
+    @DisplayName("사용자가 프로필 조회 실패시 USER_NOT_FOUNT 예외")
+    public void getUserProfile_userNotFound(){
+        //given
+        Long userId = 999L;
+        given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+        //when/then
+        assertThatThrownBy(() -> userService.getUserProfile(userId))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+    }
+
+
+
+    private User userFixture (Long id){
+        User user = BeanUtils.instantiateClass(User.class);
+
+        ReflectionTestUtils.setField(user, "id", id);
+        ReflectionTestUtils.setField(user, "email", "email@example.com");
+        ReflectionTestUtils.setField(user, "name", "홍길동");
+        ReflectionTestUtils.setField(user, "phone", "01012345678");
+        ReflectionTestUtils.setField(user, "userStatus", UserStatus.ACTIVE);
+        ReflectionTestUtils.setField(user, "trialEndDate", LocalDateTime.of(2026, 1, 1, 0, 0));
+        ReflectionTestUtils.setField(user, "createdAt", LocalDateTime.of(2026, 1, 1, 0, 0));
+
+        return user;
+
     }
 
 }

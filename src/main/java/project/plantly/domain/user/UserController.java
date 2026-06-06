@@ -27,7 +27,7 @@ public class UserController {
         return ApiResponse.success("회원가입이 완료되었습니다.");
     }
 
-    // 회원 자신의 프로필 조회: 조회 대상 id는 인증 주체(세션)에서 가져온다 (외부 입력 금지 → IDOR 방지)
+    // 회원 자신의 프로필 조회
     @GetMapping("/api/v1/users/me")
     public ApiResponse<ProfileResponse> getProfile (@AuthenticationPrincipal UserPrincipal principal){
 
