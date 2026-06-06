@@ -21,6 +21,7 @@ public record SignUpRequest(
         String name,
 
         @NotBlank(message = "휴대폰 번호는 필수입니다.")
+        @Size(min = 10, max = 11, message = "휴대폰 번호는 10자 또는 11자입니다.")
         @Pattern(regexp = "^[0-9]+$", message = "휴대폰 번호는 숫자만 입력 가능합니다.")
         String phone
 ) {
