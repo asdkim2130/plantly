@@ -15,6 +15,7 @@ import project.plantly.domain.user.User;
 import project.plantly.domain.user.UserRepository;
 import project.plantly.domain.user.UserService;
 import project.plantly.domain.user.dto.request.SignUpRequest;
+import project.plantly.domain.user.dto.request.UpdateProfileRequest;
 import project.plantly.domain.user.dto.response.ProfileResponse;
 import project.plantly.domain.user.enums.UserStatus;
 import project.plantly.domain.user.exception.UserErrorCode;
@@ -105,6 +106,7 @@ public class UserServiceTest {
         assertThat(result.email()).isEqualTo("email@example.com");
         assertThat(result.name()).isEqualTo("홍길동");
         assertThat(result.phone()).isEqualTo("01012345678");
+        assertThat(result.nickname()).isNull();
         assertThat(result.userStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(result.trialEndDate()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
         assertThat(result.createdAt()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
@@ -122,6 +124,27 @@ public class UserServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("사용자가 프로필 수정 성공시 ProfileResponse 반환")
+    public void updateProfile_success (){
+        //given
+        Long userId = 1L;
+        given(userRepository.findById(userId)).willReturn(Optional.of(userFixture(userId)));
+
+        //when
+        ProfileResponse profile = userService.updateUserProfile(userId, new UpdateProfileRequest(null, "닉네임", null));
+
+        //then
+        assertThat(profile.email()).isEqualTo("email@example.com");
+        assertThat(profile.name()).isEqualTo("홍길동");
+        assertThat(profile.phone()).isEqualTo("01012345678");
+        assertThat(profile.nickname()).isEqualTo("닉네임");
+        assertThat(profile.userStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(profile.createdAt()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
+        assertThat(profile.trialEndDate()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
+
     }
 
 

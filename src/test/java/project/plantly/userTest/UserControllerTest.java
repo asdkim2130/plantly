@@ -21,6 +21,7 @@ import project.plantly.domain.user.User;
 import project.plantly.domain.user.UserController;
 import project.plantly.domain.user.UserService;
 import project.plantly.domain.user.dto.request.SignUpRequest;
+import project.plantly.domain.user.dto.request.UpdateProfileRequest;
 import project.plantly.domain.user.dto.response.ProfileResponse;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
@@ -35,6 +36,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -106,9 +108,10 @@ public class UserControllerTest {
         ProfileResponse profile = new ProfileResponse(
                 "email@example.com",
                 "홍길동",
+                null,
                 "01012345678",
                 UserStatus.ACTIVE,
-                LocalDateTime.of(2026, 1, 1, 0, 0, 0),
+                LocalDateTime.of(2026, 1, 1, 0, 0),
                 LocalDateTime.of(2026, 1, 1, 0, 0)
         );
 
@@ -133,6 +136,32 @@ public class UserControllerTest {
         mockMvc.perform(get("/api/v1/users/me"))
                 .andExpect(status().isNotFound());
 
+    }
+
+    @Test
+    @DisplayName("회원 프로필 수정시 200과 성공 메세지 반환")
+    public void profileUpdate_success () throws Exception {
+        Long userId = 1L;
+
+        ProfileResponse profile = new ProfileResponse(
+                "email@example.com",
+                "홍길동",
+                null,
+                "01012345678",
+                UserStatus.ACTIVE,
+                LocalDateTime.of(2026, 1, 1, 0, 0),
+                LocalDateTime.of(2026, 1, 1, 0, 0)
+        );
+
+        authenticate(userId);
+        UpdateProfileRequest request = new UpdateProfileRequest(null, "닉네임", null);
+
+        mockMvc.perform(patch("/api/v1/users/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("프로필 수정이 완료되었습니다."));
     }
 
 
