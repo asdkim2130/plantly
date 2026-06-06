@@ -3,11 +3,9 @@ package project.plantly.domain.user;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import project.plantly.domain.user.dto.request.SignUpRequest;
+import project.plantly.domain.user.dto.request.UpdateProfileRequest;
 import project.plantly.domain.user.dto.response.ProfileResponse;
 import project.plantly.global.response.ApiResponse;
 import project.plantly.global.security.UserPrincipal;
@@ -32,6 +30,16 @@ public class UserController {
     public ApiResponse<ProfileResponse> getProfile (@AuthenticationPrincipal UserPrincipal principal){
 
         return ApiResponse.success(userService.getUserProfile(principal.getUser().getId()));
+    }
+
+    // 회원 프로필 수정 (부분 수정)
+    @PatchMapping("/api/v1/users/me")
+    public ApiResponse<ProfileResponse> updateProfile (@AuthenticationPrincipal UserPrincipal principal,
+                                                       @Valid @RequestBody UpdateProfileRequest request){
+
+        return ApiResponse.success("프로필 수정이 완료되었습니다.",
+                userService.updateUserProfile(principal.getUser().getId(), request));
+
     }
 
 }

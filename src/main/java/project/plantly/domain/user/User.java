@@ -87,4 +87,10 @@ public class User {
                 .phone(phone)
                 .build();
     }
+
+    public void update (String name, String nickname, String phone){
+        if (name != null) {this.name = name;}
+        if (nickname != null ) {this.nickname = nickname;}
+        if (phone != null) {this.phone = phone;}
+    }
 }

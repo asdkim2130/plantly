@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public record ProfileResponse(
         String email,
         String name,
+        String nickname,
         String phone,
         UserStatus userStatus,
         LocalDateTime trialEndDate,
@@ -21,6 +22,7 @@ public record ProfileResponse(
         return ProfileResponse.builder()
                 .email(user.getEmail())
                 .name(user.getName())
+                .nickname(user.getNickname())
                 .phone(user.getPhone())
                 .userStatus(user.getUserStatus())
                 .trialEndDate(user.getTrialEndDate())

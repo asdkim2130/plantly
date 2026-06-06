@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.user.dto.request.SignUpRequest;
+import project.plantly.domain.user.dto.request.UpdateProfileRequest;
 import project.plantly.domain.user.dto.response.ProfileResponse;
 import project.plantly.domain.user.exception.UserErrorCode;
 import project.plantly.global.exception.BusinessException;
@@ -45,6 +47,20 @@ public class UserService {
         );
 
         return ProfileResponse.from(user);
+    }
+
+    // 회원 프로필 수정
+    @Transactional
+    public ProfileResponse updateUserProfile (Long userId, UpdateProfileRequest request){
+
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new BusinessException(UserErrorCode.USER_NOT_FOUND)
+        );
+
+        user.update(request.name(), request.nickname(), request.phone());
+
+        return ProfileResponse.from(user);
+
     }
 
 }
