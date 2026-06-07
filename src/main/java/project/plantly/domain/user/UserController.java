@@ -7,6 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import project.plantly.domain.auth.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
+import project.plantly.domain.user.dto.response.UserDetailResponse;
 import project.plantly.domain.user.dto.response.ProfileResponse;
 import project.plantly.global.response.ApiResponse;
 import project.plantly.global.security.UserPrincipal;
@@ -30,7 +31,7 @@ public class UserController {
     @GetMapping("/api/v1/users/me")
     public ApiResponse<ProfileResponse> getProfile (@AuthenticationPrincipal UserPrincipal principal){
 
-        return ApiResponse.success(userService.getUserProfile(principal.getUser().getId()));
+        return ApiResponse.success(userService.getMyProfile(principal.getUser().getId()));
     }
 
     // 회원 프로필 수정 (부분 수정)

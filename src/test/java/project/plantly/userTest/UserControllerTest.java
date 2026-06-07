@@ -115,7 +115,7 @@ public class UserControllerTest {
                 LocalDateTime.of(2026, 1, 1, 0, 0)
         );
 
-        given(userService.getUserProfile(userId)).willReturn(profile);
+        given(userService.getMyProfile(userId)).willReturn(profile);
         authenticate(userId);
 
         mockMvc.perform(get("/api/v1/users/me"))
@@ -129,7 +129,7 @@ public class UserControllerTest {
     @DisplayName("유저 없음 404 반환")
     public void getProfile_userNotFount () throws Exception {
         Long userId = 1L;
-        given(userService.getUserProfile(userId))
+        given(userService.getMyProfile(userId))
                 .willThrow(new BusinessException(UserErrorCode.USER_NOT_FOUND));
         authenticate(userId);
 

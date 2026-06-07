@@ -94,13 +94,13 @@ public class UserServiceTest {
 
     @Test
     @DisplayName("사용자가 프로필 조회 성공시 ProfileResponse 반환")
-    public void getUserProfile_success (){
+    public void getMyProfile_success (){
         //given
         Long userId = 1L;
         given(userRepository.findById(userId)).willReturn(Optional.of(userFixture(userId)));
 
         //when
-        ProfileResponse result = userService.getUserProfile(userId);
+        ProfileResponse result = userService.getMyProfile(userId);
 
         //then
         assertThat(result.email()).isEqualTo("email@example.com");
@@ -114,13 +114,13 @@ public class UserServiceTest {
 
     @Test
     @DisplayName("사용자가 프로필 조회 실패시 USER_NOT_FOUNT 예외")
-    public void getUserProfile_userNotFound(){
+    public void getMyProfile_userNotFound(){
         //given
         Long userId = 999L;
         given(userRepository.findById(userId)).willReturn(Optional.empty());
 
         //when/then
-        assertThatThrownBy(() -> userService.getUserProfile(userId))
+        assertThatThrownBy(() -> userService.getMyProfile(userId))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(UserErrorCode.USER_NOT_FOUND);
