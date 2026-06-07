@@ -17,6 +17,9 @@ import project.plantly.domain.user.UserService;
 import project.plantly.domain.auth.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
 import project.plantly.domain.user.dto.response.ProfileResponse;
+import project.plantly.domain.user.dto.response.UserDetailResponse;
+import project.plantly.domain.user.enums.UserGrade;
+import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
 import project.plantly.domain.user.exception.UserErrorCode;
 import project.plantly.global.exception.BusinessException;
@@ -147,6 +150,43 @@ public class UserServiceTest {
 
     }
 
+    @Test
+    @DisplayName("관리자의 회원 상세 조회 성공 200 ok와 Response 반환")
+    public void getUserDetailForAdmin_success (){
+        //given
+        Long userId = 1L;
+        given(userRepository.findById(userId)).willReturn(Optional.of(userFixture(userId)));
+
+        //when
+        UserDetailResponse result = userService.getUserDetailForAdmin(userId);
+
+        //then
+        assertThat(result.id()).isEqualTo(userId);
+        assertThat(result.email()).isEqualTo("email@example.com");
+        assertThat(result.name()).isEqualTo("홍길동");
+        assertThat(result.phone()).isEqualTo("01012345678");
+        assertThat(result.userStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(result.trialEndDate()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
+        assertThat(result.createdAt()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
+        assertThat(result.userRole()).isEqualTo(UserRole.MEMBER);
+        assertThat(result.userGrade()).isEqualTo(UserGrade.BASIC);
+    }
+
+    @Test
+    @DisplayName("관리자 회원 상세 조회시 유저 없으면 USER_NOT_FOUND 예외")
+    public void getUserDetailForAdmin_userNotFound() {
+        //given
+        Long userId = 999L;
+        given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+        //when/then
+        assertThatThrownBy(() -> userService.getUserDetailForAdmin(userId))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+    }
+
+
 
 
     private User userFixture (Long id){
@@ -159,6 +199,8 @@ public class UserServiceTest {
         ReflectionTestUtils.setField(user, "userStatus", UserStatus.ACTIVE);
         ReflectionTestUtils.setField(user, "trialEndDate", LocalDateTime.of(2026, 1, 1, 0, 0));
         ReflectionTestUtils.setField(user, "createdAt", LocalDateTime.of(2026, 1, 1, 0, 0));
+        ReflectionTestUtils.setField(user, "userRole", UserRole.MEMBER);
+        ReflectionTestUtils.setField(user, "userGrade", UserGrade.BASIC);
 
         return user;
 

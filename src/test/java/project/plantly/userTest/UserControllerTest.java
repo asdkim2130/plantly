@@ -8,6 +8,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -29,14 +30,24 @@ import project.plantly.domain.user.exception.UserErrorCode;
 import project.plantly.global.exception.BusinessException;
 import project.plantly.global.security.UserPrincipal;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import project.plantly.domain.user.dto.response.UserDetailResponse;
+import project.plantly.domain.user.enums.UserGrade;
+
 
 import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -45,7 +56,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @ActiveProfiles("test")
 @WebMvcTest(controllers = UserController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(UserControllerTest.MethodSecurityTestConfig.class)
 public class UserControllerTest {
+
+    // @PreAuthorize 를 슬라이스 테스트에서 강제하기 위한 메서드 시큐리티 활성화
+    @TestConfiguration
+    @EnableMethodSecurity
+    static class MethodSecurityTestConfig { }
+
 
     @Autowired
     private MockMvc mockMvc;
@@ -164,6 +182,50 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.message").value("프로필 수정이 완료되었습니다."));
     }
 
+    @Test
+    @DisplayName("관리자가 회원 상세 조회시 200과 데이터 반환")
+    public void getUserDetailForAdmin_admin_success () throws Exception {
+        Long targetUserId = 2L;
+
+        UserDetailResponse response = UserDetailResponse.builder()
+                .id(targetUserId)
+                .email("target@example.com")
+                .name("대상회원")
+                .nickname("닉네임")
+                .phone("01099998888")
+                .userStatus(UserStatus.ACTIVE)
+                .userGrade(UserGrade.BASIC)
+                .userRole(UserRole.MEMBER)
+                .trialEndDate(LocalDateTime.of(2026, 1, 1, 0, 0))
+                .createdAt(LocalDateTime.of(2026, 1, 1, 0, 0))
+                .deletedAt(null)
+                .build();
+
+        given(userService.getUserDetailForAdmin(targetUserId)).willReturn(response);
+        authenticate(1L, UserRole.ADMIN);  // 관리자 권한으로 인증
+
+        mockMvc.perform(get("/api/v1/admin/users/{userId}", targetUserId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(2))
+                .andExpect(jsonPath("$.data.email").value("target@example.com"))
+                .andExpect(jsonPath("$.data.userRole").value("MEMBER"));
+    }
+
+    @Test
+    @DisplayName("권한이 없는 회원이 회원 상세 조회시 403 반환")
+    public void getUserDetailForAdmin_member_forbidden() throws Exception {
+        Long targetId = 2L;
+        authenticate(1L, UserRole.MEMBER);  //일반 권한으로 인증
+
+        mockMvc.perform(get("/api/v1/admin/users/{userId}", targetId))
+                .andDo(print())
+                .andExpect(status().isForbidden());
+
+        // 인가 단계에서 막혀 서비스는 호출되지 않아야 함
+        verify(userService, never()).getUserDetailForAdmin(anyLong());
+    }
+
 
     // 테스트 격리: 매 테스트 후 SecurityContext 비우기
     @AfterEach
@@ -171,20 +233,25 @@ public class UserControllerTest {
         SecurityContextHolder.clearContext();
     }
 
+    private void authenticate(Long userId) {
+        authenticate(userId, UserRole.MEMBER);
+    }
+
+
     // addFilters = false 라 보안 필터가 SecurityContext 를 채워주지 않으므로 직접 주입
     // (@AuthenticationPrincipal 리졸버는 SecurityContextHolder 에서 직접 읽음)
-    private void authenticate(Long userId) {
+    private void authenticate(Long userId, UserRole role) {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authOf(userId));
+        context.setAuthentication(authOf(userId, role));
         SecurityContextHolder.setContext(context);
     }
 
     // 주어진 userId 를 가진 UserPrincipal 로 인증 객체 생성
-    private Authentication authOf(Long userId) {
+    private Authentication authOf(Long userId, UserRole role) {
         User user = BeanUtils.instantiateClass(User.class);
         ReflectionTestUtils.setField(user, "id", userId);
         ReflectionTestUtils.setField(user, "userStatus", UserStatus.ACTIVE);
-        ReflectionTestUtils.setField(user, "userRole", UserRole.MEMBER);
+        ReflectionTestUtils.setField(user, "userRole", role);
 
         UserPrincipal principal = new UserPrincipal(user);
         return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
