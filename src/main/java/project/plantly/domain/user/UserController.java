@@ -44,6 +44,7 @@ public class UserController {
 
     }
 
+    // 회원 상세 조회 - 관리자용
     @GetMapping("/api/v1/admin/users/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserDetailResponse> getUserDetailForAdmin (@PathVariable Long userId){

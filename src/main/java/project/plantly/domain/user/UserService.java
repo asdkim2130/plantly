@@ -64,6 +64,7 @@ public class UserService {
 
     }
 
+    //회원 상세 조회 - 관리자용
     @Transactional(readOnly = true)
     public UserDetailResponse getUserDetailForAdmin (Long userId){
 
