@@ -2,6 +2,7 @@ package project.plantly.domain.user;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import project.plantly.domain.auth.dto.request.SignUpRequest;
@@ -40,6 +41,13 @@ public class UserController {
         return ApiResponse.success("프로필 수정이 완료되었습니다.",
                 userService.updateUserProfile(principal.getUser().getId(), request));
 
+    }
+
+    @GetMapping("/api/v1/admin/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<UserDetailResponse> getUserDetailForAdmin (@PathVariable Long userId){
+
+        return ApiResponse.success(userService.getUserDetailForAdmin(userId));
     }
 
 }

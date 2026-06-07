@@ -63,4 +63,14 @@ public class UserService {
 
     }
 
+    @Transactional(readOnly = true)
+    public UserDetailResponse getUserDetailForAdmin (Long userId){
+
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new BusinessException(UserErrorCode.USER_NOT_FOUND)
+        );
+
+        return UserDetailResponse.from(user);
+    }
+
 }
