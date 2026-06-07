@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import project.plantly.domain.user.dto.request.LoginRequest;
-import project.plantly.domain.user.dto.response.LoginResponse;
+import project.plantly.domain.auth.dto.request.LoginRequest;
+import project.plantly.domain.auth.dto.response.LoginResponse;
 import project.plantly.global.response.ApiResponse;
 
 @RestController

@@ -20,7 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.UserController;
 import project.plantly.domain.user.UserService;
-import project.plantly.domain.user.dto.request.SignUpRequest;
+import project.plantly.domain.auth.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
 import project.plantly.domain.user.dto.response.ProfileResponse;
 import project.plantly.domain.user.enums.UserRole;

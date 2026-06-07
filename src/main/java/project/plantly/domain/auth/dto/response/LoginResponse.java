@@ -1,4 +1,4 @@
-package project.plantly.domain.user.dto.response;
+package project.plantly.domain.auth.dto.response;
 
 import lombok.Builder;
 import project.plantly.domain.user.User;
