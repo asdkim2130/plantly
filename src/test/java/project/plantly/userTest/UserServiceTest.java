@@ -12,7 +12,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 import project.plantly.domain.user.User;
-import project.plantly.domain.user.UserRepository;
+import project.plantly.domain.user.repository.UserRepository;
 import project.plantly.domain.user.UserService;
 import project.plantly.domain.auth.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
@@ -168,6 +168,7 @@ public class UserServiceTest {
         assertThat(result.userStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(result.trialEndDate()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
         assertThat(result.createdAt()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
+        assertThat(result.updatedAt()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
         assertThat(result.userRole()).isEqualTo(UserRole.MEMBER);
         assertThat(result.userGrade()).isEqualTo(UserGrade.BASIC);
     }
@@ -199,6 +200,7 @@ public class UserServiceTest {
         ReflectionTestUtils.setField(user, "userStatus", UserStatus.ACTIVE);
         ReflectionTestUtils.setField(user, "trialEndDate", LocalDateTime.of(2026, 1, 1, 0, 0));
         ReflectionTestUtils.setField(user, "createdAt", LocalDateTime.of(2026, 1, 1, 0, 0));
+        ReflectionTestUtils.setField(user, "updatedAt", LocalDateTime.of(2026, 1, 1, 0, 0));
         ReflectionTestUtils.setField(user, "userRole", UserRole.MEMBER);
         ReflectionTestUtils.setField(user, "userGrade", UserGrade.BASIC);
 

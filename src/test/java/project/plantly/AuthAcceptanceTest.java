@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import project.plantly.domain.user.User;
-import project.plantly.domain.user.UserRepository;
+import project.plantly.domain.user.repository.UserRepository;
 import project.plantly.domain.user.enums.UserStatus;
 
 import static io.restassured.RestAssured.given;
