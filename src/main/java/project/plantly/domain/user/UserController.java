@@ -1,11 +1,68 @@
 package project.plantly.domain.user;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+import project.plantly.domain.auth.dto.request.SignUpRequest;
+import project.plantly.domain.user.dto.request.UpdateProfileRequest;
+import project.plantly.domain.user.dto.response.AdminUserListResponse;
+import project.plantly.domain.user.dto.response.UserDetailResponse;
+import project.plantly.domain.user.dto.response.ProfileResponse;
+import project.plantly.global.PageResponse;
+import project.plantly.global.response.ApiResponse;
+import project.plantly.global.security.UserPrincipal;
 
 @RestController
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
+
+    // 회원가입
+    @PostMapping("/api/v1/users/sign-up")
+    public ApiResponse<Void> signUp (@Valid @RequestBody SignUpRequest request){
+
+        userService.createUser(request);
+
+        return ApiResponse.success("회원가입이 완료되었습니다.");
+    }
+
+    // 회원 자신의 프로필 조회
+    @GetMapping("/api/v1/users/me")
+    public ApiResponse<ProfileResponse> getProfile (@AuthenticationPrincipal UserPrincipal principal){
+
+        return ApiResponse.success(userService.getMyProfile(principal.getUser().getId()));
+    }
+
+    // 회원 프로필 수정 (부분 수정)
+    @PatchMapping("/api/v1/users/me")
+    public ApiResponse<ProfileResponse> updateProfile (@AuthenticationPrincipal UserPrincipal principal,
+                                                       @Valid @RequestBody UpdateProfileRequest request){
+
+        return ApiResponse.success("프로필 수정이 완료되었습니다.",
+                userService.updateUserProfile(principal.getUser().getId(), request));
+
+    }
+
+    // 회원 상세 조회 - 관리자용
+    @GetMapping("/api/v1/admin/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<UserDetailResponse> getUserDetailForAdmin (@PathVariable Long userId){
+
+        return ApiResponse.success(userService.getUserDetailForAdmin(userId));
+    }
+
+    // 회원 목록 조회 - 관리자용
+    @GetMapping("/api/v1/admin/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<PageResponse<AdminUserListResponse>> getUserListForAdmin (@PageableDefault(size = 30) Pageable pageable){
+
+        return ApiResponse.success(userService.getUserListForAdmin(pageable));
+
+    }
+
 }

@@ -6,9 +6,11 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import project.plantly.domain.user.enums.UserGrade;
 import project.plantly.domain.user.enums.UserRole;
-import project.plantly.domain.user.enums.UserState;
+import project.plantly.domain.user.enums.UserStatus;
 
 import java.time.LocalDateTime;
 
@@ -27,6 +29,7 @@ public class User {
     private String email;
 
     @NotNull
+    @Column(nullable = false, length = 60)
     private String password;
 
     @NotNull
@@ -35,42 +38,59 @@ public class User {
     @NotNull
     private String phone;
 
-    @NotNull
-    @Enumerated(EnumType.STRING)
-    private UserState userState;
+    private String nickname;
 
-    @NotNull
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserStatus userStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private UserGrade userGrade;
 
-    @NotNull
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private UserRole userRole;
-
-    @NotNull
-    private boolean isDeleted = false;
 
     private LocalDateTime trialEndDate;
 
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     private LocalDateTime updatedAt;
 
     private LocalDateTime deletedAt;
 
     @Builder
-    public User(String email, String password, String name, String phone, UserState userState, UserGrade userGrade, UserRole userRole, boolean isDeleted, LocalDateTime trialEndDate, LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime deletedAt) {
+    public User(String email, String password, String name, String phone, String nickname, UserStatus userStatus, UserGrade userGrade, UserRole userRole, LocalDateTime trialEndDate, LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime deletedAt) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.phone = phone;
-        this.userState = (userState != null) ? userState : UserState.ACTIVE;
+        this.nickname = nickname;
+        this.userStatus = (userStatus != null) ? userStatus : UserStatus.ACTIVE;
         this.userGrade = (userGrade != null) ? userGrade : UserGrade.BASIC;
         this.userRole = (userRole != null) ? userRole : UserRole.MEMBER;
-        this.isDeleted = isDeleted;
         this.trialEndDate = trialEndDate;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.deletedAt = deletedAt;
+    }
+
+    public static User create (String email, String encodedPassword, String name, String phone){
+
+        return User.builder()
+                .email(email)
+                .password(encodedPassword)
+                .name(name)
+                .phone(phone)
+                .build();
+    }
+
+    public void update (String name, String nickname, String phone){
+        if (name != null) {this.name = name;}
+        if (nickname != null ) {this.nickname = nickname;}
+        if (phone != null) {this.phone = phone;}
     }
 }

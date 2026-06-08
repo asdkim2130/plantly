@@ -6,7 +6,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import project.plantly.domain.user.User;
-import project.plantly.domain.user.UserRepository;
+import project.plantly.domain.user.repository.UserRepository;
 
 @RequiredArgsConstructor
 @Service
