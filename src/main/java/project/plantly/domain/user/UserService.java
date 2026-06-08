@@ -33,6 +33,10 @@ public class UserService {
             throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
         }
 
+        if(!request.password().equals(request.reWritePassword())){
+            throw new BusinessException(UserErrorCode.INVALID_PASSWORD);
+        }
+
         User user = User.create(
                 request.email(),
                 passwordEncoder.encode(request.password()),

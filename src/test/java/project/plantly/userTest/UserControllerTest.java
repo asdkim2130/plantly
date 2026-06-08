@@ -22,7 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.UserController;
 import project.plantly.domain.user.UserService;
-import project.plantly.domain.auth.dto.request.SignUpRequest;
+import project.plantly.domain.user.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
 import project.plantly.domain.user.dto.response.AdminUserListResponse;
 import project.plantly.domain.user.dto.response.ProfileResponse;
@@ -35,7 +35,6 @@ import project.plantly.global.exception.BusinessException;
 import project.plantly.global.security.UserPrincipal;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Import;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import project.plantly.domain.user.dto.response.UserDetailResponse;
 import project.plantly.domain.user.enums.UserGrade;
@@ -82,7 +81,7 @@ public class UserControllerTest {
     @Test
     @DisplayName("정상 요청이면 200과 성공 메세지 반환")
     public void signUp_success () throws Exception {
-        SignUpRequest request = new SignUpRequest("test@example.com", "rawPassword!", "홍길동", "01012345678");
+        SignUpRequest request = new SignUpRequest("test@example.com", "rawPassword!",  "rawPassword!", "홍길동", "01012345678");
 
         mockMvc.perform(post("/api/v1/users/sign-up")
                     .contentType(MediaType.APPLICATION_JSON)
@@ -95,7 +94,7 @@ public class UserControllerTest {
     @Test
     @DisplayName("중복 이메일이면 409와 에러 메세지 반환")
     public void signup_duplicateEmail () throws Exception {
-        SignUpRequest request = new SignUpRequest("test@example.com", "rawPassword!", "홍길동", "01012345678");
+        SignUpRequest request = new SignUpRequest("test@example.com", "rawPassword!", "rawPassword!", "홍길동", "01012345678");
 
         willThrow(new BusinessException(UserErrorCode.DUPLICATE_EMAIL))
                 .given(userService).createUser(any(SignUpRequest.class));
@@ -112,7 +111,7 @@ public class UserControllerTest {
     @Test
     @DisplayName("이메일 형식이 잘못되면 400과 검증 에러 반환")
     public void signup_validationFail () throws Exception {
-        SignUpRequest request = new SignUpRequest("testexample.com", "rawPassword!", "홍길동", "01012345678");
+        SignUpRequest request = new SignUpRequest("testexample.com", "rawPassword!", "rawPassword!", "홍길동", "01012345678");
 
         mockMvc.perform(post("/api/v1/users/sign-up")
                     .contentType(MediaType.APPLICATION_JSON)
