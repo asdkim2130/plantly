@@ -2,14 +2,20 @@ package project.plantly.domain.user;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.auth.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
+import project.plantly.domain.user.dto.response.AdminUserListResponse;
 import project.plantly.domain.user.dto.response.UserDetailResponse;
 import project.plantly.domain.user.dto.response.ProfileResponse;
 import project.plantly.domain.user.exception.UserErrorCode;
+import project.plantly.domain.user.repository.QUserRepository;
+import project.plantly.domain.user.repository.UserRepository;
+import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
 
 @Service
@@ -18,6 +24,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final QUserRepository qUserRepository;
 
     //회원가입
     public void createUser (SignUpRequest request){
@@ -73,6 +80,15 @@ public class UserService {
         );
 
         return UserDetailResponse.from(user);
+    }
+
+    //회원 목록 조회 - 관리자용
+    @Transactional(readOnly = true)
+    public PageResponse<AdminUserListResponse> getUserListForAdmin (Pageable pageable){
+
+        Page<AdminUserListResponse> users = qUserRepository.getAdminUsers(pageable);
+
+        return PageResponse.of(users.getContent(), users.getTotalElements(), pageable);
     }
 
 }

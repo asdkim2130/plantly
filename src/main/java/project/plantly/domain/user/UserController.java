@@ -2,13 +2,17 @@ package project.plantly.domain.user;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import project.plantly.domain.auth.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
+import project.plantly.domain.user.dto.response.AdminUserListResponse;
 import project.plantly.domain.user.dto.response.UserDetailResponse;
 import project.plantly.domain.user.dto.response.ProfileResponse;
+import project.plantly.global.PageResponse;
 import project.plantly.global.response.ApiResponse;
 import project.plantly.global.security.UserPrincipal;
 
@@ -50,6 +54,15 @@ public class UserController {
     public ApiResponse<UserDetailResponse> getUserDetailForAdmin (@PathVariable Long userId){
 
         return ApiResponse.success(userService.getUserDetailForAdmin(userId));
+    }
+
+    // 회원 목록 조회 - 관리자용
+    @GetMapping("/api/v1/admin/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<PageResponse<AdminUserListResponse>> getUserListForAdmin (@PageableDefault(size = 30) Pageable pageable){
+
+        return ApiResponse.success(userService.getUserListForAdmin(pageable));
+
     }
 
 }

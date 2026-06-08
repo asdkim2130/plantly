@@ -19,6 +19,7 @@ public record UserDetailResponse(Long id,
                                  UserRole userRole,
                                  LocalDateTime trialEndDate,
                                  LocalDateTime createdAt,
+                                 LocalDateTime updatedAt,
                                  LocalDateTime deletedAt) {
 
     public static UserDetailResponse from (User user){
@@ -33,6 +34,7 @@ public record UserDetailResponse(Long id,
                 .userRole(user.getUserRole())
                 .trialEndDate(user.getTrialEndDate())
                 .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
                 .deletedAt(user.getDeletedAt())
                 .build();
     }
