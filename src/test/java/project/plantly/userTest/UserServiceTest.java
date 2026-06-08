@@ -9,9 +9,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 import project.plantly.domain.user.User;
+import project.plantly.domain.user.dto.response.AdminUserListResponse;
+import project.plantly.domain.user.repository.QUserRepository;
 import project.plantly.domain.user.repository.UserRepository;
 import project.plantly.domain.user.UserService;
 import project.plantly.domain.auth.dto.request.SignUpRequest;
@@ -22,15 +26,18 @@ import project.plantly.domain.user.enums.UserGrade;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
 import project.plantly.domain.user.exception.UserErrorCode;
+import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +51,9 @@ public class UserServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private QUserRepository qUserRepository;
 
     @InjectMocks
     private UserService userService;
@@ -185,6 +195,58 @@ public class UserServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("관리자의 회원 목록 조회 성공시 PageResponse로 변환해서 반환")
+    public void getUserListForAdmin_success (){
+        //given - 전체 5건 중 페이지당 2건을 조회하는 첫 페이지 상황
+        // 주의: PageImpl 은 offset + pageSize > total 이면 total 을 보정하므로(예: size=30,total=5 → 2),
+        //       size 를 실제 데이터 양(2)에 맞춰야 total(5)이 그대로 유지된다.
+        PageRequest pageable = PageRequest.of(0, 2);
+
+        AdminUserListResponse user1 = new AdminUserListResponse(
+                "a@example.com", "회원A", "01011111111",
+                UserGrade.BASIC, LocalDateTime.of(2026, 1, 2, 0, 0),
+                UserRole.MEMBER, UserStatus.ACTIVE
+        );
+
+        AdminUserListResponse user2 = new AdminUserListResponse(
+                "b@example.com", "회원B", "01022222222",
+                UserGrade.BASIC, LocalDateTime.of(2026, 1, 1, 0, 0),
+                UserRole.MEMBER, UserStatus.ACTIVE
+        );
+
+        PageImpl<AdminUserListResponse> page = new PageImpl<>(List.of(user1, user2), pageable, 5);
+        given(qUserRepository.getAdminUsers(pageable)).willReturn(page);
+
+        //when
+        PageResponse<AdminUserListResponse> result = userService.getUserListForAdmin(pageable);
+
+        //then
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).email()).isEqualTo("a@example.com");
+        assertThat(result.getPageInfo().pageNumber()).isEqualTo(1);     // 1-based
+        assertThat(result.getPageInfo().size()).isEqualTo(2);
+        assertThat(result.getPageInfo().totalElement()).isEqualTo(5);
+        assertThat(result.getPageInfo().totalPage()).isEqualTo(3);      // ceil(5 / 2)
+        verify(qUserRepository).getAdminUsers(pageable);
+    }
+
+    @Test
+    @DisplayName("조회 결과가 없으면 빈 목록과 총 0건 반환")
+    public void getUserListForAdmin_empty(){
+        //given
+        PageRequest pageable = PageRequest.of(0, 30);
+        given(qUserRepository.getAdminUsers(pageable)).willReturn(
+                new PageImpl<>(List.of(), pageable, 0));
+
+        //when
+        PageResponse<AdminUserListResponse> result = userService.getUserListForAdmin(pageable);
+
+        //then
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getPageInfo().totalElement()).isZero();
     }
 
 

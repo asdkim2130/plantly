@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -23,10 +24,13 @@ import project.plantly.domain.user.UserController;
 import project.plantly.domain.user.UserService;
 import project.plantly.domain.auth.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
+import project.plantly.domain.user.dto.response.AdminUserListResponse;
 import project.plantly.domain.user.dto.response.ProfileResponse;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
 import project.plantly.domain.user.exception.UserErrorCode;
+import project.plantly.global.PageInfo;
+import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
 import project.plantly.global.security.UserPrincipal;
 import tools.jackson.databind.ObjectMapper;
@@ -38,6 +42,7 @@ import project.plantly.domain.user.enums.UserGrade;
 
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -224,6 +229,49 @@ public class UserControllerTest {
 
         // 인가 단계에서 막혀 서비스는 호출되지 않아야 함
         verify(userService, never()).getUserDetailForAdmin(anyLong());
+    }
+
+    @Test
+    @DisplayName("관리자가 회원 목록 조회 시 200과 페이지 데이터 반환")
+    public void getUserListForAdmin_admin_success() throws Exception {
+        //given
+        AdminUserListResponse content = new AdminUserListResponse(
+                "target@example.com", "대상회원", "01099998888",
+                UserGrade.BASIC, LocalDateTime.of(2026, 1, 1, 0, 0),
+                UserRole.MEMBER, UserStatus.ACTIVE
+        );
+
+        PageInfo pageInfo = new PageInfo(1, 30, 1, 1);
+
+        PageResponse<AdminUserListResponse> response = new PageResponse<>(List.of(content), pageInfo);
+
+        given(userService.getUserListForAdmin(any(Pageable.class))).willReturn(response);
+        authenticate(1L, UserRole.ADMIN);
+
+        //when & then
+        mockMvc.perform(get("/api/v1/admin/users")
+                .param("page", "0")
+                .param("size", "30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].email").value("target@example.com"))
+                .andExpect(jsonPath("$.data.content[0].userRole").value("MEMBER"))
+                .andExpect(jsonPath("$.data.pageInfo.pageNumber").value(1))
+                .andExpect(jsonPath("$.data.pageInfo.totalElement").value(1));
+    }
+
+    @Test
+    @DisplayName("권한 없는 회원이 회원 목록 조회 시 403 반환")
+    public void getUserListForAdmin_member_forbidden () throws Exception {
+        //given
+        authenticate(1L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/admin/users"))
+                .andDo(print())
+                .andExpect(status().isForbidden());
+
+        // 인가 단계에서 Block -> 서비스 호출 되지 않음 확인
+        verify(userService, never()).getUserListForAdmin(any(Pageable.class));
+
     }
 
 
