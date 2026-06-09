@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import project.plantly.domain.auth.dto.request.SignUpRequest;
+import project.plantly.domain.user.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
 import project.plantly.domain.user.dto.response.AdminUserListResponse;
 import project.plantly.domain.user.dto.response.UserDetailResponse;
@@ -31,6 +31,10 @@ public class UserService {
 
         if(userRepository.existsByEmail(request.email())){
             throw new BusinessException(UserErrorCode.DUPLICATE_EMAIL);
+        }
+
+        if(!request.password().equals(request.reWritePassword())){
+            throw new BusinessException(UserErrorCode.INVALID_PASSWORD);
         }
 
         User user = User.create(

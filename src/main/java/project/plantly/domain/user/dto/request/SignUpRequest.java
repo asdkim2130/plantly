@@ -1,4 +1,4 @@
-package project.plantly.domain.auth.dto.request;
+package project.plantly.domain.user.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -14,6 +14,11 @@ public record SignUpRequest(
         @Size(min = 10, max = 60, message = "비밀번호는 최소 10자 최대 60자입니다.")
         @Pattern(regexp = "^(?=.*[^A-Za-z0-9]).+$", message = "비밀번호에 특수문자를 최소 1개 포함해야 합니다.")
         String password,
+
+        @NotBlank(message = "비밀번호 재입력은 필수입니다.")
+        @Size(min = 10, max = 60, message = "비밀번호는 최소 10자 최대 60자입니다.")
+        @Pattern(regexp = "^(?=.*[^A-Za-z0-9]).+$", message = "비밀번호에 특수문자를 최소 1개 포함해야 합니다.")
+        String reWritePassword,
 
         @NotBlank(message = "이름은 필수입니다.")
         @Size(min = 2, max = 30, message = "이름은 최소 2자 최대 30자입니다.")

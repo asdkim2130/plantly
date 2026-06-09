@@ -7,7 +7,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import project.plantly.domain.auth.dto.request.SignUpRequest;
+import project.plantly.domain.user.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
 import project.plantly.domain.user.dto.response.AdminUserListResponse;
 import project.plantly.domain.user.dto.response.UserDetailResponse;

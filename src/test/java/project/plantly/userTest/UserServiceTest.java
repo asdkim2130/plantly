@@ -18,7 +18,7 @@ import project.plantly.domain.user.dto.response.AdminUserListResponse;
 import project.plantly.domain.user.repository.QUserRepository;
 import project.plantly.domain.user.repository.UserRepository;
 import project.plantly.domain.user.UserService;
-import project.plantly.domain.auth.dto.request.SignUpRequest;
+import project.plantly.domain.user.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
 import project.plantly.domain.user.dto.response.ProfileResponse;
 import project.plantly.domain.user.dto.response.UserDetailResponse;
@@ -37,7 +37,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -64,6 +63,7 @@ public class UserServiceTest {
     private SignUpRequest signUpRequest (){
         return new SignUpRequest(
                 "test@example.com",
+                "rawPassword",
                 "rawPassword",
                 "홍길동",
                 "01012345678"
@@ -103,6 +103,24 @@ public class UserServiceTest {
 
         verify(userRepository, never()).save(any(User.class));  // 저장 없음
         verify(passwordEncoder, never()).encode(anyString());  // 비밀번호 인코딩 없음
+    }
+
+    @Test
+    @DisplayName("비밀번호가 재입력과 일치하지 않으면 예외 반환")
+    public void signup_invalidPassword (){
+
+        SignUpRequest request = new SignUpRequest("email@example.com", "rawPassword!", "wrongPassword", "홍길동", "01012345678");
+
+        given(userRepository.existsByEmail(request.email())).willReturn(false);
+
+        assertThatThrownBy(() -> userService.createUser(request))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(UserErrorCode.INVALID_PASSWORD);
+
+        verify(userRepository, never()).save(any(User.class));
+        verify(passwordEncoder, never()).encode(anyString());
+
     }
 
     @Test
