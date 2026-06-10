@@ -191,8 +191,8 @@ class AuthAcceptanceTest extends AcceptanceTest {
 
     private Response signUp(CookieFilter cookies, String csrf, String email) {
         String body = """
-                {"email":"%s","password":"%s","name":"홍길동","phone":"01012345678"}
-                """.formatted(email, VALID_PASSWORD);
+                {"email":"%s","password":"%s","reWritePassword":"%s","name":"홍길동","phone":"01012345678"}
+                """.formatted(email, VALID_PASSWORD, VALID_PASSWORD);
 
         return given()
                 .filter(cookies)
