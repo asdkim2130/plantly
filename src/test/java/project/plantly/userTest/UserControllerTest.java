@@ -2,12 +2,17 @@ package project.plantly.userTest;
 
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.restdocs.RestDocumentationContextProvider;
+import org.springframework.restdocs.RestDocumentationExtension;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
@@ -49,17 +54,30 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+// REST Docs 용 요청 빌더: URL 템플릿을 기록해 path/query 파라미터 문서화를 지원한다 (MockMvcRequestBuilders 대체)
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.patch;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
+import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
+import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.restdocs.payload.JsonFieldType.BOOLEAN;
+import static org.springframework.restdocs.payload.JsonFieldType.NUMBER;
+import static org.springframework.restdocs.payload.JsonFieldType.STRING;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
+import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 
 
 @ActiveProfiles("test")
 @WebMvcTest(controllers = UserController.class)
-@AutoConfigureMockMvc(addFilters = false)
+@ExtendWith(RestDocumentationExtension.class)   // REST Docs: 스니펫 생성 컨텍스트 제공
 @Import(UserControllerTest.MethodSecurityTestConfig.class)
 public class UserControllerTest {
 
@@ -69,11 +87,26 @@ public class UserControllerTest {
     static class MethodSecurityTestConfig { }
 
 
+    // REST Docs 적용을 위해 WebApplicationContext 로 MockMvc 를 직접 구성한다.
+    // webAppContextSetup 은 시큐리티 필터를 붙이지 않으므로 기존 addFilters=false 와 동일하게 동작하고,
+    // @PreAuthorize(메서드 시큐리티)는 그대로 적용된다.
     @Autowired
+    private WebApplicationContext context;
+
     private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setUpMockMvc(RestDocumentationContextProvider restDocumentation) {
+        mockMvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(documentationConfiguration(restDocumentation)
+                        .operationPreprocessors()
+                        .withRequestDefaults(prettyPrint())   // 요청 본문을 보기 좋게 정렬
+                        .withResponseDefaults(prettyPrint())) // 응답 본문을 보기 좋게 정렬
+                .build();
+    }
 
     @MockitoBean
     private UserService userService;
@@ -88,7 +121,20 @@ public class UserControllerTest {
                     .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("회원가입이 완료되었습니다."));
+                .andExpect(jsonPath("$.message").value("회원가입이 완료되었습니다."))
+                .andDo(document("users-sign-up",
+                        requestFields(
+                                fieldWithPath("email").description("이메일 (필수, 이메일 형식)"),
+                                fieldWithPath("password").description("비밀번호 (필수, 10~60자, 특수문자 1개 이상)"),
+                                fieldWithPath("reWritePassword").description("비밀번호 재입력 (필수, password 와 동일해야 함)"),
+                                fieldWithPath("name").description("이름 (필수, 2~30자, 한글 또는 영문)"),
+                                fieldWithPath("phone").description("휴대폰 번호 (필수, 10~11자리 숫자)")
+                        ),
+                        responseFields(
+                                fieldWithPath("success").description("요청 성공 여부 (true)"),
+                                fieldWithPath("message").description("성공 메시지")
+                        )
+                ));
     }
 
     @Test
@@ -104,7 +150,13 @@ public class UserControllerTest {
                     .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error").value("이미 사용 중인 이메일입니다."));
+                .andExpect(jsonPath("$.error").value("이미 사용 중인 이메일입니다."))
+                .andDo(document("users-sign-up-duplicate-email",
+                        responseFields(
+                                fieldWithPath("success").description("요청 성공 여부 (false)"),
+                                fieldWithPath("error").description("에러 메시지 (이미 사용 중인 이메일)")
+                        )
+                ));
 
     }
 
@@ -118,7 +170,13 @@ public class UserControllerTest {
                     .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.error").exists())
+                .andDo(document("users-sign-up-validation-error",
+                        responseFields(
+                                fieldWithPath("success").description("요청 성공 여부 (false)"),
+                                fieldWithPath("error").description("검증 실패 메시지 (첫 번째 위반 항목)")
+                        )
+                ));
 
     }
 
@@ -144,7 +202,19 @@ public class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.email").value("email@example.com"))   // ApiResponse 래퍼 키 확인
                 .andExpect(jsonPath("$.data.name").value("홍길동"))
-                .andExpect(jsonPath("$.data.userStatus").value("ACTIVE"));
+                .andExpect(jsonPath("$.data.userStatus").value("ACTIVE"))
+                .andDo(document("users-me",
+                        responseFields(
+                                fieldWithPath("success").type(BOOLEAN).description("요청 성공 여부 (true)"),
+                                fieldWithPath("data.email").type(STRING).description("이메일"),
+                                fieldWithPath("data.name").type(STRING).description("이름"),
+                                fieldWithPath("data.nickname").type(STRING).optional().description("닉네임 (미설정 시 null)"),
+                                fieldWithPath("data.phone").type(STRING).description("휴대폰 번호"),
+                                fieldWithPath("data.userStatus").type(STRING).description("회원 상태 (ACTIVE, SUSPENDED 등)"),
+                                fieldWithPath("data.trialEndDate").type(STRING).optional().description("체험 종료 일시 (ISO-8601, 없으면 null)"),
+                                fieldWithPath("data.createdAt").type(STRING).description("가입 일시 (ISO-8601)")
+                        )
+                ));
     }
 
     @Test
@@ -156,7 +226,13 @@ public class UserControllerTest {
         authenticate(userId);
 
         mockMvc.perform(get("/api/v1/users/me"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andDo(document("users-me-not-found",
+                        responseFields(
+                                fieldWithPath("success").type(BOOLEAN).description("요청 성공 여부 (false)"),
+                                fieldWithPath("error").type(STRING).description("에러 메시지 (회원을 찾을 수 없음)")
+                        )
+                ));
 
     }
 
@@ -176,6 +252,8 @@ public class UserControllerTest {
         );
 
         authenticate(userId);
+        // 수정된 프로필을 응답 data 로 반환하도록 stub (문서에 응답 본문을 담기 위함)
+        given(userService.updateUserProfile(anyLong(), any(UpdateProfileRequest.class))).willReturn(profile);
         UpdateProfileRequest request = new UpdateProfileRequest(null, "닉네임", null);
 
         mockMvc.perform(patch("/api/v1/users/me")
@@ -183,7 +261,25 @@ public class UserControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("프로필 수정이 완료되었습니다."));
+                .andExpect(jsonPath("$.message").value("프로필 수정이 완료되었습니다."))
+                .andDo(document("users-me-update",
+                        requestFields(
+                                fieldWithPath("name").type(STRING).optional().description("이름 (선택, 2~30자, 한글/영문)"),
+                                fieldWithPath("nickname").type(STRING).optional().description("닉네임 (선택, 2~15자)"),
+                                fieldWithPath("phone").type(STRING).optional().description("휴대폰 번호 (선택, 10~11자리 숫자)")
+                        ),
+                        responseFields(
+                                fieldWithPath("success").type(BOOLEAN).description("요청 성공 여부 (true)"),
+                                fieldWithPath("message").type(STRING).description("성공 메시지"),
+                                fieldWithPath("data.email").type(STRING).description("이메일"),
+                                fieldWithPath("data.name").type(STRING).description("이름"),
+                                fieldWithPath("data.nickname").type(STRING).optional().description("닉네임 (미설정 시 null)"),
+                                fieldWithPath("data.phone").type(STRING).description("휴대폰 번호"),
+                                fieldWithPath("data.userStatus").type(STRING).description("회원 상태"),
+                                fieldWithPath("data.trialEndDate").type(STRING).optional().description("체험 종료 일시 (없으면 null)"),
+                                fieldWithPath("data.createdAt").type(STRING).description("가입 일시")
+                        )
+                ));
     }
 
     @Test
@@ -213,7 +309,27 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(2))
                 .andExpect(jsonPath("$.data.email").value("target@example.com"))
-                .andExpect(jsonPath("$.data.userRole").value("MEMBER"));
+                .andExpect(jsonPath("$.data.userRole").value("MEMBER"))
+                .andDo(document("admin-user-detail",
+                        pathParameters(
+                                parameterWithName("userId").description("조회할 회원 ID")
+                        ),
+                        responseFields(
+                                fieldWithPath("success").type(BOOLEAN).description("요청 성공 여부 (true)"),
+                                fieldWithPath("data.id").type(NUMBER).description("회원 ID"),
+                                fieldWithPath("data.email").type(STRING).description("이메일"),
+                                fieldWithPath("data.name").type(STRING).description("이름"),
+                                fieldWithPath("data.nickname").type(STRING).optional().description("닉네임 (미설정 시 null)"),
+                                fieldWithPath("data.phone").type(STRING).description("휴대폰 번호"),
+                                fieldWithPath("data.userStatus").type(STRING).description("회원 상태 (ACTIVE, SUSPENDED 등)"),
+                                fieldWithPath("data.userGrade").type(STRING).description("회원 등급 (BASIC 등)"),
+                                fieldWithPath("data.userRole").type(STRING).description("권한 (MEMBER, ADMIN)"),
+                                fieldWithPath("data.trialEndDate").type(STRING).optional().description("체험 종료 일시 (없으면 null)"),
+                                fieldWithPath("data.createdAt").type(STRING).description("가입 일시"),
+                                fieldWithPath("data.updatedAt").type(STRING).optional().description("수정 일시 (없으면 null)"),
+                                fieldWithPath("data.deletedAt").type(STRING).optional().description("탈퇴 일시 (없으면 null)")
+                        )
+                ));
     }
 
     @Test
@@ -224,7 +340,13 @@ public class UserControllerTest {
 
         mockMvc.perform(get("/api/v1/admin/users/{userId}", targetId))
                 .andDo(print())
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andDo(document("admin-user-detail-forbidden",
+                        responseFields(
+                                fieldWithPath("success").type(BOOLEAN).description("요청 성공 여부 (false)"),
+                                fieldWithPath("error").type(STRING).description("에러 메시지 (접근 권한 없음)")
+                        )
+                ));
 
         // 인가 단계에서 막혀 서비스는 호출되지 않아야 함
         verify(userService, never()).getUserDetailForAdmin(anyLong());
@@ -248,14 +370,32 @@ public class UserControllerTest {
         authenticate(1L, UserRole.ADMIN);
 
         //when & then
-        mockMvc.perform(get("/api/v1/admin/users")
-                .param("page", "0")
-                .param("size", "30"))
+        mockMvc.perform(get("/api/v1/admin/users?page=0&size=30"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].email").value("target@example.com"))
                 .andExpect(jsonPath("$.data.content[0].userRole").value("MEMBER"))
                 .andExpect(jsonPath("$.data.pageInfo.pageNumber").value(1))
-                .andExpect(jsonPath("$.data.pageInfo.totalElement").value(1));
+                .andExpect(jsonPath("$.data.pageInfo.totalElement").value(1))
+                .andDo(document("admin-user-list",
+                        queryParameters(
+                                parameterWithName("page").description("페이지 번호 (0-base 입력)"),
+                                parameterWithName("size").description("페이지 크기 (기본 30)")
+                        ),
+                        responseFields(
+                                fieldWithPath("success").type(BOOLEAN).description("요청 성공 여부 (true)"),
+                                fieldWithPath("data.content[].email").type(STRING).description("이메일"),
+                                fieldWithPath("data.content[].name").type(STRING).description("이름"),
+                                fieldWithPath("data.content[].phone").type(STRING).description("휴대폰 번호"),
+                                fieldWithPath("data.content[].userGrade").type(STRING).description("회원 등급"),
+                                fieldWithPath("data.content[].createdAt").type(STRING).description("가입 일시"),
+                                fieldWithPath("data.content[].userRole").type(STRING).description("권한 (MEMBER, ADMIN)"),
+                                fieldWithPath("data.content[].userStatus").type(STRING).description("회원 상태"),
+                                fieldWithPath("data.pageInfo.pageNumber").type(NUMBER).description("현재 페이지 (1-base)"),
+                                fieldWithPath("data.pageInfo.size").type(NUMBER).description("페이지 크기"),
+                                fieldWithPath("data.pageInfo.totalElement").type(NUMBER).description("전체 건수"),
+                                fieldWithPath("data.pageInfo.totalPage").type(NUMBER).description("전체 페이지 수")
+                        )
+                ));
     }
 
     @Test
@@ -266,7 +406,13 @@ public class UserControllerTest {
 
         mockMvc.perform(get("/api/v1/admin/users"))
                 .andDo(print())
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andDo(document("admin-user-list-forbidden",
+                        responseFields(
+                                fieldWithPath("success").type(BOOLEAN).description("요청 성공 여부 (false)"),
+                                fieldWithPath("error").type(STRING).description("에러 메시지 (접근 권한 없음)")
+                        )
+                ));
 
         // 인가 단계에서 Block -> 서비스 호출 되지 않음 확인
         verify(userService, never()).getUserListForAdmin(any(Pageable.class));
