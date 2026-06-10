@@ -2,6 +2,7 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.0.6'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.asciidoctor.jvm.convert' version '4.0.4'
 }
 
 group = 'plantly'
@@ -15,6 +16,11 @@ java {
 
 repositories {
 	mavenCentral()
+}
+
+// REST Docs: 테스트가 생성한 스니펫(.adoc)이 쌓이는 위치
+ext {
+	snippetsDir = file('build/generated-snippets')
 }
 
 dependencies {
@@ -41,6 +47,9 @@ dependencies {
 	// RestAssured
 	testImplementation 'io.rest-assured:rest-assured:5.4.0'
 
+	// Spring REST Docs (MockMvc 기반 스니펫 생성)
+	testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
+
 	//QueryDSL (querydsl-jpa와 querydsl-apt 버전을 Boot BOM 관리 버전으로 통일)
 	implementation "com.querydsl:querydsl-jpa:${dependencyManagement.importedProperties['querydsl.version']}:jakarta"
 	annotationProcessor "com.querydsl:querydsl-apt:${dependencyManagement.importedProperties['querydsl.version']}:jakarta"
@@ -61,4 +70,16 @@ configurations.matching { it.name.toLowerCase().contains('test') }.configureEach
 
 tasks.named('test') {
 	useJUnitPlatform()
+	outputs.dir snippetsDir          // 테스트가 스니펫을 이 디렉토리에 생성
+}
+
+// 스니펫 -> HTML 문서로 변환. build/docs/asciidoc/index.html 생성
+tasks.named('asciidoctor') {
+	dependsOn test                   // 항상 최신 스니펫으로 문서화
+	inputs.dir snippetsDir
+	attributes 'snippets': snippetsDir   // index.adoc 의 {snippets} 가 가리킬 스니펫 경로
+	sources {
+		include 'index.adoc'         // 다른 .adoc 은 include 대상이므로 단독 변환 제외
+	}
+	baseDirFollowsSourceFile()       // include 경로를 각 .adoc 파일 기준으로 해석
 }
