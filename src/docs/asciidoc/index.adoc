@@ -4,7 +4,6 @@
 :source-highlighter: highlightjs
 :toc: left
 :toclevels: 2
-:sectlinks:
 
 [[overview]]
 == 개요
