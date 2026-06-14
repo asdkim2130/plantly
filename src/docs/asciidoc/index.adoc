@@ -177,3 +177,20 @@ include::{snippets}/admin-user-list/response-fields.adoc[]
 include::{snippets}/admin-user-list-forbidden/http-response.adoc[]
 
 include::{snippets}/admin-user-list-forbidden/response-fields.adoc[]
+
+[[admin-category-create]]
+=== 카테고리 생성
+
+새 카테고리를 생성합니다. 변경 요청이므로 세션 쿠키와 CSRF 토큰이 필요합니다(<<overview-auth>> 참고).
+
+==== 요청
+
+include::{snippets}/category-create/http-request.adoc[]
+
+include::{snippets}/category-create/request-fields.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/category-create/http-response.adoc[]
+
+include::{snippets}/category-create/response-fields.adoc[]
