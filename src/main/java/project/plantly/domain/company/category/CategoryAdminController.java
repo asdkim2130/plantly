@@ -21,7 +21,7 @@ public class CategoryAdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Long> create (@Valid @RequestBody CategoryCreateRequest request){
 
-        return ApiResponse.success("카테코리 생성이 완료되었습니다.", categoryAdminService.create(request));
+        return ApiResponse.success("카테고리 생성이 완료되었습니다.", categoryAdminService.create(request));
 
     }
 
