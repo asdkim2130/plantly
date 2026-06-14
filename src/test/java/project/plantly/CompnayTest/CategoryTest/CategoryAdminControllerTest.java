@@ -4,14 +4,16 @@ import project.plantly.domain.company.category.exception.CategoryErrorException;
 import project.plantly.global.exception.BusinessException;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.restdocs.test.autoconfigure.AutoConfigureRestDocs;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.restdocs.RestDocumentationContextProvider;
+import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.restdocs.payload.JsonFieldType;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -24,6 +26,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import project.plantly.domain.company.category.CategoryAdminController;
 import project.plantly.domain.company.category.CategoryAdminService;
 import project.plantly.domain.company.category.dto.CategoryCreateRequest;
@@ -34,13 +38,14 @@ import project.plantly.domain.user.enums.UserStatus;
 import project.plantly.global.security.UserPrincipal;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.refEq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
@@ -50,25 +55,39 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ActiveProfiles("test")
 @WebMvcTest(controllers = CategoryAdminController.class)
-@AutoConfigureMockMvc(addFilters = false)
+@ExtendWith(RestDocumentationExtension.class)   // REST Docs: 스니펫 생성 컨텍스트 제공
 @Import(CategoryAdminControllerTest.MethodSecurityTestConfig.class)
-@AutoConfigureRestDocs
 public class CategoryAdminControllerTest {
 
     @TestConfiguration
     @EnableMethodSecurity
     static class MethodSecurityTestConfig {}
 
+    // REST Docs 적용을 위해 WebApplicationContext 로 MockMvc 를 직접 구성한다.
+    // webAppContextSetup 은 시큐리티 필터를 붙이지 않으므로 addFilters=false 와 동일하게 동작하고,
+    // @PreAuthorize(메서드 시큐리티)는 그대로 적용된다.
     @Autowired
-    MockMvc mockMvc;
+    private WebApplicationContext context;
+
+    private MockMvc mockMvc;
 
     @Autowired
-    ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setUpMockMvc(RestDocumentationContextProvider restDocumentation) {
+        mockMvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(documentationConfiguration(restDocumentation)
+                        .operationPreprocessors()
+                        .withRequestDefaults(prettyPrint())   // 요청 본문을 보기 좋게 정렬
+                        .withResponseDefaults(prettyPrint())) // 응답 본문을 보기 좋게 정렬
+                .build();
+    }
 
     @MockitoBean
-    CategoryAdminService service;
+    private CategoryAdminService service;
     @MockitoBean
-    CategoryTreeService treeService;
+    private CategoryTreeService treeService;
 
     @Test
     @DisplayName("관리자가 카테고리 생성시 200Ok와 id 반환")
@@ -122,7 +141,15 @@ public class CategoryAdminControllerTest {
         mockMvc.perform(post("/api/v1/admin/categories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andDo(document("category-create-forbidden",
+                        responseFields(
+                                fieldWithPath("success").type(JsonFieldType.BOOLEAN)
+                                        .description("요청 성공 여부 (false)"),
+                                fieldWithPath("error").type(JsonFieldType.STRING)
+                                        .description("에러 메시지 (접근 권한 없음)")
+                        )
+                ));
 
         verify(service, never()).create(any());
 
@@ -139,7 +166,15 @@ public class CategoryAdminControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.error").exists())
+                .andDo(document("category-create-validation-error",
+                        responseFields(
+                                fieldWithPath("success").type(JsonFieldType.BOOLEAN)
+                                        .description("요청 성공 여부 (false)"),
+                                fieldWithPath("error").type(JsonFieldType.STRING)
+                                        .description("검증 실패 메시지 (첫 번째 위반 항목)")
+                        )
+                ));
 
 
     }
@@ -157,7 +192,15 @@ public class CategoryAdminControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("카테고리 코드는 중복 불가입니다."));
+                .andExpect(jsonPath("$.error").value("카테고리 코드는 중복 불가입니다."))
+                .andDo(document("category-create-duplicate-code",
+                        responseFields(
+                                fieldWithPath("success").type(JsonFieldType.BOOLEAN)
+                                        .description("요청 성공 여부 (false)"),
+                                fieldWithPath("error").type(JsonFieldType.STRING)
+                                        .description("에러 메시지 (카테고리 코드 중복)")
+                        )
+                ));
 
     }
 

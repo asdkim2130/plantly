@@ -193,3 +193,23 @@ include::{snippets}/category-create/request-fields.adoc[]
 include::{snippets}/category-create/http-response.adoc[]
 
 include::{snippets}/category-create/response-fields.adoc[]
+
+==== 예외 응답
+
+===== 권한 없음 (403 Forbidden)
+
+include::{snippets}/category-create-forbidden/http-response.adoc[]
+
+include::{snippets}/category-create-forbidden/response-fields.adoc[]
+
+===== 입력값 검증 실패 (400 Bad Request)
+
+include::{snippets}/category-create-validation-error/http-response.adoc[]
+
+include::{snippets}/category-create-validation-error/response-fields.adoc[]
+
+===== 코드 중복 (409 Conflict)
+
+include::{snippets}/category-create-duplicate-code/http-response.adoc[]
+
+include::{snippets}/category-create-duplicate-code/response-fields.adoc[]
