@@ -30,11 +30,14 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import project.plantly.domain.company.industry.IndustryController;
 import project.plantly.domain.company.industry.IndustryService;
+import project.plantly.domain.company.industry.dto.IndustryAdminResponse;
 import project.plantly.domain.company.industry.dto.IndustryCreateRequest;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
 import project.plantly.global.security.UserPrincipal;
+
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -42,6 +45,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
@@ -215,6 +219,76 @@ public class IndustryControllerTest {
                                         .description("에러 메시지 (산업군 코드 중복)")
                         )
                 ));
+    }
+
+
+    @Test
+    @DisplayName("관리자가 산업군 전체 조회시 200 OK와 목록 반환")
+    public void getAll_admin_success () throws Exception {
+        IndustryAdminResponse response = IndustryAdminResponse.builder()
+                .id(1L)
+                .industryName("농업")
+                .industryCode("agri")
+                .iconUrl("icon-agri")
+                .description("농업 설명")
+                .displayOrder(0)
+                .active(true)
+                .build();
+
+        given(service.getAll()).willReturn(List.of(response));
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(get("/api/v1/admin/industries"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].id").value(1))
+                .andExpect(jsonPath("$.data[0].industryCode").value("agri"))
+                .andExpect(jsonPath("$.data[0].iconUrl").value("icon-agri"))
+                .andDo(document("industry-list",
+                        responseFields(
+                                fieldWithPath("success").type(JsonFieldType.BOOLEAN)
+                                        .description("요청 성공 여부"),
+                                fieldWithPath("message").type(JsonFieldType.STRING).optional()
+                                        .description("응답 메시지 (단순 조회는 생략됨)"),
+                                fieldWithPath("data").type(JsonFieldType.ARRAY)
+                                        .description("산업군 목록 (displayOrder 오름차순)"),
+                                fieldWithPath("data[].id").type(JsonFieldType.NUMBER)
+                                        .description("산업군 ID"),
+                                fieldWithPath("data[].industryName").type(JsonFieldType.STRING)
+                                        .description("산업군 이름"),
+                                fieldWithPath("data[].industryCode").type(JsonFieldType.STRING)
+                                        .description("산업군 코드"),
+                                fieldWithPath("data[].iconUrl").type(JsonFieldType.STRING).optional()
+                                        .description("아이콘 URL"),
+                                fieldWithPath("data[].description").type(JsonFieldType.STRING).optional()
+                                        .description("산업군 상세 설명"),
+                                fieldWithPath("data[].displayOrder").type(JsonFieldType.NUMBER)
+                                        .description("노출 순서"),
+                                fieldWithPath("data[].active").type(JsonFieldType.BOOLEAN)
+                                        .description("활성화 여부"),
+                                fieldWithPath("error").type(JsonFieldType.STRING).optional()
+                                        .description("에러 메시지 (성공 시 생략됨)")
+                        )
+                ));
+    }
+
+    @Test
+    @DisplayName("권한 없는 회원이 산업군 전체 조회 시도시 403 반환")
+    public void getAll_member_forbidden () throws Exception {
+        authenticate(1L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/admin/industries"))
+                .andExpect(status().isForbidden())
+                .andDo(document("industry-list-forbidden",
+                        responseFields(
+                                fieldWithPath("success").type(JsonFieldType.BOOLEAN)
+                                        .description("요청 성공 여부 (false)"),
+                                fieldWithPath("error").type(JsonFieldType.STRING)
+                                        .description("에러 메시지 (접근 권한 없음)")
+                        )
+                ));
+
+        verify(service, never()).getAll();
     }
 
 

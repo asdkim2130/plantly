@@ -280,3 +280,26 @@ include::{snippets}/industry-create-duplicate-name/response-fields.adoc[]
 include::{snippets}/industry-create-duplicate-code/http-response.adoc[]
 
 include::{snippets}/industry-create-duplicate-code/response-fields.adoc[]
+
+[[admin-industry-list]]
+=== 산업군 전체 조회
+
+등록된 모든 산업군을 `displayOrder` 오름차순으로 조회합니다. 세션 쿠키가 필요합니다(<<overview-auth>> 참고).
+
+==== 요청
+
+include::{snippets}/industry-list/http-request.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/industry-list/http-response.adoc[]
+
+include::{snippets}/industry-list/response-fields.adoc[]
+
+==== 예외 응답
+
+===== 권한 없음 (403 Forbidden)
+
+include::{snippets}/industry-list-forbidden/http-response.adoc[]
+
+include::{snippets}/industry-list-forbidden/response-fields.adoc[]
