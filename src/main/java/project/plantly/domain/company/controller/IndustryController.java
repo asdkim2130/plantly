@@ -2,7 +2,7 @@ package project.plantly.domain.company.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
-import project.plantly.domain.company.service.IndustryService;
+import project.plantly.domain.company.industry.IndustryService;
 
 @RestController
 @RequiredArgsConstructor

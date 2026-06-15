@@ -1,4 +1,4 @@
-package project.plantly.domain.company.entity;
+package project.plantly.domain.company.industry;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
