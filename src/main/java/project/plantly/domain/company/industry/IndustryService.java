@@ -3,8 +3,11 @@ package project.plantly.domain.company.industry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import project.plantly.domain.company.industry.dto.IndustryAdminResponse;
 import project.plantly.domain.company.industry.dto.IndustryCreateRequest;
 import project.plantly.global.exception.BusinessException;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -31,5 +34,14 @@ public class IndustryService {
         Industry industry = Industry.create(request.industryName(), request.industryCode(), request.iconUrl(), request.description(), displayOrder);
         return industryRepository.save(industry).getId();
 
+    }
+
+    // 관리자용 산업군 조회
+    @Transactional(readOnly = true)
+    public List<IndustryAdminResponse> getAll (){
+
+        List<Industry> industries = industryRepository.findAllByOrderByDisplayOrderAsc();
+
+        return industries.stream().map(IndustryAdminResponse::from).toList();
     }
 }
