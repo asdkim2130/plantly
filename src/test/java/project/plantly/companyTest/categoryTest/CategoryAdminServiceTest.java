@@ -1,4 +1,4 @@
-package project.plantly.CompnayTest.CategoryTest;
+package project.plantly.companyTest.categoryTest;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,9 +13,13 @@ import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.category.CategoryAdminService;
 import project.plantly.domain.company.category.CategoryRepository;
 import project.plantly.domain.company.category.dto.CategoryCreateRequest;
+import project.plantly.domain.company.category.dto.CategoryTreeResponse;
 import project.plantly.domain.company.category.tree.CategoryChangedEvent;
+import project.plantly.domain.company.category.tree.CategoryNode;
+import project.plantly.domain.company.category.tree.CategoryTreeService;
 import project.plantly.global.exception.BusinessException;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -31,6 +35,7 @@ public class CategoryAdminServiceTest {
 
     @Mock CategoryRepository categoryRepository;
     @Mock ApplicationEventPublisher eventPublisher;
+    @Mock CategoryTreeService treeService;
     @InjectMocks CategoryAdminService categoryAdminService;
 
     @Test
@@ -84,5 +89,55 @@ public class CategoryAdminServiceTest {
         assertThat(captor.getValue().getDisplayOrder()).isEqualTo(3);
 
         verify(eventPublisher).publishEvent(any(CategoryChangedEvent.class));
+    }
+
+    @Test
+    @DisplayName("카테고리 트리 구조 캐시 루트 노드들을 중첩 DTO 트리로 반환")
+    public void getTree_mapNodesToNestedDto (){
+
+        CategoryNode root = node(1L, null, "a", "a", 1, 0);
+        CategoryNode child = node(2L, 1L, "a-1", "a-1", 2, 0);
+        addChild(root, child);
+
+        given(treeService.getRoots()).willReturn(List.of(root));
+
+        List<CategoryTreeResponse> result = categoryAdminService.getTree();
+
+        // 루트 매핑 검증
+        assertThat(result).hasSize(1);
+        CategoryTreeResponse rootDto = result.get(0);
+        assertThat(rootDto.id()).isEqualTo(1L);
+        assertThat(rootDto.categoryCode()).isEqualTo("a");
+        assertThat(rootDto.depth()).isEqualTo(1);
+        assertThat(rootDto.active()).isTrue();
+
+        // 중첩 칠드런 재귀 매핑 검증
+        assertThat(rootDto.children()).hasSize(1);
+        CategoryTreeResponse childDto = rootDto.children().get(0);
+        assertThat(childDto.id()).isEqualTo(2L);
+        assertThat(childDto.categoryName()).isEqualTo("a-1");
+        assertThat(childDto.children()).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("루트가 없으면 빈 리스트를 반환")
+    public void getTree_empty(){
+        given(treeService.getRoots()).willReturn(List.of());
+
+        assertThat(categoryAdminService.getTree()).isEmpty();
+    }
+
+
+
+    // 테스트 헬퍼
+    private CategoryNode node (Long id, Long parentId, String code, String name, int depth, int order){
+        return new CategoryNode(id, parentId, code, name, "icon-"+code, "desc-" + code, depth, order, true);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addChild (CategoryNode parent, CategoryNode child){
+        List<CategoryNode> children = (List<CategoryNode>) ReflectionTestUtils.getField(parent, "children");
+        children.add(child);
     }
 }

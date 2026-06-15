@@ -1,4 +1,4 @@
-package project.plantly.CompnayTest.CategoryTest;
+package project.plantly.companyTest.categoryTest;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
