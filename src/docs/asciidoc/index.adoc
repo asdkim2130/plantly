@@ -236,3 +236,47 @@ include::{snippets}/category-tree/response-fields.adoc[]
 include::{snippets}/category-tree-forbidden/http-response.adoc[]
 
 include::{snippets}/category-tree-forbidden/response-fields.adoc[]
+
+[[admin-industry-create]]
+=== 산업군 생성
+
+새 산업군을 생성합니다. 변경 요청이므로 세션 쿠키와 CSRF 토큰이 필요합니다(<<overview-auth>> 참고).
+`displayOrder` 를 생략하면 기존 산업군의 마지막 순번 + 1 이 자동 부여됩니다.
+
+==== 요청
+
+include::{snippets}/industry-create/http-request.adoc[]
+
+include::{snippets}/industry-create/request-fields.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/industry-create/http-response.adoc[]
+
+include::{snippets}/industry-create/response-fields.adoc[]
+
+==== 예외 응답
+
+===== 권한 없음 (403 Forbidden)
+
+include::{snippets}/industry-create-forbidden/http-response.adoc[]
+
+include::{snippets}/industry-create-forbidden/response-fields.adoc[]
+
+===== 입력값 검증 실패 (400 Bad Request)
+
+include::{snippets}/industry-create-validation-error/http-response.adoc[]
+
+include::{snippets}/industry-create-validation-error/response-fields.adoc[]
+
+===== 이름 중복 (409 Conflict)
+
+include::{snippets}/industry-create-duplicate-name/http-response.adoc[]
+
+include::{snippets}/industry-create-duplicate-name/response-fields.adoc[]
+
+===== 코드 중복 (409 Conflict)
+
+include::{snippets}/industry-create-duplicate-code/http-response.adoc[]
+
+include::{snippets}/industry-create-duplicate-code/response-fields.adoc[]
