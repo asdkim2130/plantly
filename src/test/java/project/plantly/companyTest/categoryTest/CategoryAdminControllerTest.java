@@ -1,4 +1,4 @@
-package project.plantly.CompnayTest.CategoryTest;
+package project.plantly.companyTest.categoryTest;
 
 import project.plantly.domain.company.category.dto.CategoryTreeResponse;
 import project.plantly.domain.company.category.exception.CategoryErrorException;
