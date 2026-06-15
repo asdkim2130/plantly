@@ -213,3 +213,26 @@ include::{snippets}/category-create-validation-error/response-fields.adoc[]
 include::{snippets}/category-create-duplicate-code/http-response.adoc[]
 
 include::{snippets}/category-create-duplicate-code/response-fields.adoc[]
+
+[[admin-category-tree]]
+=== 카테고리 트리 조회
+
+전체 카테고리를 상위-하위 관계가 중첩된 트리 구조로 조회합니다. 세션 쿠키가 필요합니다(<<overview-auth>> 참고).
+
+==== 요청
+
+include::{snippets}/category-tree/http-request.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/category-tree/http-response.adoc[]
+
+include::{snippets}/category-tree/response-fields.adoc[]
+
+==== 예외 응답
+
+===== 권한 없음 (403 Forbidden)
+
+include::{snippets}/category-tree-forbidden/http-response.adoc[]
+
+include::{snippets}/category-tree-forbidden/response-fields.adoc[]

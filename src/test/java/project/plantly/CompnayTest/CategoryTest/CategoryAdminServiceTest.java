@@ -92,7 +92,7 @@ public class CategoryAdminServiceTest {
     }
 
     @Test
-    @DisplayName("카테 고리 트리 구조를 캐시 루트 노드들을 중첩 DTO 트리로 반환")
+    @DisplayName("카테고리 트리 구조 캐시 루트 노드들을 중첩 DTO 트리로 반환")
     public void getTree_mapNodesToNestedDto (){
 
         CategoryNode root = node(1L, null, "a", "a", 1, 0);
