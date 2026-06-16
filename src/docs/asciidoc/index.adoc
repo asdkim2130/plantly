@@ -188,7 +188,7 @@ include::{snippets}/category-create/http-request.adoc[]
 
 include::{snippets}/category-create/request-fields.adoc[]
 
-==== 성공 응답 (200 OK)
+==== 성공 응답 (201 Created)
 
 include::{snippets}/category-create/http-response.adoc[]
 
@@ -316,7 +316,7 @@ include::{snippets}/certification-create/http-request.adoc[]
 
 include::{snippets}/certification-create/request-fields.adoc[]
 
-==== 성공 응답 (200 OK)
+==== 성공 응답 (201 Created)
 
 include::{snippets}/certification-create/http-response.adoc[]
 

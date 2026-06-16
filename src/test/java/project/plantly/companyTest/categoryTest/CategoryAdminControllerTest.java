@@ -92,7 +92,7 @@ public class CategoryAdminControllerTest {
     private CategoryTreeService treeService;
 
     @Test
-    @DisplayName("관리자가 카테고리 생성시 200Ok와 id 반환")
+    @DisplayName("관리자가 카테고리 생성시 201 Created와 id 반환")
     public void create_admin_success () throws Exception {
         CategoryCreateRequest request = new CategoryCreateRequest(null, "a", "a", "url", "상세설명", 0);
 
@@ -102,10 +102,10 @@ public class CategoryAdminControllerTest {
         mockMvc.perform(post("/api/v1/admin/categories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
-        ).andExpect(status().isOk())
+        ).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("카테고리 생성이 완료되었습니다."))
-                .andExpect(jsonPath("$.data").value(1L))
+                .andExpect(jsonPath("$.data.id").value(1L))
                 .andDo(document("category-create",
                         requestFields(
                                 fieldWithPath("parentId").type(JsonFieldType.NUMBER).optional()
@@ -126,7 +126,9 @@ public class CategoryAdminControllerTest {
                                         .description("요청 성공 여부"),
                                 fieldWithPath("message").type(JsonFieldType.STRING)
                                         .description("응답 메시지"),
-                                fieldWithPath("data").type(JsonFieldType.NUMBER)
+                                fieldWithPath("data").type(JsonFieldType.OBJECT)
+                                        .description("생성된 카테고리 정보"),
+                                fieldWithPath("data.id").type(JsonFieldType.NUMBER)
                                         .description("생성된 카테고리 ID"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 응답에서 생략됨)")

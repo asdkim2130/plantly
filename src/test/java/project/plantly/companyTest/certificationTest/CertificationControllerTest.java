@@ -85,7 +85,7 @@ public class CertificationControllerTest {
     private CertificationService service;
 
     @Test
-    @DisplayName("관리자가 인증 생성시 200 OK와 id 반환")
+    @DisplayName("관리자가 인증 생성시 201 Created와 id 반환")
     public void create_admin_success () throws Exception {
         CertificationCreateRequest request = new CertificationCreateRequest("ISO 9001", 0);
 
@@ -95,10 +95,10 @@ public class CertificationControllerTest {
         mockMvc.perform(post("/api/v1/admin/certifications")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
-        ).andExpect(status().isOk())
+        ).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("인증 항목이 등록되었습니다."))
-                .andExpect(jsonPath("$.data").value(1L))
+                .andExpect(jsonPath("$.data.id").value(1L))
                 .andDo(document("certification-create",
                         requestFields(
                                 fieldWithPath("name").type(JsonFieldType.STRING)
@@ -111,7 +111,9 @@ public class CertificationControllerTest {
                                         .description("요청 성공 여부"),
                                 fieldWithPath("message").type(JsonFieldType.STRING)
                                         .description("응답 메시지"),
-                                fieldWithPath("data").type(JsonFieldType.NUMBER)
+                                fieldWithPath("data").type(JsonFieldType.OBJECT)
+                                        .description("생성된 인증 정보"),
+                                fieldWithPath("data.id").type(JsonFieldType.NUMBER)
                                         .description("생성된 인증 ID"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 응답에서 생략됨)")

@@ -89,7 +89,7 @@ public class IndustryControllerTest {
     private IndustryService service;
 
     @Test
-    @DisplayName("관리자가 산업군 생성시 200 OK와 id 반환")
+    @DisplayName("관리자가 산업군 생성시 201 Created와 id 반환")
     public void create_admin_success () throws Exception {
         IndustryCreateRequest request = new IndustryCreateRequest("a", "a", "url", "상세설명", 0);
 
@@ -99,10 +99,10 @@ public class IndustryControllerTest {
         mockMvc.perform(post("/api/v1/admin/industries")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
-        ).andExpect(status().isOk())
+        ).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("산업군 생성이 완료되었습니다."))
-                .andExpect(jsonPath("$.data").value(1L))
+                .andExpect(jsonPath("$.data.id").value(1L))
                 .andDo(document("industry-create",
                         requestFields(
                                 fieldWithPath("industryName").type(JsonFieldType.STRING)
@@ -121,7 +121,9 @@ public class IndustryControllerTest {
                                         .description("요청 성공 여부"),
                                 fieldWithPath("message").type(JsonFieldType.STRING)
                                         .description("응답 메시지"),
-                                fieldWithPath("data").type(JsonFieldType.NUMBER)
+                                fieldWithPath("data").type(JsonFieldType.OBJECT)
+                                        .description("생성된 산업군 정보"),
+                                fieldWithPath("data.id").type(JsonFieldType.NUMBER)
                                         .description("생성된 산업군 ID"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 응답에서 생략됨)")

@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import project.plantly.domain.company.industry.dto.IndustryAdminResponse;
 import project.plantly.domain.company.industry.dto.IndustryCreateRequest;
-import project.plantly.domain.company.industry.dto.IndustryCreateResponse;
 import project.plantly.global.response.ApiResponse;
+import project.plantly.global.response.IdResponse;
 
 import java.util.List;
 
@@ -25,10 +25,10 @@ public class IndustryController {
     @PostMapping("/api/v1/admin/industries")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<IndustryCreateResponse> createIndustry (@Valid @RequestBody IndustryCreateRequest request){
+    public ApiResponse<IdResponse> createIndustry (@Valid @RequestBody IndustryCreateRequest request){
 
         Long id = industryService.createIndustry(request);
-        return ApiResponse.success("산업군 생성이 완료되었습니다.", new IndustryCreateResponse(id));
+        return ApiResponse.success("산업군 생성이 완료되었습니다.", new IdResponse(id));
     }
 
     @GetMapping("/api/v1/admin/industries")

@@ -2,12 +2,15 @@ package project.plantly.domain.company.certification;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import project.plantly.domain.company.certification.dto.CertificationCreateRequest;
 import project.plantly.global.response.ApiResponse;
+import project.plantly.global.response.IdResponse;
 
 @RestController
 @RequiredArgsConstructor
@@ -17,8 +20,10 @@ public class CertificationController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/api/v1/admin/certifications")
-    public ApiResponse<Long> createCertification (@Valid @RequestBody CertificationCreateRequest request){
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<IdResponse> createCertification (@Valid @RequestBody CertificationCreateRequest request){
 
-        return ApiResponse.success("인증 항목이 등록되었습니다.", certificationService.createCertification(request));
+        Long id = certificationService.createCertification(request);
+        return ApiResponse.success("인증 항목이 등록되었습니다.", new IdResponse(id));
     }
 }
