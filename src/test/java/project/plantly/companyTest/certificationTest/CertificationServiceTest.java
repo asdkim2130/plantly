@@ -11,8 +11,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 import project.plantly.domain.company.certification.Certification;
 import project.plantly.domain.company.certification.CertificationRepository;
 import project.plantly.domain.company.certification.CertificationService;
+import project.plantly.domain.company.certification.dto.CertificationAdminResponse;
 import project.plantly.domain.company.certification.dto.CertificationCreateRequest;
 import project.plantly.global.exception.BusinessException;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -87,5 +90,41 @@ public class CertificationServiceTest {
         verify(certificationRepository).save(captor.capture());
         assertThat(captor.getValue().getDisplayOrder()).isEqualTo(5);
         verify(certificationRepository, never()).findMaxDisplayOrder();
+    }
+
+    @Test
+    @DisplayName("전체 인증을 displayOrder 순으로 조회해 DTO로 매핑")
+    public void getAll_mapToDto (){
+        Certification first = certification(1L, "ISO 9001", 0);
+        Certification second = certification(2L, "ISO 14001", 1);
+        given(certificationRepository.findAllByOrderByDisplayOrderAsc()).willReturn(List.of(first, second));
+
+        List<CertificationAdminResponse> result = certificationService.getAll();
+
+        assertThat(result).hasSize(2);
+
+        CertificationAdminResponse firstDto = result.get(0);
+        assertThat(firstDto.id()).isEqualTo(1L);
+        assertThat(firstDto.certificationName()).isEqualTo("ISO 9001");
+        assertThat(firstDto.displayOrder()).isEqualTo(0);
+        assertThat(firstDto.active()).isTrue();
+
+        assertThat(result.get(1).id()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("인증이 없으면 빈 리스트를 반환")
+    public void getAll_empty (){
+        given(certificationRepository.findAllByOrderByDisplayOrderAsc()).willReturn(List.of());
+
+        assertThat(certificationService.getAll()).isEmpty();
+    }
+
+
+    // 테스트 헬퍼 — create 로 만든 뒤 id 만 리플렉션으로 주입
+    private Certification certification (Long id, String name, int displayOrder){
+        Certification certification = Certification.create(name, displayOrder);
+        ReflectionTestUtils.setField(certification, "id", id);
+        return certification;
     }
 }
