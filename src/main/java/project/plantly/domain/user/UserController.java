@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,7 @@ public class UserController {
 
     // 회원가입
     @PostMapping("/api/v1/users/sign-up")
+    @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<Void> signUp (@Valid @RequestBody SignUpRequest request){
 
         userService.createUser(request);

@@ -61,7 +61,7 @@ include::{snippets}/users-sign-up/http-request.adoc[]
 
 include::{snippets}/users-sign-up/request-fields.adoc[]
 
-==== 성공 응답 (200 OK)
+==== 성공 응답 (201 Created)
 
 include::{snippets}/users-sign-up/http-response.adoc[]
 
