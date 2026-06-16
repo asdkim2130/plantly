@@ -119,7 +119,7 @@ public class CategoryAdminControllerTest {
                                 fieldWithPath("description").type(JsonFieldType.STRING).optional()
                                         .description("카테고리 상세 설명"),
                                 fieldWithPath("displayOrder").type(JsonFieldType.NUMBER).optional()
-                                        .description("노출 순서")
+                                        .description("노출 순서 (0 이상, 미입력 시 같은 부모 형제의 마지막 순번 + 1 자동 부여)")
                         ),
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)

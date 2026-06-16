@@ -114,7 +114,7 @@ public class IndustryControllerTest {
                                 fieldWithPath("description").type(JsonFieldType.STRING).optional()
                                         .description("산업군 상세 설명"),
                                 fieldWithPath("displayOrder").type(JsonFieldType.NUMBER).optional()
-                                        .description("노출 순서 (미입력 시 마지막 순번 + 1 자동 부여)")
+                                        .description("노출 순서 (0 이상, 미입력 시 마지막 순번 + 1 자동 부여)")
                         ),
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
