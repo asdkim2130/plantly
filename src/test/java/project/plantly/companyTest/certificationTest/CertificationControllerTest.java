@@ -1,7 +1,6 @@
-package project.plantly.companyTest.categoryTest;
+package project.plantly.companyTest.certificationTest;
 
-import project.plantly.domain.company.category.dto.CategoryTreeResponse;
-import project.plantly.domain.company.category.exception.CategoryErrorException;
+import project.plantly.domain.company.certification.CertificationExceptionError;
 import project.plantly.global.exception.BusinessException;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -29,10 +28,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
-import project.plantly.domain.company.category.CategoryAdminController;
-import project.plantly.domain.company.category.CategoryAdminService;
-import project.plantly.domain.company.category.dto.CategoryCreateRequest;
-import project.plantly.domain.company.category.tree.CategoryTreeService;
+import project.plantly.domain.company.certification.CertificationController;
+import project.plantly.domain.company.certification.CertificationService;
+import project.plantly.domain.company.certification.dto.CertificationAdminResponse;
+import project.plantly.domain.company.certification.dto.CertificationCreateRequest;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
@@ -45,6 +44,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
@@ -52,14 +52,13 @@ import static org.springframework.restdocs.operation.preprocess.Preprocessors.pr
 import static org.springframework.restdocs.payload.PayloadDocumentation.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 
 
 @ActiveProfiles("test")
-@WebMvcTest(controllers = CategoryAdminController.class)
+@WebMvcTest(controllers = CertificationController.class)
 @ExtendWith(RestDocumentationExtension.class)   // REST Docs: 스니펫 생성 컨텍스트 제공
-@Import(CategoryAdminControllerTest.MethodSecurityTestConfig.class)
-public class CategoryAdminControllerTest {
+@Import(CertificationControllerTest.MethodSecurityTestConfig.class)
+public class CertificationControllerTest {
 
     @TestConfiguration
     @EnableMethodSecurity
@@ -87,39 +86,29 @@ public class CategoryAdminControllerTest {
     }
 
     @MockitoBean
-    private CategoryAdminService service;
-    @MockitoBean
-    private CategoryTreeService treeService;
+    private CertificationService service;
 
     @Test
-    @DisplayName("관리자가 카테고리 생성시 201 Created와 id 반환")
+    @DisplayName("관리자가 인증 생성시 201 Created와 id 반환")
     public void create_admin_success () throws Exception {
-        CategoryCreateRequest request = new CategoryCreateRequest(null, "a", "a", "url", "상세설명", 0);
+        CertificationCreateRequest request = new CertificationCreateRequest("ISO 9001", 0);
 
-        given(service.create(any(CategoryCreateRequest.class))).willReturn(1L);
+        given(service.createCertification(any(CertificationCreateRequest.class))).willReturn(1L);
         authenticate(1L, UserRole.ADMIN);
 
-        mockMvc.perform(post("/api/v1/admin/categories")
+        mockMvc.perform(post("/api/v1/admin/certifications")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         ).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("카테고리 생성이 완료되었습니다."))
+                .andExpect(jsonPath("$.message").value("인증 항목이 등록되었습니다."))
                 .andExpect(jsonPath("$.data.id").value(1L))
-                .andDo(document("category-create",
+                .andDo(document("certification-create",
                         requestFields(
-                                fieldWithPath("parentId").type(JsonFieldType.NUMBER).optional()
-                                        .description("상위 카테고리 ID (최상위면 null)"),
-                                fieldWithPath("categoryName").type(JsonFieldType.STRING)
-                                        .description("카테고리 이름"),
-                                fieldWithPath("categoryCode").type(JsonFieldType.STRING)
-                                        .description("카테고리 코드 (영문/숫자/하이픈)"),
-                                fieldWithPath("iconUrl").type(JsonFieldType.STRING).optional()
-                                        .description("아이콘 URL"),
-                                fieldWithPath("description").type(JsonFieldType.STRING).optional()
-                                        .description("카테고리 상세 설명"),
+                                fieldWithPath("name").type(JsonFieldType.STRING)
+                                        .description("인증 이름"),
                                 fieldWithPath("displayOrder").type(JsonFieldType.NUMBER).optional()
-                                        .description("노출 순서 (0 이상, 미입력 시 같은 부모 형제의 마지막 순번 + 1 자동 부여)")
+                                        .description("노출 순서 (0 이상, 미입력 시 마지막 순번 + 1 자동 부여)")
                         ),
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
@@ -127,9 +116,9 @@ public class CategoryAdminControllerTest {
                                 fieldWithPath("message").type(JsonFieldType.STRING)
                                         .description("응답 메시지"),
                                 fieldWithPath("data").type(JsonFieldType.OBJECT)
-                                        .description("생성된 카테고리 정보"),
+                                        .description("생성된 인증 정보"),
                                 fieldWithPath("data.id").type(JsonFieldType.NUMBER)
-                                        .description("생성된 카테고리 ID"),
+                                        .description("생성된 인증 ID"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 응답에서 생략됨)")
                         )
@@ -137,16 +126,16 @@ public class CategoryAdminControllerTest {
     }
 
     @Test
-    @DisplayName("권한 없는 회원이 카테고리 생성 시도시 403 반환, 서비스 호출되지 않음")
+    @DisplayName("권한 없는 회원이 인증 생성 시도시 403 반환, 서비스 호출되지 않음")
     public void create_member_forbidden () throws Exception {
-        CategoryCreateRequest request = new CategoryCreateRequest(null, "a", "a", null, null, null);
+        CertificationCreateRequest request = new CertificationCreateRequest("ISO 9001", null);
         authenticate(1L, UserRole.MEMBER);
 
-        mockMvc.perform(post("/api/v1/admin/categories")
+        mockMvc.perform(post("/api/v1/admin/certifications")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
-                .andDo(document("category-create-forbidden",
+                .andDo(document("certification-create-forbidden",
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
@@ -155,23 +144,22 @@ public class CategoryAdminControllerTest {
                         )
                 ));
 
-        verify(service, never()).create(any());
-
+        verify(service, never()).createCertification(any());
     }
 
     @Test
-    @DisplayName("categoryCode에 한글이 들어가면 400에러와 검증 에러 반환")
-    public void create_invalidCod_validationFail() throws Exception {
-        CategoryCreateRequest request = new CategoryCreateRequest(null, "한글", "한글", null, null, null);
+    @DisplayName("이름이 비어 있으면 400에러와 검증 에러 반환")
+    public void create_blankName_validationFail() throws Exception {
+        CertificationCreateRequest request = new CertificationCreateRequest("", null);
         authenticate(1L, UserRole.ADMIN);
 
-        mockMvc.perform(post("/api/v1/admin/categories")
+        mockMvc.perform(post("/api/v1/admin/certifications")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error").exists())
-                .andDo(document("category-create-validation-error",
+                .andDo(document("certification-create-validation-error",
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
@@ -180,120 +168,93 @@ public class CategoryAdminControllerTest {
                         )
                 ));
 
-
+        verify(service, never()).createCertification(any());
     }
 
     @Test
-    @DisplayName("코드가 중복이면 409를 반환")
-    public void create_duplicateCode_conflict ()throws Exception {
-        CategoryCreateRequest request = new CategoryCreateRequest(null, "a", "a", null, null, null);
-        willThrow(new BusinessException(CategoryErrorException.DUPLICATE_CATEGORY_CODE))
-                .given(service).create(request);
+    @DisplayName("이름이 중복이면 409를 반환")
+    public void create_duplicateName_conflict () throws Exception {
+        CertificationCreateRequest request = new CertificationCreateRequest("ISO 9001", null);
+        willThrow(new BusinessException(CertificationExceptionError.DUPLICATE_CERTIFICATION_NAME))
+                .given(service).createCertification(any(CertificationCreateRequest.class));
 
         authenticate(1L, UserRole.ADMIN);
 
-        mockMvc.perform(post("/api/v1/admin/categories")
+        mockMvc.perform(post("/api/v1/admin/certifications")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("카테고리 코드는 중복 불가입니다."))
-                .andDo(document("category-create-duplicate-code",
+                .andExpect(jsonPath("$.error").value("인증 이름은 중복 불가합니다."))
+                .andDo(document("certification-create-duplicate-name",
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
-                                        .description("에러 메시지 (카테고리 코드 중복)")
+                                        .description("에러 메시지 (인증 이름 중복)")
                         )
                 ));
-
     }
 
+
     @Test
-    @DisplayName("관리자가 카테고리 트리 조회시 200 OK와 중첩 트리 반환")
-    public void getTree_admin_success () throws Exception {
-        CategoryTreeResponse child = CategoryTreeResponse.builder()
-                .id(2L)
-                .categoryCode("child-category")
-                .categoryName("자식 카테고리")
-                .iconUrl("icon")
-                .description("설명")
-                .depth(2)
-                .displayOrder(0)
-                .children(List.of())
-                .build();
-
-        CategoryTreeResponse root = CategoryTreeResponse.builder()
+    @DisplayName("관리자가 인증 전체 조회시 200 OK와 목록 반환")
+    public void getAll_admin_success () throws Exception {
+        CertificationAdminResponse response = CertificationAdminResponse.builder()
                 .id(1L)
-                .categoryCode("root-category")
-                .categoryName("루트 카테고리")
-                .iconUrl("icon")
-                .description("설명")
-                .depth(1)
+                .certificationName("ISO 9001")
                 .displayOrder(0)
-                .children(List.of(child))
+                .active(true)
                 .build();
 
-        given(service.getTree()).willReturn(List.of(root));
+        given(service.getAll()).willReturn(List.of(response));
         authenticate(1L, UserRole.ADMIN);
 
-        mockMvc.perform(get("/api/v1/admin/categories"))
+        mockMvc.perform(get("/api/v1/admin/certifications"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].id").value(1))
-                .andExpect(jsonPath("$.data[0].categoryCode").value("root-category"))
-                .andExpect(jsonPath("$.data[0].children[0].id").value(2))
-                .andExpect(jsonPath("$.data[0].children[0].categoryName").value("자식 카테고리"))
-                .andDo(document("category-tree",
+                .andExpect(jsonPath("$.data[0].certificationName").value("ISO 9001"))
+                .andExpect(jsonPath("$.data[0].displayOrder").value(0))
+                .andExpect(jsonPath("$.data[0].active").value(true))
+                .andDo(document("certification-list",
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부"),
                                 fieldWithPath("message").type(JsonFieldType.STRING).optional()
                                         .description("응답 메시지 (단순 조회는 생략됨)"),
                                 fieldWithPath("data").type(JsonFieldType.ARRAY)
-                                        .description("최상위(루트) 카테고리 목록"),
+                                        .description("인증 목록 (displayOrder 오름차순)"),
                                 fieldWithPath("data[].id").type(JsonFieldType.NUMBER)
-                                        .description("카테고리 ID"),
-                                fieldWithPath("data[].categoryCode").type(JsonFieldType.STRING)
-                                        .description("카테고리 코드"),
-                                fieldWithPath("data[].categoryName").type(JsonFieldType.STRING)
-                                        .description("카테고리 이름"),
-                                fieldWithPath("data[].iconUrl").type(JsonFieldType.STRING).optional()
-                                        .description("아이콘 URL"),
-                                fieldWithPath("data[].description").type(JsonFieldType.STRING).optional()
-                                        .description("카테고리 상세 설명"),
-                                fieldWithPath("data[].depth").type(JsonFieldType.NUMBER)
-                                        .description("트리 깊이 (루트=1)"),
+                                        .description("인증 ID"),
+                                fieldWithPath("data[].certificationName").type(JsonFieldType.STRING)
+                                        .description("인증 이름"),
                                 fieldWithPath("data[].displayOrder").type(JsonFieldType.NUMBER)
-                                        .description("형제 간 노출 순서"),
+                                        .description("노출 순서"),
                                 fieldWithPath("data[].active").type(JsonFieldType.BOOLEAN)
                                         .description("활성화 여부"),
-                                // 자식은 동일 구조가 재귀되므로 subsection 으로 묶어 문서화
-                                subsectionWithPath("data[].children").type(JsonFieldType.ARRAY)
-                                        .description("하위 카테고리 목록 (동일 구조 재귀)"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 생략됨)")
                         )
                 ));
-
     }
 
     @Test
-    @DisplayName("권한 없는 회원이 카테고리 트리 조회 시도시 403 반환")
-    public void getTree_member_forbidden ()throws Exception {
+    @DisplayName("권한 없는 회원이 인증 전체 조회 시도시 403 반환")
+    public void getAll_member_forbidden () throws Exception {
         authenticate(1L, UserRole.MEMBER);
 
-        mockMvc.perform(get("/api/v1/admin/categories"))
+        mockMvc.perform(get("/api/v1/admin/certifications"))
                 .andExpect(status().isForbidden())
-                .andDo(document("category-tree-forbidden",
+                .andDo(document("certification-list-forbidden",
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
-                                        .description("에러 메세지 (접근 권한 없음)")
+                                        .description("에러 메시지 (접근 권한 없음)")
                         )
                 ));
 
-        verify(service, never()).getTree();
+        verify(service, never()).getAll();
     }
 
 
@@ -317,5 +278,4 @@ public class CategoryAdminControllerTest {
         UserPrincipal principal = new UserPrincipal(user);
         return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     }
-
 }

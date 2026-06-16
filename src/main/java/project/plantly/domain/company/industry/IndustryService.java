@@ -3,6 +3,7 @@ package project.plantly.domain.company.industry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import project.plantly.domain.company.DisplayOrders;
 import project.plantly.domain.company.industry.dto.IndustryAdminResponse;
 import project.plantly.domain.company.industry.dto.IndustryCreateRequest;
 import project.plantly.global.exception.BusinessException;
@@ -27,9 +28,8 @@ public class IndustryService {
         }
 
         // displayOrder값이 null이면 할당
-        int displayOrder = (request.displayOrder() != null)
-                ? request.displayOrder()
-                : industryRepository.findMaxDisplayOrder() + 1;
+        int displayOrder = DisplayOrders.resolve(
+                request.displayOrder(), industryRepository::findMaxDisplayOrder);
 
         Industry industry = Industry.create(request.industryName(), request.industryCode(), request.iconUrl(), request.description(), displayOrder);
         return industryRepository.save(industry).getId();

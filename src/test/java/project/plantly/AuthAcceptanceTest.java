@@ -39,7 +39,7 @@ class AuthAcceptanceTest extends AcceptanceTest {
         // 1) 회원가입
         signUp(cookies, csrf, "flow@example.com")
                 .then()
-                .statusCode(200)
+                .statusCode(201)
                 .body("success", equalTo(true));
 
         // 2) 로그인: 200 + ApiResponse(data에 사용자 정보) + JSESSIONID 발급
@@ -97,7 +97,7 @@ class AuthAcceptanceTest extends AcceptanceTest {
     void loginWithWrongPassword() {
         CookieFilter cookies = new CookieFilter();
         String csrf = issueCsrfToken(cookies);
-        signUp(cookies, csrf, "wrong@example.com").then().statusCode(200);
+        signUp(cookies, csrf, "wrong@example.com").then().statusCode(201);
 
         login(cookies, csrf, "wrong@example.com", "Wrongpass1!", false)
                 .then()
@@ -144,7 +144,7 @@ class AuthAcceptanceTest extends AcceptanceTest {
     void loginWithRememberMe() {
         CookieFilter cookies = new CookieFilter();
         String csrf = issueCsrfToken(cookies);
-        signUp(cookies, csrf, "remember@example.com").then().statusCode(200);
+        signUp(cookies, csrf, "remember@example.com").then().statusCode(201);
 
         Response res = login(cookies, csrf, "remember@example.com", VALID_PASSWORD, true);
 
@@ -159,7 +159,7 @@ class AuthAcceptanceTest extends AcceptanceTest {
     void postWithoutCsrfIsRejected() {
         CookieFilter cookies = new CookieFilter();
         String csrf = issueCsrfToken(cookies);
-        signUp(cookies, csrf, "nocsrf@example.com").then().statusCode(200);
+        signUp(cookies, csrf, "nocsrf@example.com").then().statusCode(201);
 
         // CSRF 쿠키/헤더 없이 로그인 시도
         String body = """

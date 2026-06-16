@@ -112,14 +112,14 @@ public class UserControllerTest {
     private UserService userService;
 
     @Test
-    @DisplayName("정상 요청이면 200과 성공 메세지 반환")
+    @DisplayName("정상 요청이면 201과 성공 메세지 반환")
     public void signUp_success () throws Exception {
         SignUpRequest request = new SignUpRequest("test@example.com", "rawPassword!",  "rawPassword!", "홍길동", "01012345678");
 
         mockMvc.perform(post("/api/v1/users/sign-up")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("회원가입이 완료되었습니다."))
                 .andDo(document("users-sign-up",

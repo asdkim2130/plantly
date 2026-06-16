@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import project.plantly.domain.company.DisplayOrders;
 import project.plantly.domain.company.category.dto.CategoryCreateRequest;
 import project.plantly.domain.company.category.dto.CategoryTreeResponse;
 import project.plantly.domain.company.category.exception.CategoryErrorException;
@@ -29,9 +30,9 @@ public class CategoryAdminService {
         }
 
         // 입력이 있으면 그대로, 없으면 같은 부모 형제의 마지막 순번 + 1 (첫 항목은 0)
-        int displayOrder = (request.displayOrder() != null)
-                ? request.displayOrder()
-                : categoryRepository.findMaxDisplayOrderByParentId(request.parentId()) + 1;
+        int displayOrder = DisplayOrders.resolve(
+                request.displayOrder(),
+                () -> categoryRepository.findMaxDisplayOrderByParentId(request.parentId()));
 
         Category category = (request.parentId() == null) ?
                 Category.createRoot(request.categoryName(), request.categoryCode(), request.iconUrl(), request.description(), displayOrder)

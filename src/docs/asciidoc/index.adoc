@@ -61,7 +61,7 @@ include::{snippets}/users-sign-up/http-request.adoc[]
 
 include::{snippets}/users-sign-up/request-fields.adoc[]
 
-==== 성공 응답 (200 OK)
+==== 성공 응답 (201 Created)
 
 include::{snippets}/users-sign-up/http-response.adoc[]
 
@@ -188,7 +188,7 @@ include::{snippets}/category-create/http-request.adoc[]
 
 include::{snippets}/category-create/request-fields.adoc[]
 
-==== 성공 응답 (200 OK)
+==== 성공 응답 (201 Created)
 
 include::{snippets}/category-create/http-response.adoc[]
 
@@ -249,7 +249,7 @@ include::{snippets}/industry-create/http-request.adoc[]
 
 include::{snippets}/industry-create/request-fields.adoc[]
 
-==== 성공 응답 (200 OK)
+==== 성공 응답 (201 Created)
 
 include::{snippets}/industry-create/http-response.adoc[]
 
@@ -303,3 +303,88 @@ include::{snippets}/industry-list/response-fields.adoc[]
 include::{snippets}/industry-list-forbidden/http-response.adoc[]
 
 include::{snippets}/industry-list-forbidden/response-fields.adoc[]
+
+[[admin-certification-create]]
+=== 인증 생성
+
+새 인증 항목을 생성합니다. 변경 요청이므로 세션 쿠키와 CSRF 토큰이 필요합니다(<<overview-auth>> 참고).
+`displayOrder` 를 생략하면 기존 인증의 마지막 순번 + 1 이 자동 부여됩니다.
+
+==== 요청
+
+include::{snippets}/certification-create/http-request.adoc[]
+
+include::{snippets}/certification-create/request-fields.adoc[]
+
+==== 성공 응답 (201 Created)
+
+include::{snippets}/certification-create/http-response.adoc[]
+
+include::{snippets}/certification-create/response-fields.adoc[]
+
+==== 예외 응답
+
+===== 권한 없음 (403 Forbidden)
+
+include::{snippets}/certification-create-forbidden/http-response.adoc[]
+
+include::{snippets}/certification-create-forbidden/response-fields.adoc[]
+
+===== 입력값 검증 실패 (400 Bad Request)
+
+include::{snippets}/certification-create-validation-error/http-response.adoc[]
+
+include::{snippets}/certification-create-validation-error/response-fields.adoc[]
+
+===== 이름 중복 (409 Conflict)
+
+include::{snippets}/certification-create-duplicate-name/http-response.adoc[]
+
+include::{snippets}/certification-create-duplicate-name/response-fields.adoc[]
+
+[[admin-certification-list]]
+=== 인증 전체 조회
+
+등록된 모든 인증을 `displayOrder` 오름차순으로 조회합니다. 세션 쿠키가 필요합니다(<<overview-auth>> 참고).
+
+==== 요청
+
+include::{snippets}/certification-list/http-request.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/certification-list/http-response.adoc[]
+
+include::{snippets}/certification-list/response-fields.adoc[]
+
+==== 예외 응답
+
+===== 권한 없음 (403 Forbidden)
+
+include::{snippets}/certification-list-forbidden/http-response.adoc[]
+
+include::{snippets}/certification-list-forbidden/response-fields.adoc[]
+
+[[admin-domestic-region-list]]
+=== 국내 행정구역 트리 조회
+
+등록된 국내 행정구역을 시도(루트) 아래 시군구(자식)가 중첩된 트리 구조로 조회합니다. 세션 쿠키가 필요합니다(<<overview-auth>> 참고).
+자식이 없는 시도는 `children` 이 빈 배열로 내려갑니다.
+
+==== 요청
+
+include::{snippets}/domestic-region-list/http-request.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/domestic-region-list/http-response.adoc[]
+
+include::{snippets}/domestic-region-list/response-fields.adoc[]
+
+==== 예외 응답
+
+===== 권한 없음 (403 Forbidden)
+
+include::{snippets}/domestic-region-list-forbidden/http-response.adoc[]
+
+include::{snippets}/domestic-region-list-forbidden/response-fields.adoc[]

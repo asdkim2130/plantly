@@ -2,14 +2,17 @@ package project.plantly.domain.company.industry;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import project.plantly.domain.company.industry.dto.IndustryAdminResponse;
 import project.plantly.domain.company.industry.dto.IndustryCreateRequest;
 import project.plantly.global.response.ApiResponse;
+import project.plantly.global.response.IdResponse;
 
 import java.util.List;
 
@@ -20,10 +23,12 @@ public class IndustryController {
     private final IndustryService industryService;
 
     @PostMapping("/api/v1/admin/industries")
+    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Long> createIndustry (@Valid @RequestBody IndustryCreateRequest request){
+    public ApiResponse<IdResponse> createIndustry (@Valid @RequestBody IndustryCreateRequest request){
 
-        return ApiResponse.success("산업군 생성이 완료되었습니다.", industryService.createIndustry(request));
+        Long id = industryService.createIndustry(request);
+        return ApiResponse.success("산업군 생성이 완료되었습니다.", new IdResponse(id));
     }
 
     @GetMapping("/api/v1/admin/industries")
