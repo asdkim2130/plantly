@@ -364,3 +364,27 @@ include::{snippets}/certification-list/response-fields.adoc[]
 include::{snippets}/certification-list-forbidden/http-response.adoc[]
 
 include::{snippets}/certification-list-forbidden/response-fields.adoc[]
+
+[[admin-domestic-region-list]]
+=== 국내 행정구역 트리 조회
+
+등록된 국내 행정구역을 시도(루트) 아래 시군구(자식)가 중첩된 트리 구조로 조회합니다. 세션 쿠키가 필요합니다(<<overview-auth>> 참고).
+자식이 없는 시도는 `children` 이 빈 배열로 내려갑니다.
+
+==== 요청
+
+include::{snippets}/domestic-region-list/http-request.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/domestic-region-list/http-response.adoc[]
+
+include::{snippets}/domestic-region-list/response-fields.adoc[]
+
+==== 예외 응답
+
+===== 권한 없음 (403 Forbidden)
+
+include::{snippets}/domestic-region-list-forbidden/http-response.adoc[]
+
+include::{snippets}/domestic-region-list-forbidden/response-fields.adoc[]
