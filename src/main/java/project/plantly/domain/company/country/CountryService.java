@@ -1,8 +1,7 @@
-package project.plantly.domain.company.service;
+package project.plantly.domain.company.country;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import project.plantly.domain.company.repository.CountryRepository;
 
 @Service
 @RequiredArgsConstructor

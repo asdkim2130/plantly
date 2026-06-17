@@ -1,8 +1,7 @@
-package project.plantly.domain.company.controller;
+package project.plantly.domain.company.country;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
-import project.plantly.domain.company.service.CountryService;
 
 @RestController
 @RequiredArgsConstructor
