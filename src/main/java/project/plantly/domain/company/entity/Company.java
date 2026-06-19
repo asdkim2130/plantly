@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import project.plantly.domain.company.enums.PricingType;
+import project.plantly.domain.company.enums.RegistrationSource;
 import project.plantly.domain.company.enums.TrlLevel;
 
 import java.time.LocalDate;
@@ -22,7 +23,13 @@ public class Company {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 소유 유저 식별자. 회사는 반드시 소유 유저를 가진다. (도메인 결합 회피 위해 raw id로 참조)
+    // 소유 유저 식별자. 관리자가 대신 등록한 회사는 등록 시점에 소유자가 없을 수 있으므로 nullable.
+    // 추후 관계자가 가입하면 assignOwner()로 연동한다. (도메인 결합 회피 위해 raw id로 참조)
+    private Long userId;
+
+    // 등록 경로(USER/ADMIN). 연동 정책 확정 전까지 누가 어떤 경로로 등록했는지 추적하는 provenance 용도.
+    @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Long userId;
 
