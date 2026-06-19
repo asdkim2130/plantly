@@ -31,7 +31,10 @@ public class Company {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Long userId;
+    private RegistrationSource registrationSource;
+
+    // 등록 행위자 식별자. 유저 자가등록이면 본인 userId, 관리자 등록이면 admin id. (raw id로 참조)
+    private Long registeredBy;
 
     // 사업자번호. 초안 단계 회사는 미입력 가능하므로 nullable. (Postgres는 UNIQUE 컬럼에 다중 NULL 허용)
     @Column(unique = true)
@@ -109,8 +112,10 @@ public class Company {
 
     // 비즈니스 필드만 받는다. 시스템 관리 플래그(verified/featured/spotlight/spotlightOrder/deleted)는
     // 생성 시 기본값(false/0)으로 시작하고, 상태 전환은 도메인 행위 메서드로만 수행한다.
-    private Company(Long userId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String projectTitle, String achievements, String partners, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+    private Company(Long userId, RegistrationSource registrationSource, Long registeredBy, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String projectTitle, String achievements, String partners, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
         this.userId = userId;
+        this.registrationSource = registrationSource;
+        this.registeredBy = registeredBy;
         this.businessNumber = businessNumber;
         this.companyName = companyName;
         this.ceoName = ceoName;
@@ -133,11 +138,27 @@ public class Company {
         this.brandColor = brandColor;
     }
 
-    public static Company create(Long userId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String projectTitle, String achievements, String partners, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
-        return new Company(userId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, projectTitle, achievements, partners, videoUrl, leadTime, asInfo, pricingType, brandColor);
+    // 유저 자가등록: 등록 즉시 소유자 = 본인. registeredBy 도 본인.
+    public static Company createByUser(Long userId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String projectTitle, String achievements, String partners, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+        return new Company(userId, RegistrationSource.USER, userId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, projectTitle, achievements, partners, videoUrl, leadTime, asInfo, pricingType, brandColor);
+    }
+
+    // 관리자 등록: 소유자 미연동(userId=null) 상태로 시작. registeredBy 는 등록한 admin id.
+    public static Company createByAdmin(Long adminId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String projectTitle, String achievements, String partners, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+        return new Company(null, RegistrationSource.ADMIN, adminId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, projectTitle, achievements, partners, videoUrl, leadTime, asInfo, pricingType, brandColor);
     }
 
     // ===== 상태 변경 (도메인 행위) =====
+
+    // 소유자 연동. 관리자가 미연동(userId=null)으로 등록한 회사에 추후 관계자가 가입하면 호출한다.
+    public void assignOwner(Long userId) {
+        this.userId = userId;
+    }
+
+    // 소유자 연동 여부
+    public boolean isClaimed() {
+        return this.userId != null;
+    }
 
     // 관리자 인증 처리 / 해제
     public void verify() {
