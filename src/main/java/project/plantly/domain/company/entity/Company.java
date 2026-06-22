@@ -50,31 +50,31 @@ public class Company {
 
     private LocalDate establishmentDate;
 
+    @NotNull
+    @Column(nullable = false)
     private String postalCode;
 
+    @NotNull
+    @Column(nullable = false)
     private String address;
 
+    @NotNull
+    @Column(nullable = false)
     private String detailAddress;
 
     private String website;
 
-    private String logoUrl;
+    @NotNull
+    @Column(nullable = false)
+    private String logoUrl;  // 기업 대표 이미지(단일·필수). 여러 장 이미지는 CompanyImage 로 분리 관리한다.
 
-    private String introTitle;
+    private String introTitle;  // 한 줄 요약
 
     @Column(columnDefinition = "TEXT")
     private String content;
 
     @Enumerated(EnumType.STRING)
     private TrlLevel trlLevel;
-
-    private String projectTitle;
-
-    @Column(columnDefinition = "TEXT")
-    private String achievements;
-
-    @Column(columnDefinition = "TEXT")
-    private String partners;
 
     private String videoUrl;
 
@@ -112,7 +112,7 @@ public class Company {
 
     // 비즈니스 필드만 받는다. 시스템 관리 플래그(verified/featured/spotlight/spotlightOrder/deleted)는
     // 생성 시 기본값(false/0)으로 시작하고, 상태 전환은 도메인 행위 메서드로만 수행한다.
-    private Company(Long userId, RegistrationSource registrationSource, Long registeredBy, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String projectTitle, String achievements, String partners, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+    private Company(Long userId, RegistrationSource registrationSource, Long registeredBy, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
         this.userId = userId;
         this.registrationSource = registrationSource;
         this.registeredBy = registeredBy;
@@ -128,9 +128,6 @@ public class Company {
         this.introTitle = introTitle;
         this.content = content;
         this.trlLevel = trlLevel;
-        this.projectTitle = projectTitle;
-        this.achievements = achievements;
-        this.partners = partners;
         this.videoUrl = videoUrl;
         this.leadTime = leadTime;
         this.asInfo = asInfo;
@@ -139,13 +136,13 @@ public class Company {
     }
 
     // 유저 자가등록: 등록 즉시 소유자 = 본인. registeredBy 도 본인.
-    public static Company createByUser(Long userId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String projectTitle, String achievements, String partners, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
-        return new Company(userId, RegistrationSource.USER, userId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, projectTitle, achievements, partners, videoUrl, leadTime, asInfo, pricingType, brandColor);
+    public static Company createByUser(Long userId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+        return new Company(userId, RegistrationSource.USER, userId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
     }
 
     // 관리자 등록: 소유자 미연동(userId=null) 상태로 시작. registeredBy 는 등록한 admin id.
-    public static Company createByAdmin(Long adminId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String projectTitle, String achievements, String partners, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
-        return new Company(null, RegistrationSource.ADMIN, adminId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, projectTitle, achievements, partners, videoUrl, leadTime, asInfo, pricingType, brandColor);
+    public static Company createByAdmin(Long adminId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel,  String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+        return new Company(null, RegistrationSource.ADMIN, adminId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
     }
 
     // ===== 상태 변경 (도메인 행위) =====
@@ -193,6 +190,16 @@ public class Company {
     // 스팟라이트 노출 중 순서만 변경
     public void changeSpotlightOrder(int spotlightOrder) {
         this.spotlightOrder = spotlightOrder;
+    }
+
+    // 등급 정책에 따라 등록 시점 spotlight 를 활성화한다. (노출 순서는 별도 큐레이션 전까지 기본값 유지)
+    public void activateSpotlight() {
+        this.spotlight = true;
+    }
+
+    // 등급 정책에 따라 브랜드 컬러를 강제 지정한다. (커스텀 불가 등급의 기본값 고정 등)
+    public void changeBrandColor(String brandColor) {
+        this.brandColor = brandColor;
     }
 
     // 소프트 삭제 / 복구

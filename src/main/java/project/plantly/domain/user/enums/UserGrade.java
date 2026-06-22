@@ -1,20 +1,11 @@
 package project.plantly.domain.user.enums;
 
+// 등급의 정체성(어떤 등급이 존재하는가) 만 표현한다.
+// 등급별 정책 제약(카테고리 상한 등) 은 GradePolicy / GradePolicyRegistry 가 책임진다.
 public enum UserGrade {
-    // 괄호 값 = 등급별 회사 카테고리(CompanyCategory) 최대 저장 개수
-    BASIC(2),
-    ENTERPRISE(10),
-    ENTERPRISE_TRIAL(10),
-    STANDARD(5),
-    PREMIUM(10);
-
-    private final int maxCompanyCategories;
-
-    UserGrade(int maxCompanyCategories) {
-        this.maxCompanyCategories = maxCompanyCategories;
-    }
-
-    public int getMaxCompanyCategories() {
-        return this.maxCompanyCategories;
-    }
+    BASIC,
+    ENTERPRISE,
+    ENTERPRISE_TRIAL,
+    STANDARD,
+    PREMIUM
 }
