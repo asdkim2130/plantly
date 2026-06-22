@@ -20,34 +20,33 @@ import java.util.List;
 // 부속 리스트의 표시 순서(displayOrder)는 클라이언트가 보내지 않고, 서비스에서 리스트 인덱스로 부여한다.
 public record CompanyCreateRequest(
         // ===== 본체 =====
-        String businessNumber,
+        String businessNumber,  //사업자번호
         @NotBlank
-        String companyName,
+        String companyName,  //기업이름
         @NotBlank
-        String ceoName,
-        LocalDate establishmentDate,
-        String postalCode,
-        String address,
-        String detailAddress,
-        String website,
-        String logoUrl,
-        String introTitle,
-        String content,
-        TrlLevel trlLevel,
-        String projectTitle,
-        String achievements,
-        String partners,
-        String videoUrl,
-        String leadTime,
-        String asInfo,
-        PricingType pricingType,
-        String brandColor,
+        String ceoName,  //대표자
+        LocalDate establishmentDate,  //설립일
+        String postalCode,  //우편번호
+        String address,  //주소
+        String detailAddress,  //상세주소
+        String website,  //기업홈페이지
+        String logoUrl,  //로고 이미지
+        String introTitle,  //한줄요약
+        String content,  //소개글
+        TrlLevel trlLevel,  //기술성숙도
+        String videoUrl,  //동영상링크
+        String leadTime,  //예상 리드타임
+        String asInfo,  //유지보수
+        PricingType pricingType,  //견적 산출방식
+        String brandColor,  //브랜드 컬러
 
         // ===== 자식(소유) 엔티티 =====
         @Valid
         List<ContactRequest> contacts,
         @Valid
         List<ImageRequest> images,
+        @Valid
+        List<ReferenceRequest> references,
         List<String> materialNames,
         List<String> equipmentNames,
         List<String> tagNames,
@@ -71,6 +70,17 @@ public record CompanyCreateRequest(
     public record ImageRequest(
             String imageUrl,
             ImageType imageType
+    ) {
+    }
+
+    // 프로젝트 레퍼런스 1건 + 그에 딸린 이미지 URL 목록.
+    // displayOrder(레퍼런스 순서/이미지 순서)는 클라이언트가 보내지 않고 서버가 리스트 인덱스로 부여한다.
+    public record ReferenceRequest(
+            String projectTitle,
+            String achievements,
+            String partners,
+            String period,
+            List<String> imageUrls
     ) {
     }
 }

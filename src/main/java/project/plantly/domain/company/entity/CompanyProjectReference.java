@@ -10,9 +10,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class CompanyContact {
+@Getter
+public class CompanyProjectReference {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,14 +22,17 @@ public class CompanyContact {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
-    private String contactName;
+    @Column(columnDefinition = "TEXT")
+    private String projectTitle;
 
-    private String position;
+    @Column(columnDefinition = "TEXT")
+    private String achievements;
 
-    private String phone;
+    private String partners;
 
-    private String email;
+    private String period;
 
+    // 프로젝트 이미지는 CompanyImage 가 project_reference_id FK 로 이 레퍼런스를 가리킨다. (1:N)
     private int displayOrder;
 
     @CreationTimestamp
@@ -40,13 +43,12 @@ public class CompanyContact {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-
-    public CompanyContact(Company company, String contactName, String position, String phone, String email, int displayOrder) {
+    public CompanyProjectReference(Company company, String projectTitle, String achievements, String partners, String period, int displayOrder) {
         this.company = company;
-        this.contactName = contactName;
-        this.position = position;
-        this.phone = phone;
-        this.email = email;
+        this.projectTitle = projectTitle;
+        this.achievements = achievements;
+        this.partners = partners;
+        this.period = period;
         this.displayOrder = displayOrder;
     }
 }
