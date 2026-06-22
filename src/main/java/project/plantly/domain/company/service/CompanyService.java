@@ -13,12 +13,7 @@ import project.plantly.domain.company.country.CountryRepository;
 import project.plantly.domain.company.domesticRegion.DomesticRegion;
 import project.plantly.domain.company.domesticRegion.DomesticRegionRepository;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
-import project.plantly.domain.company.entity.Company;
-import project.plantly.domain.company.entity.CompanyContact;
-import project.plantly.domain.company.entity.CompanyEquipment;
-import project.plantly.domain.company.entity.CompanyImage;
-import project.plantly.domain.company.entity.CompanyMaterial;
-import project.plantly.domain.company.entity.CompanyTag;
+import project.plantly.domain.company.entity.*;
 import project.plantly.domain.company.entity.link.CompanyCategory;
 import project.plantly.domain.company.entity.link.CompanyCertification;
 import project.plantly.domain.company.entity.link.CompanyCountry;
@@ -27,6 +22,8 @@ import project.plantly.domain.company.entity.link.CompanyIndustry;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.industry.Industry;
 import project.plantly.domain.company.industry.IndustryRepository;
+import project.plantly.domain.company.policy.CompanyRegistrationContext;
+import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
 import project.plantly.domain.company.repository.*;
 import project.plantly.domain.user.enums.UserGrade;
 import project.plantly.global.exception.BusinessException;
@@ -34,6 +31,7 @@ import project.plantly.global.exception.BusinessException;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +45,7 @@ public class CompanyService {
     private final CompanyMaterialRepository materialRepository;
     private final CompanyEquipmentRepository equipmentRepository;
     private final CompanyTagRepository tagRepository;
+    private final CompanyProjectReferenceRepository referenceRepository;
 
     // 링크(M:N) 엔티티 저장소
     private final CompanyCategoryRepository companyCategoryRepository;
@@ -62,20 +61,20 @@ public class CompanyService {
     private final DomesticRegionRepository domesticRegionRepository;
     private final IndustryRepository industryRepository;
 
-    // 관리자 등록 회사는 소유자(=등급)가 없으므로 카테고리 상한은 제품 절대 상한(최상위 등급과 동일)으로 캡한다.
-    private static final int ADMIN_MAX_CATEGORIES = UserGrade.PREMIUM.getMaxCompanyCategories();
+    // 등록 정책 모음. 정책 내용은 각 구현체가 소유하며, 서비스는 주입받은 정책들을 실행만 한다.
+    // 새 정책은 CompanyRegistrationPolicy 구현 @Component 추가만으로 자동 합류한다.
+    private final List<CompanyRegistrationPolicy> registrationPolicies;
 
-    // 유저 자가등록: 등록 즉시 소유자 = 본인. 카테고리 상한은 본인 등급을 따른다.
+    // 유저 자가등록: 등록 즉시 소유자 = 본인. 정책은 본인 등급 기준으로 적용된다.
     @Transactional
     public Long createByUser(Long userId, UserGrade grade, CompanyCreateRequest request) {
         Company company = Company.createByUser(
                 userId,
                 request.businessNumber(), request.companyName(), request.ceoName(), request.establishmentDate(),
                 request.postalCode(), request.address(), request.detailAddress(), request.website(), request.logoUrl(),
-                request.introTitle(), request.content(), request.trlLevel(), request.projectTitle(), request.achievements(),
-                request.partners(), request.videoUrl(), request.leadTime(), request.asInfo(), request.pricingType(), request.brandColor());
+                request.introTitle(), request.content(), request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(), request.pricingType(), request.brandColor());
 
-        return persist(company, request, grade.getMaxCompanyCategories());
+        return persist(company, request, CompanyRegistrationContext.ofUser(grade));
     }
 
     // 관리자 등록: 소유자 미연동(userId=null) 상태로 시작. registeredBy = 등록한 admin id.
@@ -85,15 +84,14 @@ public class CompanyService {
                 adminId,
                 request.businessNumber(), request.companyName(), request.ceoName(), request.establishmentDate(),
                 request.postalCode(), request.address(), request.detailAddress(), request.website(), request.logoUrl(),
-                request.introTitle(), request.content(), request.trlLevel(), request.projectTitle(), request.achievements(),
-                request.partners(), request.videoUrl(), request.leadTime(), request.asInfo(), request.pricingType(), request.brandColor());
+                request.introTitle(), request.content(), request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(), request.pricingType(), request.brandColor());
 
-        return persist(company, request, ADMIN_MAX_CATEGORIES);
+        return persist(company, request, CompanyRegistrationContext.ofAdmin());
     }
 
-    // 공통 코어: 등급별 카테고리 상한 검증 후, 본체 INSERT(=id 확보) → 부속 10종을 같은 트랜잭션으로 저장한다.
-    private Long persist(Company company, CompanyCreateRequest request, int maxCategories) {
-        validateCategoryLimit(request.categoryIds(), maxCategories);
+    // 공통 코어: 등록 정책 일괄 검증 후, 본체 INSERT(=id 확보) → 부속 10종을 같은 트랜잭션으로 저장한다.
+    private Long persist(Company company, CompanyCreateRequest request, CompanyRegistrationContext context) {
+        registrationPolicies.forEach(policy -> policy.apply(company, request, context));
 
         companyRepository.save(company);
         saveChildren(company, request);
@@ -101,23 +99,14 @@ public class CompanyService {
         return company.getId();
     }
 
-    // 실제 저장될 카테고리(중복 제거 후) 개수가 등급 상한을 넘으면 거부한다.
-    private void validateCategoryLimit(List<Long> categoryIds, int maxCategories) {
-        if (categoryIds == null) {
-            return;
-        }
-
-        long distinctCount = categoryIds.stream().distinct().count();
-        if (distinctCount > maxCategories) {
-            throw new BusinessException(CompanyErrorCode.CATEGORY_LIMIT_EXCEEDED);
-        }
-    }
-
     // ===== 자식(소유) 엔티티 — 요청 값을 그대로 저장. displayOrder 는 리스트 인덱스로 부여 =====
     private void saveChildren(Company company, CompanyCreateRequest request) {
         if (request.contacts() != null) {
-            List<CompanyContact> contacts = request.contacts().stream()
-                    .map(c -> new CompanyContact(company, c.contactName(), c.position(), c.phone(), c.email()))
+            List<CompanyContact> contacts = IntStream.range(0, request.contacts().size())
+                    .mapToObj(i -> {
+                        CompanyCreateRequest.ContactRequest c = request.contacts().get(i);
+                        return new CompanyContact(company, c.contactName(), c.position(), c.phone(), c.email(), i);
+                    })
                     .toList();
             contactRepository.saveAll(contacts);
         }
@@ -126,10 +115,36 @@ public class CompanyService {
             List<CompanyImage> images = IntStream.range(0, request.images().size())
                     .mapToObj(i -> {
                         CompanyCreateRequest.ImageRequest img = request.images().get(i);
-                        return new CompanyImage(company, img.imageUrl(), img.imageType(), i);
+                        return CompanyImage.ofCompany(company, img.imageUrl(), img.imageType(), i);
                     })
                     .toList();
             imageRepository.saveAll(images);
+        }
+
+        if (request.references() != null) {
+            // 레퍼런스 본체 저장 — displayOrder 는 요청 순서(인덱스)로 부여하고, FK 확보를 위해 먼저 저장한다.
+            List<CompanyProjectReference> references = IntStream.range(0, request.references().size())
+                    .mapToObj(i -> {
+                        CompanyCreateRequest.ReferenceRequest r = request.references().get(i);
+                        return new CompanyProjectReference(company, r.projectTitle(), r.achievements(), r.partners(), r.period(), i);
+                    })
+                    .toList();
+            referenceRepository.saveAll(references);
+
+            // 각 레퍼런스에 딸린 프로젝트 이미지 → CompanyImage(PROJECT) 로 연결. 이미지 displayOrder 는 레퍼런스 내 순서.
+            List<CompanyImage> projectImages = IntStream.range(0, references.size())
+                    .boxed()
+                    .flatMap(i -> {
+                        List<String> imageUrls = request.references().get(i).imageUrls();
+                        if (imageUrls == null) {
+                            return Stream.empty();
+                        }
+                        CompanyProjectReference reference = references.get(i);
+                        return IntStream.range(0, imageUrls.size())
+                                .mapToObj(j -> CompanyImage.ofProject(reference, imageUrls.get(j), j));
+                    })
+                    .toList();
+            imageRepository.saveAll(projectImages);
         }
 
         if (request.materialNames() != null) {
@@ -147,11 +162,12 @@ public class CompanyService {
         }
 
         if (request.tagNames() != null) {
-            List<CompanyTag> tags = request.tagNames().stream()
-                    .map(t -> new CompanyTag(company, t))
+            List<CompanyTag> tags = IntStream.range(0, request.tagNames().size())
+                    .mapToObj(i -> new CompanyTag(company, request.tagNames().get(i), i))
                     .toList();
             tagRepository.saveAll(tags);
         }
+
     }
 
     // ===== 링크(M:N) 엔티티 — 마스터 존재 검증 후 연결 저장 =====
