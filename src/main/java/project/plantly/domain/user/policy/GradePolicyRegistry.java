@@ -15,9 +15,9 @@ public class GradePolicyRegistry {
     private final Map<UserGrade, GradePolicy> policies = Map.of(
             UserGrade.BASIC,            new GradePolicy(2,  false, 0,  false, false),
             UserGrade.STANDARD,         new GradePolicy(5,  true,  0,  true,  false),
-            UserGrade.ENTERPRISE,       new GradePolicy(10, true,  10, true,  false),
-            UserGrade.ENTERPRISE_TRIAL, new GradePolicy(10, true,  10, true,  false),
-            UserGrade.PREMIUM,          new GradePolicy(10, true,  0,  true,  true)
+            UserGrade.PREMIUM,          new GradePolicy(10, true,  0,  true,  true),
+            UserGrade.ENTERPRISE,       new GradePolicy(10, true,  10, true,  true),
+            UserGrade.ENTERPRISE_TRIAL, new GradePolicy(10, true,  10, true,  true)
     );
 
     public GradePolicy of(UserGrade grade) {
