@@ -10,7 +10,6 @@ import project.plantly.domain.company.policy.CompanyRegistrationContext;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
-import project.plantly.domain.user.enums.UserGrade;
 
 import java.util.List;
 
@@ -31,16 +30,16 @@ public class CompanyService {
     // 새 정책은 CompanyRegistrationPolicy 구현 @Component 추가만으로 자동 합류한다.
     private final List<CompanyRegistrationPolicy> registrationPolicies;
 
-    // 유저 자가등록: 등록 즉시 소유자 = 본인. 정책은 본인 등급 기준으로 적용된다.
+    // 유저 자가등록: 등록 즉시 소유자 = 본인. 회사는 FREE 등급으로 시작하며 그 한도로 정책이 적용된다.
     @Transactional
-    public Long createByUser(Long userId, UserGrade grade, CompanyCreateRequest request) {
+    public Long createByUser(Long userId, CompanyCreateRequest request) {
         Company company = Company.createByUser(
                 userId,
                 request.businessNumber(), request.companyName(), request.ceoName(), request.establishmentDate(),
                 request.postalCode(), request.address(), request.detailAddress(), request.website(), request.logoUrl(),
                 request.introTitle(), request.content(), request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(), request.pricingType(), request.brandColor());
 
-        Long companyId = persist(company, request, CompanyRegistrationContext.ofUser(grade));
+        Long companyId = persist(company, request, CompanyRegistrationContext.ofUser());
 
         // 자가등록자 = OWNER. 관리자 등록(createByAdmin)은 소유자 미연동이라 멤버를 만들지 않는다.
         // (Company.userId 와 병행 기록 — 추후 멤버십이 단일 진실원이 되면 userId 는 정리)
