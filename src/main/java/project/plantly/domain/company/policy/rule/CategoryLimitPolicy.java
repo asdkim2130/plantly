@@ -7,7 +7,6 @@ import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.policy.CompanyRegistrationContext;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
-import project.plantly.domain.user.enums.UserGrade;
 import project.plantly.domain.user.policy.GradePolicyRegistry;
 import project.plantly.global.exception.BusinessException;
 
@@ -20,9 +19,6 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class CategoryLimitPolicy implements CompanyRegistrationPolicy {
-
-    // 관리자 선등록 시 적용할 절대 상한 = 최상위 등급
-    private static final UserGrade ADMIN_CAP_GRADE = UserGrade.PREMIUM;
 
     private final GradePolicyRegistry gradePolicyRegistry;
 
@@ -42,7 +38,6 @@ public class CategoryLimitPolicy implements CompanyRegistrationPolicy {
     }
 
     private int resolveMaxCategories(CompanyRegistrationContext context) {
-        UserGrade grade = context.isAdminRegistration() ? ADMIN_CAP_GRADE : context.grade();
-        return gradePolicyRegistry.of(grade).maxCompanyCategories();
+        return gradePolicyRegistry.of(context.gradeForCap()).maxCompanyCategories();
     }
 }
