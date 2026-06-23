@@ -26,8 +26,7 @@ public class CompanyController {
     public ApiResponse<IdResponse> createMyCompany(@AuthenticationPrincipal UserPrincipal principal,
                                                    @Valid @RequestBody CompanyCreateRequest request) {
 
-        Long id = companyService.createByUser(
-                principal.getUser().getId(), principal.getUser().getUserGrade(), request);
+        Long id = companyService.createByUser(principal.getUser().getId(), request);
         return ApiResponse.success("회사 등록이 완료되었습니다.", new IdResponse(id));
     }
 }

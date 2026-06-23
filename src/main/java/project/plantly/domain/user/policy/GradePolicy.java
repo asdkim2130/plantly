@@ -11,6 +11,8 @@ public record GradePolicy(
         boolean videoAllowed,
         // 레퍼런스 1건당 이미지 최대 장수 (0 = 업로드 비활성)
         int maxReferenceImages,
+        // 회사 직속 갤러리(상세 이미지, ImageType.DETAIL) 최대 장수
+        int maxDetailImages,
         // 브랜드 컬러 커스텀 지정 가능 여부 (false = 기본값으로 고정)
         boolean customBrandColorAllowed,
         // 등록 시점 spotlight 자동 활성화 여부

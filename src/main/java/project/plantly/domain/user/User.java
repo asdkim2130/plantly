@@ -70,7 +70,7 @@ public class User {
         this.phone = phone;
         this.nickname = nickname;
         this.userStatus = (userStatus != null) ? userStatus : UserStatus.ACTIVE;
-        this.userGrade = (userGrade != null) ? userGrade : UserGrade.BASIC;
+        this.userGrade = (userGrade != null) ? userGrade : UserGrade.FREE;
         this.userRole = (userRole != null) ? userRole : UserRole.MEMBER;
         this.trialEndDate = trialEndDate;
         this.createdAt = createdAt;

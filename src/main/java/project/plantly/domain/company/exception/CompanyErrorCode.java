@@ -21,6 +21,12 @@ public enum CompanyErrorCode implements ErrorCode {
     // 레퍼런스 이미지가 등급별 최대 장수를 초과한 경우
     REFERENCE_IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "현재 등급에서 등록 가능한 레퍼런스 이미지 장수를 초과했습니다."),
 
+    // 상세 이미지(회사 직속 갤러리)가 등급별 최대 장수를 초과한 경우
+    DETAIL_IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "현재 등급에서 등록 가능한 상세 이미지 장수를 초과했습니다."),
+
+    // 회사 직속 갤러리(images)에 DETAIL 이 아닌 이미지 타입이 포함된 경우
+    GALLERY_IMAGE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "갤러리에는 상세 이미지(DETAIL)만 등록할 수 있습니다."),
+
     // 링크(M:N) 등록 시 요청에 존재하지 않는 마스터 ID가 포함된 경우
     CATEGORY_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 카테고리가 포함되어 있습니다."),
     CERTIFICATION_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 인증이 포함되어 있습니다."),
