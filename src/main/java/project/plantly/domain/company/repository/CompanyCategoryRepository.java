@@ -1,7 +1,16 @@
 package project.plantly.domain.company.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.entity.link.CompanyCategory;
 
+import java.util.List;
+
 public interface CompanyCategoryRepository extends JpaRepository<CompanyCategory, Long> {
+
+    // 링크를 거쳐 연결된 카테고리 마스터를 한 번의 조회로 가져온다. (링크별 LAZY 로딩 N+1 회피)
+    @Query("select l.category from CompanyCategory l where l.company.id = :companyId order by l.id")
+    List<Category> findCategoriesByCompanyId(@Param("companyId") Long companyId);
 }

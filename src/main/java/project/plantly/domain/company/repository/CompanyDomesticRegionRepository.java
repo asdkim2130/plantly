@@ -1,7 +1,16 @@
 package project.plantly.domain.company.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import project.plantly.domain.company.domesticRegion.DomesticRegion;
 import project.plantly.domain.company.entity.link.CompanyDomesticRegion;
 
+import java.util.List;
+
 public interface CompanyDomesticRegionRepository extends JpaRepository<CompanyDomesticRegion, Long> {
+
+    // 링크를 거쳐 연결된 국내 지역 마스터를 한 번의 조회로 가져온다. (링크별 LAZY 로딩 N+1 회피)
+    @Query("select l.domesticRegion from CompanyDomesticRegion l where l.company.id = :companyId order by l.id")
+    List<DomesticRegion> findRegionsByCompanyId(@Param("companyId") Long companyId);
 }
