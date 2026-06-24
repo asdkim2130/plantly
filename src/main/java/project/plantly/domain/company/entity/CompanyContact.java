@@ -32,6 +32,11 @@ public class CompanyContact {
 
     private int displayOrder;
 
+    // 상세 조회에 노출되는 대표 연락처 여부. 초기 버전은 회사당 1건만 등록되어 그 건이 대표가 된다.
+    // (추후 다건 허용 + '더보기' 별도 조회로 확장 시, 대표 1건만 상세에 싣고 나머지는 별도 API 로 분리)
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean representative;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -48,5 +53,10 @@ public class CompanyContact {
         this.phone = phone;
         this.email = email;
         this.displayOrder = displayOrder;
+    }
+
+    // 상세 조회에 노출되는 대표 연락처로 지정한다.
+    public void markAsRepresentative() {
+        this.representative = true;
     }
 }

@@ -2,6 +2,7 @@ package project.plantly.domain.company.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import project.plantly.domain.company.enums.ImageType;
 import project.plantly.domain.company.enums.PricingType;
 import project.plantly.domain.company.enums.TrlLevel;
@@ -41,11 +42,15 @@ public record CompanyCreateRequest(
         String brandColor,  //브랜드 컬러
 
         // ===== 자식(소유) 엔티티 =====
+        // 연락처/레퍼런스는 하위 필드를 가진 컬렉션이라, 초기 버전은 대표 1건만 받는다.
+        // (추후 다건 허용 + '더보기' 별도 조회로 확장 시 이 @Size 제약을 푼다)
         @Valid
+        @Size(max = 1, message = "연락처는 현재 1건만 등록할 수 있습니다.")
         List<ContactRequest> contacts,
         @Valid
         List<ImageRequest> images,
         @Valid
+        @Size(max = 1, message = "프로젝트 레퍼런스는 현재 1건만 등록할 수 있습니다.")
         List<ReferenceRequest> references,
         List<String> materialNames,
         List<String> equipmentNames,

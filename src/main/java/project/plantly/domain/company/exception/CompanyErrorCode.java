@@ -32,7 +32,13 @@ public enum CompanyErrorCode implements ErrorCode {
     CERTIFICATION_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 인증이 포함되어 있습니다."),
     COUNTRY_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 국가가 포함되어 있습니다."),
     DOMESTIC_REGION_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 국내 지역이 포함되어 있습니다."),
-    INDUSTRY_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 산업군이 포함되어 있습니다.");
+    INDUSTRY_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 산업군이 포함되어 있습니다."),
+
+    // 조회 대상 회사가 없거나(삭제 포함) 식별자가 잘못된 경우. 공개 조회에서 소프트 삭제는 미존재로 취급한다.
+    COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 회사입니다."),
+
+    // 본인 회사 상세(소유자 전용 뷰)를 소유자가 아닌 사용자가 요청한 경우
+    COMPANY_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 회사에 대한 접근 권한이 없습니다.");
 
     private final HttpStatus status;
     private final String message;

@@ -25,8 +25,7 @@ public class CompanyChildWriter {
     private final CompanyProjectReferenceRepository referenceRepository;
 
     public void write(Company company, CompanyCreateRequest request) {
-        saveIndexed(request.contacts(), contactRepository,
-                (c, i) -> new CompanyContact(company, c.contactName(), c.position(), c.phone(), c.email(), i));
+        saveContacts(company, request);
         saveIndexed(request.images(), imageRepository,
                 (img, i) -> CompanyImage.ofCompany(company, img.imageUrl(), img.imageType(), i));
         saveIndexed(request.materialNames(), materialRepository,
@@ -36,6 +35,21 @@ public class CompanyChildWriter {
         saveIndexed(request.tagNames(), tagRepository,
                 (name, i) -> new CompanyTag(company, name, i));
         saveReferences(company, request);
+    }
+
+    // 연락처: 초기 버전은 대표 1건만 허용(@Size(max=1)). 저장하는 첫(=유일) 건을 대표로 표시한다.
+    private void saveContacts(Company company, CompanyCreateRequest request) {
+        if (request.contacts() == null || request.contacts().isEmpty()) {
+            return;
+        }
+        List<CompanyContact> contacts = IntStream.range(0, request.contacts().size())
+                .mapToObj(i -> {
+                    CompanyCreateRequest.ContactRequest c = request.contacts().get(i);
+                    return new CompanyContact(company, c.contactName(), c.position(), c.phone(), c.email(), i);
+                })
+                .toList();
+        contacts.get(0).markAsRepresentative();   // 대표 1건 (현재는 단건만 허용)
+        contactRepository.saveAll(contacts);
     }
 
     // (요청 리스트, 저장소, "i번째 요소 + 인덱스 → 엔티티" 팩토리) 를 받아 일괄 저장. null/빈 리스트는 무시한다.
@@ -64,6 +78,7 @@ public class CompanyChildWriter {
                     return new CompanyProjectReference(company, r.projectTitle(), r.achievements(), r.partners(), r.period(), i);
                 })
                 .toList();
+        references.get(0).markAsRepresentative();   // 대표 1건 (현재는 단건만 허용)
         referenceRepository.saveAll(references);
 
         // 각 레퍼런스에 딸린 프로젝트 이미지 → CompanyImage(PROJECT) 로 연결. 이미지 displayOrder 는 레퍼런스 내 순서.
