@@ -122,10 +122,52 @@ include::{snippets}/users-me-update/http-response.adoc[]
 
 include::{snippets}/users-me-update/response-fields.adoc[]
 
+[[company]]
+== 회사 (Company)
+
+[[company-create]]
+=== 회사 등록 (유저 자가등록)
+
+인증된 유저가 본인 회사를 등록합니다. 등록자는 즉시 소유자(`OWNER`)가 되며, 회사는 `FREE` 등급으로 시작합니다.
+변경 요청이므로 세션 쿠키와 CSRF 토큰이 필요합니다(<<overview-auth>> 참고).
+
+요청 본문은 회사 본체와 부속(연락처/이미지/레퍼런스/소재·설비·태그/링크 마스터 ID)을 한 번에 받습니다.
+`companyName`/`ceoName` 외 항목은 임시저장(DRAFT) 호환을 위해 모두 선택이며, 일부 항목은 등급별 정책 제한을 받습니다.
+
+==== 요청
+
+include::{snippets}/company-create/http-request.adoc[]
+
+include::{snippets}/company-create/request-fields.adoc[]
+
+==== 성공 응답 (201 Created)
+
+include::{snippets}/company-create/http-response.adoc[]
+
+include::{snippets}/company-create/response-fields.adoc[]
+
 [[admin]]
 == 관리자 (Admin)
 
 관리자(`ADMIN`) 권한이 필요한 API 입니다. 권한이 없는 회원이 접근하면 `403` 이 반환됩니다.
+
+[[admin-company-create]]
+=== 회사 등록 (관리자)
+
+관리자가 회사를 대신 등록합니다. 소유자 미연동(`userId=null`) 상태로 생성되며, 등급 한도 정책은 면제됩니다.
+변경 요청이므로 세션 쿠키와 CSRF 토큰이 필요합니다(<<overview-auth>> 참고).
+
+==== 요청
+
+include::{snippets}/admin-company-create/http-request.adoc[]
+
+include::{snippets}/admin-company-create/request-fields.adoc[]
+
+==== 성공 응답 (201 Created)
+
+include::{snippets}/admin-company-create/http-response.adoc[]
+
+include::{snippets}/admin-company-create/response-fields.adoc[]
 
 [[admin-user-detail]]
 === 회원 상세 조회
