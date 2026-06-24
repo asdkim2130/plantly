@@ -28,6 +28,7 @@ import project.plantly.companyTest.support.CompanyApiDocs;
 import project.plantly.companyTest.support.CompanyCreateRequestSamples;
 import project.plantly.domain.company.controller.AdminCompanyController;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.enums.UserRole;
@@ -66,6 +67,10 @@ public class AdminCompanyControllerTest {
 
     @MockitoBean
     private CompanyService companyService;
+
+    // 컨트롤러가 상세 조회용으로 주입받는 협력 객체. 등록 슬라이스 테스트에서는 사용하지 않지만 컨텍스트 로딩을 위해 모킹한다.
+    @MockitoBean
+    private CompanyQueryService companyQueryService;
 
     private MockMvc mockMvc;
 
