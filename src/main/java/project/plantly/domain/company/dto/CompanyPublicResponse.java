@@ -92,7 +92,7 @@ public record CompanyPublicResponse(
                 aggregate.galleryImages().stream().map(GalleryImageResponse::from).toList(),
                 aggregate.representativeReference() == null ? null
                         : ProjectReferenceResponse.from(aggregate.representativeReference(),
-                                aggregate.representativeReferenceImages()),
+                                aggregate.representativeReferenceThumbnail()),
                 aggregate.materials().stream().map(m -> m.getMaterialName()).toList(),
                 aggregate.equipment().stream().map(e -> e.getEquipmentName()).toList(),
                 aggregate.tags().stream().map(t -> t.getTagName()).toList(),
@@ -116,21 +116,22 @@ public record CompanyPublicResponse(
         }
     }
 
-    // 프로젝트 레퍼런스 1건 + 그에 딸린 이미지 URL(순서대로).
+    // 프로젝트 레퍼런스 1건 + 표지 이미지 1장(displayOrder 최소, 없으면 null).
+    // 전체 이미지(최대 10장)는 상세에 싣지 않는다 — 추후 '레퍼런스 더보기' 전용 조회로 분리.
     public record ProjectReferenceResponse(
             String projectTitle,
             String achievements,
             String partners,
             String period,
-            List<String> imageUrls
+            String thumbnailUrl
     ) {
-        public static ProjectReferenceResponse from(CompanyProjectReference ref, List<CompanyImage> images) {
+        public static ProjectReferenceResponse from(CompanyProjectReference ref, CompanyImage thumbnail) {
             return new ProjectReferenceResponse(
                     ref.getProjectTitle(),
                     ref.getAchievements(),
                     ref.getPartners(),
                     ref.getPeriod(),
-                    images.stream().map(CompanyImage::getImageUrl).toList());
+                    thumbnail == null ? null : thumbnail.getImageUrl());
         }
     }
 

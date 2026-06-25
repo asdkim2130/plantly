@@ -79,16 +79,19 @@ public class CompanyQueryService {
                 .orElse(null);
         Long representativeReferenceId = representativeReference == null ? null : representativeReference.getId();
 
-        // 이미지는 한 번에 가져와 갤러리(projectReference == null)와 '대표 레퍼런스에 딸린 이미지'로 분리한다.
+        // 이미지는 한 번에 가져와 갤러리(projectReference == null)와 '대표 레퍼런스 표지 1장'으로 나눈다.
+        // allImages 가 displayOrder 오름차순이라, 대표 레퍼런스의 첫 매칭이 곧 표지(썸네일)다.
+        // (전체 이미지는 상세에 싣지 않는다 — 추후 '레퍼런스 더보기' 전용 조회로 분리)
         List<CompanyImage> allImages = imageRepository.findByCompanyIdOrderByDisplayOrderAsc(companyId);
         List<CompanyImage> galleryImages = allImages.stream()
                 .filter(image -> image.getProjectReference() == null)
                 .toList();
-        List<CompanyImage> representativeReferenceImages = representativeReferenceId == null ? List.of()
+        CompanyImage representativeReferenceThumbnail = representativeReferenceId == null ? null
                 : allImages.stream()
                         .filter(image -> image.getProjectReference() != null
                                 && representativeReferenceId.equals(image.getProjectReference().getId()))
-                        .toList();
+                        .findFirst()
+                        .orElse(null);
 
         return new CompanyAggregate(
                 company,
@@ -96,7 +99,7 @@ public class CompanyQueryService {
                         .orElse(null),
                 galleryImages,
                 representativeReference,
-                representativeReferenceImages,
+                representativeReferenceThumbnail,
                 materialRepository.findByCompanyIdOrderByDisplayOrderAsc(companyId),
                 equipmentRepository.findByCompanyIdOrderByDisplayOrderAsc(companyId),
                 tagRepository.findByCompanyIdOrderByDisplayOrderAsc(companyId),
