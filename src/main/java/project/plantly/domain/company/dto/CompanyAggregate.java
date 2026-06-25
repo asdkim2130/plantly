@@ -19,14 +19,15 @@ import java.util.List;
 // 조회 서비스가 채워 DTO 의 from(...) 으로 넘긴다. (응답 형태(공개/상세)에 독립적인 '원자료' 계층)
 //
 // 연락처/레퍼런스는 하위 필드를 가진 컬렉션이라 초기 버전은 대표 1건만 상세에 싣는다(없으면 null).
-// representativeReferenceImages 는 그 대표 레퍼런스에 딸린 이미지(순서대로)다.
+// representativeReferenceThumbnail 은 그 대표 레퍼런스의 표지 이미지 1장(displayOrder 최소)이다(없으면 null).
+//   전체 이미지(레퍼런스당 최대 10장)는 상세에 싣지 않고 추후 '레퍼런스 더보기' 전용 조회로 분리한다.
 // 갤러리 이미지(projectReference == null)는 galleryImages 로 따로 담는다.
 public record CompanyAggregate(
         Company company,
         CompanyContact representativeContact,
         List<CompanyImage> galleryImages,
         CompanyProjectReference representativeReference,
-        List<CompanyImage> representativeReferenceImages,
+        CompanyImage representativeReferenceThumbnail,
         List<CompanyMaterial> materials,
         List<CompanyEquipment> equipment,
         List<CompanyTag> tags,
