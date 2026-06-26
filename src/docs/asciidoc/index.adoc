@@ -146,6 +146,110 @@ include::{snippets}/company-create/http-response.adoc[]
 
 include::{snippets}/company-create/response-fields.adoc[]
 
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고).
+모든 실패 응답은 `{ "success": false, "error": "<메시지>" }` 형태이며, `error` 의 문구로 원인을 구분합니다.
+
+===== 입력값 검증 실패 (400 Bad Request)
+
+본문이 제약을 위반하면 `400` 이 반환됩니다(`error` 에 첫 번째 위반 메시지).
+대표적으로 필수 항목(`companyName`/`ceoName`) 누락, 연락처/레퍼런스 1건 초과(`@Size(max=1)`) 등이 해당합니다.
+
+include::{snippets}/company-create-validation-error/http-response.adoc[]
+
+include::{snippets}/company-create-validation-error/response-fields.adoc[]
+
+===== 등록 정책 위반 (400 Bad Request)
+
+등급별 한도나 부속 데이터 유효성 등 등록 정책에 걸리면 `400` 이 반환됩니다.
+응답 형태는 아래와 동일하며, `error` 메시지로 원인을 구분합니다.
+
+include::{snippets}/company-create-policy-violation/http-response.adoc[]
+
+include::{snippets}/company-create-policy-violation/response-fields.adoc[]
+
+정책/유효성 위반 시 내려갈 수 있는 `error` 메시지는 다음과 같습니다.
+
+[cols="3,5"]
+|===
+| 사유 | `error` 메시지
+
+| 카테고리 개수 초과 | 현재 등급에서 선택 가능한 카테고리 개수를 초과했습니다.
+| 동영상 미허용 등급 | 현재 등급에서는 동영상을 등록할 수 없습니다.
+| 레퍼런스 이미지 미허용 등급 | 현재 등급에서는 레퍼런스 이미지를 등록할 수 없습니다.
+| 레퍼런스 이미지 장수 초과 | 현재 등급에서 등록 가능한 레퍼런스 이미지 장수를 초과했습니다.
+| 상세 이미지 장수 초과 | 현재 등급에서 등록 가능한 상세 이미지 장수를 초과했습니다.
+| 갤러리 이미지 타입 오류 | 갤러리에는 상세 이미지(DETAIL)만 등록할 수 있습니다.
+| 존재하지 않는 카테고리 ID | 존재하지 않는 카테고리가 포함되어 있습니다.
+| 존재하지 않는 인증 ID | 존재하지 않는 인증이 포함되어 있습니다.
+| 존재하지 않는 국가 ID | 존재하지 않는 국가가 포함되어 있습니다.
+| 존재하지 않는 국내 지역 ID | 존재하지 않는 국내 지역이 포함되어 있습니다.
+| 존재하지 않는 산업군 ID | 존재하지 않는 산업군이 포함되어 있습니다.
+|===
+
+[[company-public-detail]]
+=== 회사 상세 조회 (공개)
+
+회사의 공개 프로필을 조회합니다. 누구에게나 열려 있는 공개 API 로, 인증이 필요 없습니다.
+응답에는 공개에 안전한 필드만 담기며, 사업자번호·등록 provenance·운영 메타 등 내부 정보는 제외됩니다(소유자/관리자 조회에서만 `meta` 로 노출).
+소프트 삭제된 회사는 미존재로 취급되어 `404` 가 반환됩니다.
+
+부속 중 연락처·프로젝트 레퍼런스는 대표 1건만(없으면 `null`), 레퍼런스 이미지는 표지 썸네일 1장만 내려갑니다.
+
+==== 요청
+
+include::{snippets}/company-public-detail/http-request.adoc[]
+
+include::{snippets}/company-public-detail/path-parameters.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-public-detail/http-response.adoc[]
+
+include::{snippets}/company-public-detail/response-fields.adoc[]
+
+==== 예외 응답
+
+===== 회사 없음 / 삭제됨 (404 Not Found)
+
+존재하지 않거나 소프트 삭제된 회사를 조회하면 동일하게 `404` 가 반환됩니다.
+
+include::{snippets}/company-public-detail-not-found/http-response.adoc[]
+
+include::{snippets}/company-public-detail-not-found/response-fields.adoc[]
+
+[[company-owner-detail]]
+=== 회사 상세 조회 (소유자 전용)
+
+회사 멤버 본인이 자기 회사의 상세 정보를 조회합니다. 세션 쿠키가 필요합니다(<<overview-auth>> 참고).
+공개 프로필(`profile`)에 더해 사업자번호·등록 provenance·노출/검증 플래그·타임스탬프 등 내부·운영 메타(`meta`)가 함께 내려갑니다.
+요청자가 해당 회사의 멤버가 아니면 `403`, 미인증이면 `401` 이 반환됩니다. 소프트 삭제된 회사도 소유자에게는 정상 조회됩니다.
+
+==== 요청
+
+include::{snippets}/company-owner-detail/http-request.adoc[]
+
+include::{snippets}/company-owner-detail/path-parameters.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-owner-detail/http-response.adoc[]
+
+include::{snippets}/company-owner-detail/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고).
+
+===== 멤버 아님 (403 Forbidden)
+
+요청자가 해당 회사의 멤버가 아니면 `403`(`COMPANY_ACCESS_DENIED`) 이 반환됩니다.
+
+include::{snippets}/company-owner-detail-forbidden/http-response.adoc[]
+
+include::{snippets}/company-owner-detail-forbidden/response-fields.adoc[]
+
 [[admin]]
 == 관리자 (Admin)
 
@@ -168,6 +272,50 @@ include::{snippets}/admin-company-create/request-fields.adoc[]
 include::{snippets}/admin-company-create/http-response.adoc[]
 
 include::{snippets}/admin-company-create/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고).
+
+===== 권한 없음 (403 Forbidden)
+
+`ADMIN` 권한이 없는 회원이 호출하면 `403` 이 반환됩니다.
+
+include::{snippets}/admin-company-create-forbidden/http-response.adoc[]
+
+include::{snippets}/admin-company-create-forbidden/response-fields.adoc[]
+
+NOTE: 입력값 검증 실패(400)는 <<company-create>> 와 동일한 형태입니다. 단, 관리자 등록은 등급 한도 정책이 면제되며 마스터 ID 유효성 등 일부 검증만 동일하게 적용됩니다.
+
+[[admin-company-detail]]
+=== 회사 상세 조회 (관리자)
+
+관리자가 회사의 상세 정보를 조회합니다. 상태(소유자 미연동·소프트 삭제 등)와 무관하게 전체를 조회하며, 응답 형태는 소유자 전용 조회와 동일하게 `profile` + `meta` 입니다.
+소유자 미연동(`ADMIN` 등록) 회사는 `meta.claimed=false`, `meta.ownerUserId=null` 로 내려갑니다.
+
+==== 요청
+
+include::{snippets}/admin-company-detail/http-request.adoc[]
+
+include::{snippets}/admin-company-detail/path-parameters.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/admin-company-detail/http-response.adoc[]
+
+include::{snippets}/admin-company-detail/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고).
+
+===== 권한 없음 (403 Forbidden)
+
+`ADMIN` 권한이 없는 회원이 호출하면 `403` 이 반환됩니다.
+
+include::{snippets}/admin-company-detail-forbidden/http-response.adoc[]
+
+include::{snippets}/admin-company-detail-forbidden/response-fields.adoc[]
 
 [[admin-user-detail]]
 === 회원 상세 조회
