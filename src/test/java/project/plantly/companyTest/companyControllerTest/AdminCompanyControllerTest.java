@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import project.plantly.companyTest.support.CompanyApiDocs;
 import project.plantly.companyTest.support.CompanyCreateRequestSamples;
+import project.plantly.companyTest.support.CompanyResponseSamples;
 import project.plantly.domain.company.controller.AdminCompanyController;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.service.CompanyQueryService;
@@ -41,10 +42,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -101,6 +105,50 @@ public class AdminCompanyControllerTest {
                 .andDo(document("admin-company-create",
                         requestFields(CompanyApiDocs.companyCreateRequestFields()),
                         responseFields(CompanyApiDocs.idResponseFields())));
+    }
+
+    @Test
+    @DisplayName("관리자가 아닌 유저가 회사 등록을 호출하면 @PreAuthorize 가 막아 403 을 반환한다")
+    void createCompanyByAdmin_forbidden_forNonAdmin() throws Exception {
+        authenticate(2L, UserRole.MEMBER);
+        // 본문은 유효해야 @Valid 바인딩(400)이 아닌 @PreAuthorize(403) 가 결과를 결정한다.
+        mockMvc.perform(post("/api/v1/admin/companies")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.full())))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("접근 권한이 없습니다."))
+                .andDo(document("admin-company-create-forbidden",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    @Test
+    @DisplayName("관리자 조회는 상태(미연동/삭제) 무관하게 profile + meta 전체를 반환한다")
+    void getCompanyByAdmin_success() throws Exception {
+        given(companyQueryService.getForAdmin(5L)).willReturn(CompanyResponseSamples.fullDetail());
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(get("/api/v1/admin/companies/{id}", 5L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.profile.companyName").value("플랜틀리테크"))
+                .andExpect(jsonPath("$.data.meta.businessNumber").value("1234567890"))
+                .andDo(document("admin-company-detail",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        responseFields(CompanyApiDocs.companyDetailResponseFields())));
+    }
+
+    @Test
+    @DisplayName("관리자가 아닌 유저가 관리자 조회를 호출하면 @PreAuthorize 가 막아 403(FORBIDDEN) 를 반환한다")
+    void getCompanyByAdmin_forbidden_forNonAdmin() throws Exception {
+        authenticate(2L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/admin/companies/{id}", 5L))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("접근 권한이 없습니다."))
+                .andDo(document("admin-company-detail-forbidden",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
     @AfterEach

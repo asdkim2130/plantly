@@ -26,10 +26,13 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import project.plantly.companyTest.support.CompanyApiDocs;
 import project.plantly.companyTest.support.CompanyCreateRequestSamples;
+import project.plantly.companyTest.support.CompanyResponseSamples;
 import project.plantly.domain.company.controller.CompanyController;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
+import project.plantly.global.exception.BusinessException;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
@@ -41,10 +44,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -101,6 +107,106 @@ public class CompanyControllerTest {
                 .andDo(document("company-create",
                         requestFields(CompanyApiDocs.companyCreateRequestFields()),
                         responseFields(CompanyApiDocs.idResponseFields())));
+    }
+
+    @Test
+    @DisplayName("필수 항목(companyName)이 비어 있으면 400 검증 오류를 반환한다")
+    void createMyCompany_validationError() throws Exception {
+        authenticate(7L, UserRole.MEMBER);
+        // companyName 만 공란(@NotBlank 위반), 나머지는 모두 선택이라 단일 검증 오류만 발생한다.
+        String invalidJson = """
+                {"companyName":"","ceoName":"김대표"}
+                """;
+
+        mockMvc.perform(post("/api/v1/companies")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").exists())
+                .andDo(document("company-create-validation-error",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    @Test
+    @DisplayName("등록 정책(등급 한도/마스터 유효성 등)에 걸리면 400(정책 위반 메시지) 를 반환한다")
+    void createMyCompany_policyViolation() throws Exception {
+        // 정책 위반은 서비스가 BusinessException(400)으로 던진다. 대표로 카테고리 한도 초과를 사용한다.
+        given(companyService.createByUser(eq(7L), any(CompanyCreateRequest.class)))
+                .willThrow(new BusinessException(CompanyErrorCode.CATEGORY_LIMIT_EXCEEDED));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(post("/api/v1/companies")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.full())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("현재 등급에서 선택 가능한 카테고리 개수를 초과했습니다."))
+                .andDo(document("company-create-policy-violation",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    @Test
+    @DisplayName("공개 상세 조회는 인증 없이도 공개 프로필(meta 제외)을 반환한다")
+    void getCompany_public_success() throws Exception {
+        given(companyQueryService.getPublic(1L)).willReturn(CompanyResponseSamples.fullPublic());
+
+        mockMvc.perform(get("/api/v1/companies/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(1L))
+                .andExpect(jsonPath("$.data.companyName").value("플랜틀리테크"))
+                .andExpect(jsonPath("$.data.representativeContact.contactName").value("이담당"))
+                .andDo(document("company-public-detail",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        responseFields(CompanyApiDocs.companyPublicResponseFields())));
+    }
+
+    @Test
+    @DisplayName("소유자 전용 조회는 멤버 본인에게 profile + 내부·운영 meta 를 반환한다")
+    void getMyCompany_owner_success() throws Exception {
+        given(companyQueryService.getOwnerView(eq(9L), eq(7L)))
+                .willReturn(CompanyResponseSamples.fullDetail());
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/companies/{id}/private", 9L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.profile.companyName").value("플랜틀리테크"))
+                .andExpect(jsonPath("$.data.meta.businessNumber").value("1234567890"))
+                .andExpect(jsonPath("$.data.meta.ownerUserId").value(7L))
+                .andDo(document("company-owner-detail",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        responseFields(CompanyApiDocs.companyDetailResponseFields())));
+    }
+
+    @Test
+    @DisplayName("공개 조회 대상 회사가 없거나 삭제됐으면 404(COMPANY_NOT_FOUND) 를 반환한다")
+    void getCompany_notFound() throws Exception {
+        given(companyQueryService.getPublic(404L))
+                .willThrow(new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+
+        mockMvc.perform(get("/api/v1/companies/{id}", 404L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("존재하지 않는 회사입니다."))
+                .andDo(document("company-public-detail-not-found",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    @Test
+    @DisplayName("소유자 전용 조회를 멤버가 아닌 유저가 호출하면 403(COMPANY_ACCESS_DENIED) 를 반환한다")
+    void getMyCompany_accessDenied() throws Exception {
+        given(companyQueryService.getOwnerView(eq(9L), eq(7L)))
+                .willThrow(new BusinessException(CompanyErrorCode.COMPANY_ACCESS_DENIED));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/companies/{id}/private", 9L))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("해당 회사에 대한 접근 권한이 없습니다."))
+                .andDo(document("company-owner-detail-forbidden",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
     @AfterEach
