@@ -72,4 +72,154 @@ public class CompanyApiDocs {
                 fieldWithPath("error").type(JsonFieldType.STRING).optional().description("에러 메시지 (성공 시 생략됨)")
         };
     }
+
+    // 실패 응답(ApiResponse.failure). success=false + error 만 존재하고 message/data 는 NON_NULL 로 생략된다.
+    public static FieldDescriptor[] errorResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부 (실패 시 false)"),
+                fieldWithPath("error").type(JsonFieldType.STRING).description("에러 메시지")
+        };
+    }
+
+    // 공개 상세 조회 응답(ApiResponse<CompanyPublicResponse>). data 가 곧 공개 프로필이다.
+    public static FieldDescriptor[] companyPublicResponseFields() {
+        return concat(
+                envelopeFields("공개 회사 프로필"),
+                profileFields("data."));
+    }
+
+    // 소유자/관리자 상세 조회 응답(ApiResponse<CompanyDetailResponse>). data = profile(공개) + meta(내부·운영).
+    public static FieldDescriptor[] companyDetailResponseFields() {
+        return concat(
+                envelopeFields("회사 상세 (profile + meta)"),
+                new FieldDescriptor[]{
+                        fieldWithPath("data.profile").type(JsonFieldType.OBJECT).description("공개 프로필 (공개 조회 응답과 동일)")
+                },
+                profileFields("data.profile."),
+                metaFields("data.meta."));
+    }
+
+    // ApiResponse 공통 봉투 필드 (data 객체 자체 포함, 내부 필드는 호출부에서 이어 붙인다).
+    private static FieldDescriptor[] envelopeFields(String dataDescription) {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
+                fieldWithPath("message").type(JsonFieldType.STRING).optional().description("응답 메시지 (조회는 생략될 수 있음)"),
+                fieldWithPath("error").type(JsonFieldType.STRING).optional().description("에러 메시지 (성공 시 생략됨)"),
+                fieldWithPath("data").type(JsonFieldType.OBJECT).description(dataDescription)
+        };
+    }
+
+    // CompanyPublicResponse 본문 필드. prefix 로 data. / data.profile. 둘 다에 재사용한다.
+    private static FieldDescriptor[] profileFields(String p) {
+        return new FieldDescriptor[]{
+                fieldWithPath(p + "id").type(JsonFieldType.NUMBER).description("회사 ID"),
+                fieldWithPath(p + "companyName").type(JsonFieldType.STRING).description("기업 이름"),
+                fieldWithPath(p + "ceoName").type(JsonFieldType.STRING).description("대표자"),
+                fieldWithPath(p + "establishmentDate").type(JsonFieldType.STRING).optional().description("설립일 (yyyy-MM-dd)"),
+                fieldWithPath(p + "postalCode").type(JsonFieldType.STRING).optional().description("우편번호"),
+                fieldWithPath(p + "address").type(JsonFieldType.STRING).optional().description("주소"),
+                fieldWithPath(p + "detailAddress").type(JsonFieldType.STRING).optional().description("상세주소"),
+                fieldWithPath(p + "website").type(JsonFieldType.STRING).optional().description("기업 홈페이지"),
+                fieldWithPath(p + "logoUrl").type(JsonFieldType.STRING).optional().description("로고 이미지 URL"),
+                fieldWithPath(p + "introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약"),
+                fieldWithPath(p + "content").type(JsonFieldType.STRING).optional().description("소개글"),
+                fieldWithPath(p + "trlLevel").type(JsonFieldType.STRING).optional().description("기술성숙도"),
+                fieldWithPath(p + "videoUrl").type(JsonFieldType.STRING).optional().description("동영상 링크"),
+                fieldWithPath(p + "leadTime").type(JsonFieldType.STRING).optional().description("예상 리드타임"),
+                fieldWithPath(p + "asInfo").type(JsonFieldType.STRING).optional().description("유지보수/AS 정보"),
+                fieldWithPath(p + "pricingType").type(JsonFieldType.STRING).optional().description("견적 산출 방식"),
+                fieldWithPath(p + "brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러"),
+                fieldWithPath(p + "verified").type(JsonFieldType.BOOLEAN).description("인증 배지 노출 여부"),
+                fieldWithPath(p + "featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
+                fieldWithPath(p + "spotlight").type(JsonFieldType.BOOLEAN).description("스포트라이트 노출 여부"),
+
+                // 대표 연락처 1건 (없으면 null)
+                fieldWithPath(p + "representativeContact").type(JsonFieldType.OBJECT).optional().description("대표 연락처 (없으면 null)"),
+                fieldWithPath(p + "representativeContact.contactName").type(JsonFieldType.STRING).optional().description("담당자명"),
+                fieldWithPath(p + "representativeContact.position").type(JsonFieldType.STRING).optional().description("직책"),
+                fieldWithPath(p + "representativeContact.phone").type(JsonFieldType.STRING).optional().description("전화번호"),
+                fieldWithPath(p + "representativeContact.email").type(JsonFieldType.STRING).optional().description("이메일"),
+
+                // 갤러리 이미지 목록
+                fieldWithPath(p + "galleryImages").type(JsonFieldType.ARRAY).description("회사 갤러리 이미지 목록"),
+                fieldWithPath(p + "galleryImages[].imageUrl").type(JsonFieldType.STRING).description("이미지 URL"),
+                fieldWithPath(p + "galleryImages[].imageType").type(JsonFieldType.STRING).description("이미지 타입"),
+                fieldWithPath(p + "galleryImages[].displayOrder").type(JsonFieldType.NUMBER).description("표시 순서"),
+
+                // 대표 레퍼런스 1건 + 표지 썸네일 (없으면 null)
+                fieldWithPath(p + "representativeReference").type(JsonFieldType.OBJECT).optional().description("대표 프로젝트 레퍼런스 (없으면 null)"),
+                fieldWithPath(p + "representativeReference.projectTitle").type(JsonFieldType.STRING).optional().description("프로젝트명"),
+                fieldWithPath(p + "representativeReference.achievements").type(JsonFieldType.STRING).optional().description("성과"),
+                fieldWithPath(p + "representativeReference.partners").type(JsonFieldType.STRING).optional().description("협력사"),
+                fieldWithPath(p + "representativeReference.period").type(JsonFieldType.STRING).optional().description("기간"),
+                fieldWithPath(p + "representativeReference.thumbnailUrl").type(JsonFieldType.STRING).optional().description("표지 썸네일 URL (없으면 null)"),
+
+                fieldWithPath(p + "materialNames").type(JsonFieldType.ARRAY).description("취급 소재명 목록"),
+                fieldWithPath(p + "equipmentNames").type(JsonFieldType.ARRAY).description("보유 설비명 목록"),
+                fieldWithPath(p + "tagNames").type(JsonFieldType.ARRAY).description("태그 목록"),
+
+                fieldWithPath(p + "categories").type(JsonFieldType.ARRAY).description("카테고리 목록"),
+                fieldWithPath(p + "categories[].id").type(JsonFieldType.NUMBER).description("카테고리 ID"),
+                fieldWithPath(p + "categories[].categoryName").type(JsonFieldType.STRING).description("카테고리명"),
+                fieldWithPath(p + "categories[].categoryCode").type(JsonFieldType.STRING).description("카테고리 코드"),
+                fieldWithPath(p + "categories[].depth").type(JsonFieldType.NUMBER).description("계층 깊이"),
+                fieldWithPath(p + "categories[].iconUrl").type(JsonFieldType.STRING).optional().description("아이콘 URL"),
+
+                fieldWithPath(p + "certifications").type(JsonFieldType.ARRAY).description("인증 목록"),
+                fieldWithPath(p + "certifications[].id").type(JsonFieldType.NUMBER).description("인증 ID"),
+                fieldWithPath(p + "certifications[].certificationName").type(JsonFieldType.STRING).description("인증명"),
+
+                fieldWithPath(p + "countries").type(JsonFieldType.ARRAY).description("수출 국가 목록"),
+                fieldWithPath(p + "countries[].id").type(JsonFieldType.NUMBER).description("국가 ID"),
+                fieldWithPath(p + "countries[].code").type(JsonFieldType.STRING).description("국가 코드"),
+                fieldWithPath(p + "countries[].nameKo").type(JsonFieldType.STRING).description("국가명(한글)"),
+                fieldWithPath(p + "countries[].nameEn").type(JsonFieldType.STRING).description("국가명(영문)"),
+                fieldWithPath(p + "countries[].continent").type(JsonFieldType.STRING).description("대륙"),
+
+                fieldWithPath(p + "regions").type(JsonFieldType.ARRAY).description("국내 지역 목록"),
+                fieldWithPath(p + "regions[].id").type(JsonFieldType.NUMBER).description("지역 ID"),
+                fieldWithPath(p + "regions[].code").type(JsonFieldType.STRING).description("지역 코드"),
+                fieldWithPath(p + "regions[].name").type(JsonFieldType.STRING).description("지역명"),
+                fieldWithPath(p + "regions[].level").type(JsonFieldType.STRING).description("지역 레벨"),
+
+                fieldWithPath(p + "industries").type(JsonFieldType.ARRAY).description("산업군 목록"),
+                fieldWithPath(p + "industries[].id").type(JsonFieldType.NUMBER).description("산업군 ID"),
+                fieldWithPath(p + "industries[].industryName").type(JsonFieldType.STRING).description("산업군명"),
+                fieldWithPath(p + "industries[].industryCode").type(JsonFieldType.STRING).description("산업군 코드"),
+                fieldWithPath(p + "industries[].iconUrl").type(JsonFieldType.STRING).optional().description("아이콘 URL")
+        };
+    }
+
+    // CompanyDetailResponse.ManagementMeta 필드 (소유자/관리자에게만 보이는 내부·운영 메타).
+    private static FieldDescriptor[] metaFields(String p) {
+        return new FieldDescriptor[]{
+                fieldWithPath(p.substring(0, p.length() - 1)).type(JsonFieldType.OBJECT).description("내부·운영 메타데이터 (소유자/관리자 전용)"),
+                fieldWithPath(p + "businessNumber").type(JsonFieldType.STRING).optional().description("사업자번호"),
+                fieldWithPath(p + "registrationSource").type(JsonFieldType.STRING).description("등록 출처 (USER / ADMIN)"),
+                fieldWithPath(p + "registeredBy").type(JsonFieldType.NUMBER).optional().description("등록한 관리자 ID (유저 자가등록이면 null)"),
+                fieldWithPath(p + "ownerUserId").type(JsonFieldType.NUMBER).optional().description("소유 유저 ID (미연동이면 null)"),
+                fieldWithPath(p + "claimed").type(JsonFieldType.BOOLEAN).description("소유자 연동 여부"),
+                fieldWithPath(p + "spotlightOrder").type(JsonFieldType.NUMBER).description("스포트라이트 노출 순서값"),
+                fieldWithPath(p + "verified").type(JsonFieldType.BOOLEAN).description("인증 여부"),
+                fieldWithPath(p + "featured").type(JsonFieldType.BOOLEAN).description("추천 여부"),
+                fieldWithPath(p + "spotlight").type(JsonFieldType.BOOLEAN).description("스포트라이트 여부"),
+                fieldWithPath(p + "deleted").type(JsonFieldType.BOOLEAN).description("소프트 삭제 여부"),
+                fieldWithPath(p + "createdAt").type(JsonFieldType.STRING).description("생성 시각"),
+                fieldWithPath(p + "updatedAt").type(JsonFieldType.STRING).description("수정 시각")
+        };
+    }
+
+    private static FieldDescriptor[] concat(FieldDescriptor[]... groups) {
+        int total = 0;
+        for (FieldDescriptor[] g : groups) {
+            total += g.length;
+        }
+        FieldDescriptor[] merged = new FieldDescriptor[total];
+        int i = 0;
+        for (FieldDescriptor[] g : groups) {
+            System.arraycopy(g, 0, merged, i, g.length);
+            i += g.length;
+        }
+        return merged;
+    }
 }

@@ -22,7 +22,6 @@ class AuthAcceptanceTest extends AcceptanceTest {
 
     // 인증이 필요한 임의의 보호 자원(핸들러는 없음). 미인증이면 401, 인증되면 인가 게이트를 통과해 404가 된다.
     private static final String PROTECTED_PATH = "/api/v1/users/me";
-    private static final String VALID_PASSWORD = "Password1!"; // 10자 + 특수문자 (검증 규칙 통과)
 
     @Autowired
     private UserRepository userRepository;
@@ -174,46 +173,5 @@ class AuthAcceptanceTest extends AcceptanceTest {
                 .then()
                 .statusCode(403)
                 .body("error", equalTo("접근 권한이 없습니다."));
-    }
-
-    // ---- helpers ----
-
-    private String issueCsrfToken(CookieFilter cookies) {
-        return given()
-                .filter(cookies)
-                .when()
-                .get("/api/v1/auth/csrf")
-                .then()
-                .statusCode(200)
-                .extract()
-                .cookie("XSRF-TOKEN");
-    }
-
-    private Response signUp(CookieFilter cookies, String csrf, String email) {
-        String body = """
-                {"email":"%s","password":"%s","reWritePassword":"%s","name":"홍길동","phone":"01012345678"}
-                """.formatted(email, VALID_PASSWORD, VALID_PASSWORD);
-
-        return given()
-                .filter(cookies)
-                .header("X-XSRF-TOKEN", csrf)
-                .contentType(ContentType.JSON)
-                .body(body)
-                .when()
-                .post("/api/v1/users/sign-up");
-    }
-
-    private Response login(CookieFilter cookies, String csrf, String email, String password, boolean remember) {
-        String body = """
-                {"email":"%s","password":"%s","remember":%b}
-                """.formatted(email, password, remember);
-
-        return given()
-                .filter(cookies)
-                .header("X-XSRF-TOKEN", csrf)
-                .contentType(ContentType.JSON)
-                .body(body)
-                .when()
-                .post("/api/v1/auth/login");
     }
 }
