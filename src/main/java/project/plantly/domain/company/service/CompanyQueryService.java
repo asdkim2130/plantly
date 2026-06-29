@@ -1,6 +1,8 @@
 package project.plantly.domain.company.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
@@ -9,6 +11,10 @@ import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
+import project.plantly.domain.company.search.CompanySearchCriteria;
+import project.plantly.domain.company.search.CompanySearchRepository;
+import project.plantly.domain.company.search.dto.CompanySummary;
+import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
 
 // 회사 상세 조회 전담 서비스. 등록(CompanyService)과 분리한 읽기 전용 경로.
@@ -22,6 +28,14 @@ public class CompanyQueryService {
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanyAggregateLoader aggregateLoader;
+    private final CompanySearchRepository companySearchRepository;
+
+    // 공개 회사 목록/검색: 통합 키워드 + 고급 + 패싯(인증/산업군/카테고리 서브트리). 색인된·비삭제 회사만,
+    // 기본 정렬(spotlight→featured→최신). 엔진 교체(PG↔ES)는 CompanySearchRepository 뒤에서만 일어난다.
+    public PageResponse<CompanySummary> search(CompanySearchCriteria criteria, Pageable pageable) {
+        Page<CompanySummary> page = companySearchRepository.search(criteria, pageable);
+        return PageResponse.of(page.getContent(), page.getTotalElements(), pageable);
+    }
 
     // 공개(비소유자) 조회: 소프트 삭제된 회사는 미존재로 취급한다.
     public CompanyPublicResponse getPublic(Long companyId) {

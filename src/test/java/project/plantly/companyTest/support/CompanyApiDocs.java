@@ -2,8 +2,10 @@ package project.plantly.companyTest.support;
 
 import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.restdocs.payload.JsonFieldType;
+import org.springframework.restdocs.request.ParameterDescriptor;
 
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 
 // 회사 등록 API 의 요청/응답 필드 문서 디스크립터.
 // 유저 등록(CompanyController)과 관리자 등록(AdminCompanyController)이 동일한 요청/응답 형태라 두 슬라이스 테스트가 공유한다.
@@ -78,6 +80,46 @@ public class CompanyApiDocs {
         return new FieldDescriptor[]{
                 fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부 (실패 시 false)"),
                 fieldWithPath("error").type(JsonFieldType.STRING).description("에러 메시지")
+        };
+    }
+
+    // 목록/검색 쿼리 파라미터(GET /api/v1/companies). 전부 선택적.
+    public static ParameterDescriptor[] companySearchQueryParameters() {
+        return new ParameterDescriptor[]{
+                parameterWithName("keyword").optional().description("통합 키워드 (공백으로 나눈 토큰 AND, 회사명·소개·레퍼런스 등 전체 텍스트 부분일치)"),
+                parameterWithName("companyName").optional().description("고급검색: 회사명"),
+                parameterWithName("introTitle").optional().description("고급검색: 한 줄 요약"),
+                parameterWithName("content").optional().description("고급검색: 소개글"),
+                parameterWithName("ceoName").optional().description("고급검색: 대표자"),
+                parameterWithName("address").optional().description("고급검색: 주소"),
+                parameterWithName("detailAddress").optional().description("고급검색: 상세주소"),
+                parameterWithName("reference").optional().description("고급검색: 레퍼런스(프로젝트명·성과·협력사)"),
+                parameterWithName("equipment").optional().description("고급검색: 보유 설비"),
+                parameterWithName("material").optional().description("고급검색: 취급 소재"),
+                parameterWithName("certificationIds").optional().description("인증 ID 목록 (선택 중 하나라도 보유)"),
+                parameterWithName("industryIds").optional().description("산업군 ID 목록 (선택 중 하나라도 보유)"),
+                parameterWithName("categoryIds").optional().description("카테고리 ID 목록 (대분류 선택 시 후손 서브트리까지 매칭)"),
+                parameterWithName("page").optional().description("페이지 번호 (1-base 입력)"),
+                parameterWithName("size").optional().description("페이지 크기 (기본 20, 최대 100)")
+        };
+    }
+
+    // 목록/검색 응답(ApiResponse<PageResponse<CompanySummary>>). content[] = 요약 카드, pageInfo = 페이지 메타.
+    public static FieldDescriptor[] companySearchResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
+                fieldWithPath("data.content[].id").type(JsonFieldType.NUMBER).description("회사 ID"),
+                fieldWithPath("data.content[].companyName").type(JsonFieldType.STRING).description("기업 이름"),
+                fieldWithPath("data.content[].introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약 (없으면 null)"),
+                fieldWithPath("data.content[].logoUrl").type(JsonFieldType.STRING).description("로고 이미지 URL"),
+                fieldWithPath("data.content[].address").type(JsonFieldType.STRING).description("주소"),
+                fieldWithPath("data.content[].verified").type(JsonFieldType.BOOLEAN).description("관리자 인증 여부"),
+                fieldWithPath("data.content[].featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
+                fieldWithPath("data.content[].spotlight").type(JsonFieldType.BOOLEAN).description("스팟라이트 노출 여부"),
+                fieldWithPath("data.pageInfo.pageNumber").type(JsonFieldType.NUMBER).description("현재 페이지 (1-base)"),
+                fieldWithPath("data.pageInfo.size").type(JsonFieldType.NUMBER).description("페이지 크기"),
+                fieldWithPath("data.pageInfo.totalElement").type(JsonFieldType.NUMBER).description("전체 건수"),
+                fieldWithPath("data.pageInfo.totalPage").type(JsonFieldType.NUMBER).description("전체 페이지 수")
         };
     }
 

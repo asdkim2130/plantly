@@ -188,6 +188,31 @@ include::{snippets}/company-create-policy-violation/response-fields.adoc[]
 | 존재하지 않는 산업군 ID | 존재하지 않는 산업군이 포함되어 있습니다.
 |===
 
+[[company-search]]
+=== 회사 목록/검색 (공개)
+
+회사를 검색·브라우즈합니다. 누구에게나 열려 있는 공개 API 로, 인증이 필요 없습니다.
+
+검색은 세 축으로 조합됩니다(모두 선택적, 지정한 것만 AND 로 적용):
+
+* *통합 키워드* (`keyword`): 회사명·소개·레퍼런스·설비·소재 등 전체 텍스트에 부분일치. 공백으로 나눈 여러 토큰은 모두 포함(AND).
+* *고급검색* (`companyName`/`content`/`reference` 등): 지정한 필드에만 부분일치.
+* *패싯* (`certificationIds`/`industryIds`/`categoryIds`): 선택한 ID 중 하나라도 보유한 회사(차원 내 OR). 카테고리는 대분류를 고르면 그 후손 서브트리까지 매칭됩니다.
+
+정렬은 스팟라이트 → 추천 → 최신 순으로 고정이며, 결과는 요약 카드 형태로 페이징됩니다.
+
+==== 요청
+
+include::{snippets}/company-search/http-request.adoc[]
+
+include::{snippets}/company-search/query-parameters.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-search/http-response.adoc[]
+
+include::{snippets}/company-search/response-fields.adoc[]
+
 [[company-public-detail]]
 === 회사 상세 조회 (공개)
 
