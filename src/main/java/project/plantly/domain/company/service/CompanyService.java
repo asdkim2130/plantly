@@ -10,6 +10,7 @@ import project.plantly.domain.company.policy.CompanyRegistrationContext;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
+import project.plantly.domain.company.search.CompanySearchDocumentWriter;
 
 import java.util.List;
 
@@ -25,6 +26,9 @@ public class CompanyService {
 
     // 회사-유저 멤버십. 자가등록 시 등록자를 OWNER 로 1건 기록한다.
     private final CompanyMemberRepository companyMemberRepository;
+
+    // 검색 동기화. 본체·자식·링크 저장 후 비정규화 검색 도큐먼트와 카테고리 closure 를 재생성한다.
+    private final CompanySearchDocumentWriter searchDocumentWriter;
 
     // 등록 정책 모음. 정책 내용은 각 구현체가 소유하며, 서비스는 주입받은 정책들을 실행만 한다.
     // 새 정책은 CompanyRegistrationPolicy 구현 @Component 추가만으로 자동 합류한다.
@@ -66,6 +70,8 @@ public class CompanyService {
         companyRepository.save(company);
         childWriter.write(company, request);
         linkWriter.write(company, request);
+        // 자식·링크가 모두 저장된 뒤라야 도큐먼트 집계와 카테고리 closure 가 온전하다.
+        searchDocumentWriter.write(company.getId());
         return company.getId();
     }
 }

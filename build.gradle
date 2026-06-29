@@ -54,6 +54,13 @@ dependencies {
 	// RestAssured
 	testImplementation 'io.rest-assured:rest-assured:5.4.0'
 
+	// Testcontainers: 검색(pg_trgm/GIN) 통합 테스트용 일회용 Postgres. H2 로는 trgm 검증 불가.
+	// Boot 4 BOM 은 testcontainers core 를 2.0.5 로 올리는데 postgresql/junit-jupiter 모듈은
+	// 2.x 가 없다(1.21.4 가 최신). → classic 1.21.4 로 통일(아래 resolutionStrategy 에서 core 강제)하고,
+	// Boot 통합 모듈(spring-boot-testcontainers) 없이 @DynamicPropertySource 로 직접 와이어링한다.
+	testImplementation 'org.testcontainers:junit-jupiter:1.21.4'
+	testImplementation 'org.testcontainers:postgresql:1.21.4'
+
 	// Spring REST Docs (MockMvc 기반 스니펫 생성)
 	testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
 
@@ -71,6 +78,11 @@ configurations.matching { it.name.toLowerCase().contains('test') }.configureEach
 	resolutionStrategy.eachDependency {
 		if (it.requested.group == 'org.apache.groovy') {
 			it.useVersion '4.0.16'
+		}
+		// Boot 4 BOM 이 testcontainers core 를 2.0.5 로 끌어올리지만 postgresql/junit-jupiter 모듈은
+		// 1.21.4 가 최신이라 어긋난다. core 를 포함해 org.testcontainers 전체를 1.21.4 로 고정한다.
+		if (it.requested.group == 'org.testcontainers') {
+			it.useVersion '1.21.4'
 		}
 	}
 }
