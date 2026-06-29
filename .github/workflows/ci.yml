@@ -6,31 +6,17 @@ on:
   pull_request:
     branches: [ main ]
 
+# 일반 테스트는 test 프로파일 = H2(임베디드)로 실행한다.
+# pg_trgm/GIN 이 필요한 검색 테스트는 코드 레벨에서 Testcontainers 가 자체 PG 컨테이너를 띄우므로
+# (ubuntu-latest 에 Docker 내장) 더 이상 워크플로의 PG 서비스/주입이 필요 없다.
 env:
   SPRING_PROFILES_ACTIVE: test
-  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
 jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        options: >-
-          --health-cmd "pg_isready -U user -d market_practice_db"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -54,14 +40,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Tests
-        run: |
-          ./gradlew \
-            -Dspring.profiles.active=test \
-            -Dspring.datasource.url=jdbc:postgresql://localhost:5432/${{ secrets.POSTGRES_DB }} \
-            -Dspring.datasource.username=${{ secrets.POSTGRES_USER }} \
-            -Dspring.datasource.password=${{ secrets.POSTGRES_PASSWORD }} \
-            test \
-            --no-daemon
+        run: ./gradlew test --no-daemon
   build:
     name: Build Application
     needs: test

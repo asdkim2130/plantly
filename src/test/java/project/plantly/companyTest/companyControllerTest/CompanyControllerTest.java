@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.RestDocumentationContextProvider;
@@ -30,14 +30,21 @@ import project.plantly.companyTest.support.CompanyResponseSamples;
 import project.plantly.domain.company.controller.CompanyController;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.search.CompanySearchCriteria;
+import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
+import project.plantly.global.PageInfo;
+import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
 import project.plantly.global.security.UserPrincipal;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -51,6 +58,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.requestF
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
+import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -207,6 +215,26 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.error").value("해당 회사에 대한 접근 권한이 없습니다."))
                 .andDo(document("company-owner-detail-forbidden",
                         responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    @Test
+    @DisplayName("공개 회사 목록/검색은 인증 없이 페이징된 요약 카드를 반환한다")
+    void searchCompanies_public_success() throws Exception {
+        CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
+                "https://cdn/logo.png", "서울 강남구", true, false, true);
+        PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
+        given(companyQueryService.search(any(CompanySearchCriteria.class), any(Pageable.class))).willReturn(page);
+
+        mockMvc.perform(get("/api/v1/companies?keyword=스마트팜&categoryIds=1&page=1&size=20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].id").value(1L))
+                .andExpect(jsonPath("$.data.content[0].companyName").value("플랜틀리"))
+                .andExpect(jsonPath("$.data.content[0].spotlight").value(true))
+                .andExpect(jsonPath("$.data.pageInfo.totalElement").value(1))
+                .andDo(document("company-search",
+                        queryParameters(CompanyApiDocs.companySearchQueryParameters()),
+                        responseFields(CompanyApiDocs.companySearchResponseFields())));
     }
 
     @AfterEach

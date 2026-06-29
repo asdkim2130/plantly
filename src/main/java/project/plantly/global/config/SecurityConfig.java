@@ -78,6 +78,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/sign-up", "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
+                        // 공개 회사 목록/검색은 누구에게나 허용. (단일 세그먼트라 /{id}·/private·/admin 과 구분된다)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/companies").permitAll()
                         // 공개 회사 상세 조회는 누구에게나 허용(공개 안전 필드만 반환). 소유자 전용(.../private)·관리자 경로는 제외된다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/companies/{id}").permitAll()
                         // 관리자 전용 엔드포인트 추가 시: .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")

@@ -16,6 +16,7 @@ import project.plantly.domain.company.policy.CompanyRegistrationContext;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
+import project.plantly.domain.company.search.CompanySearchDocumentWriter;
 import project.plantly.domain.company.service.CompanyChildWriter;
 import project.plantly.domain.company.service.CompanyLinkWriter;
 import project.plantly.domain.company.service.CompanyService;
@@ -45,12 +46,13 @@ class CompanyServiceTest {
     @Mock CompanyChildWriter childWriter;
     @Mock CompanyLinkWriter linkWriter;
     @Mock CompanyMemberRepository companyMemberRepository;
+    @Mock CompanySearchDocumentWriter searchDocumentWriter;
 
     private final CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().build();
 
     // 정책 리스트는 테스트마다 다르므로 생성자 직접 호출로 주입한다. (Mockito 가 List<인터페이스> mock 을 자동 주입하지 못함)
     private CompanyService service(CompanyRegistrationPolicy... policies) {
-        return new CompanyService(companyRepository, childWriter, linkWriter, companyMemberRepository, List.of(policies));
+        return new CompanyService(companyRepository, childWriter, linkWriter, companyMemberRepository, searchDocumentWriter, List.of(policies));
     }
 
     // companyRepository.save 가 INSERT 후 id 를 채우는 것을 흉내낸다. (persist 가 직후 company.getId() 를 읽음)
@@ -74,6 +76,7 @@ class CompanyServiceTest {
         verify(companyRepository).save(any(Company.class));
         verify(childWriter).write(any(Company.class), eq(request));
         verify(linkWriter).write(any(Company.class), eq(request));
+        verify(searchDocumentWriter).write(10L);
 
         ArgumentCaptor<CompanyMember> memberCaptor = ArgumentCaptor.forClass(CompanyMember.class);
         verify(companyMemberRepository).save(memberCaptor.capture());
@@ -113,6 +116,7 @@ class CompanyServiceTest {
         verify(companyRepository).save(any(Company.class));
         verify(childWriter).write(any(Company.class), eq(request));
         verify(linkWriter).write(any(Company.class), eq(request));
+        verify(searchDocumentWriter).write(20L);
         verify(companyMemberRepository, never()).save(any());
 
         ArgumentCaptor<CompanyRegistrationContext> ctx = ArgumentCaptor.forClass(CompanyRegistrationContext.class);
@@ -135,6 +139,7 @@ class CompanyServiceTest {
         verify(companyRepository, never()).save(any());
         verify(childWriter, never()).write(any(), any());
         verify(linkWriter, never()).write(any(), any());
+        verify(searchDocumentWriter, never()).write(any());
         verify(companyMemberRepository, never()).save(any());
     }
 
