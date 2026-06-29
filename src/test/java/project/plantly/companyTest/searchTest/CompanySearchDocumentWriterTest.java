@@ -42,7 +42,7 @@ class CompanySearchDocumentWriterTest extends PostgresContainerTest {
         em.persist(new CompanyProjectReference(company, "수직농장 구축", "생산성 30% 향상", "OO대학", "2024", 0));
         em.persist(new CompanyEquipment(company, "CNC 가공기", 0));
         em.persist(new CompanyMaterial(company, "알루미늄", 0));
-        em.persist(new CompanyCategory(company, child));
+        em.persist(new CompanyCategory(company, child, 0));
 
         // when
         writer.write(company.getId());

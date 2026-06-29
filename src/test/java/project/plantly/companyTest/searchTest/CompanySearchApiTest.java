@@ -53,7 +53,7 @@ class CompanySearchApiTest extends PostgresContainerTest {
         em.persist(child);
 
         Company a = persistCompany("가가", "x");
-        em.persist(new CompanyCategory(a, child));   // 중분류 연결 → closure 에 root 포함
+        em.persist(new CompanyCategory(a, child, 0));   // 중분류 연결 → closure 에 root 포함
         index(a);
         index(persistCompany("나나", "y"));            // 카테고리 없음
 

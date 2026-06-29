@@ -28,12 +28,17 @@ public class CompanyCertification {
     @JoinColumn(name = "certification_id", nullable = false)
     private Certification certification;
 
+    // 회사가 등록 시 선택한 순서(요청 순서). 조회/노출은 이 순서를 따른다.
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int displayOrder;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public CompanyCertification(Company company, Certification certification) {
+    public CompanyCertification(Company company, Certification certification, int displayOrder) {
         this.company = company;
         this.certification = certification;
+        this.displayOrder = displayOrder;
     }
 }

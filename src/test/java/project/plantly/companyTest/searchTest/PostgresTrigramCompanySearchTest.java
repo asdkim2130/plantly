@@ -67,10 +67,10 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
         em.persist(otherRoot);
 
         Company a = persistCompany("가가", "x");
-        em.persist(new CompanyCategory(a, child));      // 중분류 연결 → closure 에 root 포함
+        em.persist(new CompanyCategory(a, child, 0));      // 중분류 연결 → closure 에 root 포함
         index(a);
         Company b = persistCompany("나나", "y");
-        em.persist(new CompanyCategory(b, otherRoot));  // 다른 대분류
+        em.persist(new CompanyCategory(b, otherRoot, 0));  // 다른 대분류
         index(b);
 
         assertThat(ids(search(new CompanySearchCriteria(null, null, null, null, List.of(root.getId())))))
@@ -84,7 +84,7 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
         em.persist(iso);
 
         Company a = persistCompany("가가", "x");
-        em.persist(new CompanyCertification(a, iso));
+        em.persist(new CompanyCertification(a, iso, 0));
         index(a);
         index(persistCompany("나나", "y"));
 
@@ -112,8 +112,7 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
     void summaryAggregatesNames() {
         Category root = Category.createRoot("제조", "MFG", null, null, 0);
         em.persist(root);
-        // 이름순(정밀가공 < 조립)과 display_order(조립=0 먼저)가 어긋나게 둬서 display_order 정렬을 검증한다.
-        Category precision = Category.createChild(root, "정밀가공", "MFG-P", null, null, 1);
+        Category precision = Category.createChild(root, "정밀가공", "MFG-P", null, null, 0);
         em.persist(precision);
         Category assembly = Category.createChild(root, "조립", "MFG-A", null, null, 0);
         em.persist(assembly);
@@ -121,9 +120,10 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
         em.persist(industry);
 
         Company a = persistCompany("가가", "x");
-        em.persist(new CompanyCategory(a, precision));    // 직접 링크 = 중분류만 (대분류 제조는 closure 에만)
-        em.persist(new CompanyCategory(a, assembly));
-        em.persist(new CompanyIndustry(a, industry));
+        // 링크 displayOrder(=회사가 고른 순서)로 정렬됨 — 이름순(정밀가공<조립)이 아니라 선택 순서(조립=0, 정밀가공=1)를 따른다.
+        em.persist(new CompanyCategory(a, precision, 1)); // 직접 링크 = 중분류만 (대분류 제조는 closure 에만)
+        em.persist(new CompanyCategory(a, assembly, 0));
+        em.persist(new CompanyIndustry(a, industry, 0));
         em.persist(new CompanyTag(a, "스마트팜", 0));
         em.persist(new CompanyTag(a, "IoT", 1));
         index(a);
@@ -131,7 +131,7 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
         CompanySummary card = search(new CompanySearchCriteria(null, null, null, null, null))
                 .getContent().get(0);
 
-        assertThat(card.categoryNames()).containsExactly("조립", "정밀가공"); // display_order 0,1 (이름순 아님), 조상 제외
+        assertThat(card.categoryNames()).containsExactly("조립", "정밀가공"); // 링크 displayOrder 0,1 (이름순 아님), 조상 제외
         assertThat(card.tagNames()).containsExactly("스마트팜", "IoT");        // display_order 순
         assertThat(card.industryNames()).containsExactly("농업기술");
     }
