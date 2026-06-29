@@ -11,6 +11,7 @@ import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.repository.CompanyCategoryRepository;
 import project.plantly.domain.company.service.CompanyLinkWriter;
 
 import java.util.List;
@@ -28,6 +29,7 @@ class CompanyLinkWriterTest {
 
     @Autowired EntityManager em;
     @Autowired CompanyLinkWriter linkWriter;
+    @Autowired CompanyCategoryRepository companyCategoryRepository;
 
     @Test
     @DisplayName("카테고리 링크의 displayOrder 는 id 순이 아니라 요청에 담긴 순서를 따른다")
@@ -56,6 +58,11 @@ class CompanyLinkWriterTest {
                 .toList();
 
         assertThat(orderedCategoryIds).containsExactly(c3.getId(), c1.getId(), c2.getId());
+
+        // 상세 조회(CompanyAggregateLoader)가 쓰는 프로젝션도 displayOrder(=선택 순서) 순으로 반환한다.
+        List<Long> projectedCategoryIds = companyCategoryRepository.findCategoriesByCompanyId(company.getId())
+                .stream().map(Category::getId).toList();
+        assertThat(projectedCategoryIds).containsExactly(c3.getId(), c1.getId(), c2.getId());
     }
 
     private Category persistRoot(String name, String code) {
