@@ -1,6 +1,6 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '4.0.6'
+	id 'org.springframework.boot' version '3.5.16'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'org.asciidoctor.jvm.convert' version '4.0.4'
 }
@@ -24,29 +24,24 @@ ext {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-h2console'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
-	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'com.h2database:h2'
 	runtimeOnly 'org.postgresql:postgresql'
 
 	// Flyway: 검색 섬(pg_trgm/GIN/검색테이블)만 소유하는 하이브리드 마이그레이션.
-	// 엔티티 테이블은 계속 ddl-auto 가 관리한다. flyway-database-postgresql 은 PG 전용 모듈.
-	// Boot 4 는 자동구성이 모듈별로 분리돼 flyway-core 라이브러리만으론 통합이 안 켜진다 →
-	// spring-boot-flyway(자동구성 모듈, flyway-core 를 전이로 포함)를 써야 한다.
-	implementation 'org.springframework.boot:spring-boot-flyway'
+	// 엔티티 테이블은 계속 ddl-auto 가 관리한다. flyway-database-postgresql 은 Flyway 10+ PG 모듈.
+	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'
+
 	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
-	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:4.0.1'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
@@ -55,11 +50,9 @@ dependencies {
 	testImplementation 'io.rest-assured:rest-assured:5.4.0'
 
 	// Testcontainers: 검색(pg_trgm/GIN) 통합 테스트용 일회용 Postgres. H2 로는 trgm 검증 불가.
-	// Boot 4 BOM 은 testcontainers core 를 2.0.5 로 올리는데 postgresql/junit-jupiter 모듈은
-	// 2.x 가 없다(1.21.4 가 최신). → classic 1.21.4 로 통일(아래 resolutionStrategy 에서 core 강제)하고,
-	// Boot 통합 모듈(spring-boot-testcontainers) 없이 @DynamicPropertySource 로 직접 와이어링한다.
-	testImplementation 'org.testcontainers:junit-jupiter:1.21.4'
-	testImplementation 'org.testcontainers:postgresql:1.21.4'
+	// 버전은 Spring Boot BOM(현재 1.21.4)이 관리한다.
+	testImplementation 'org.testcontainers:junit-jupiter'
+	testImplementation 'org.testcontainers:postgresql'
 
 	// Spring REST Docs (MockMvc 기반 스니펫 생성)
 	testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
@@ -69,22 +62,6 @@ dependencies {
 	annotationProcessor "com.querydsl:querydsl-apt:${dependencyManagement.importedProperties['querydsl.version']}:jakarta"
 	annotationProcessor "jakarta.annotation:jakarta.annotation-api"
 	annotationProcessor "jakarta.persistence:jakarta.persistence-api"
-}
-
-// rest-assured 5.4.0은 Groovy 4와 호환된다. Spring Boot 4의 의존성 관리가 Groovy를 5.x로
-// 끌어올리면 rest-assured 내부 Groovy 메타클래스에서 NPE가 발생하므로, 테스트 클래스패스에서
-// Groovy를 4.0.16으로 고정한다.
-configurations.matching { it.name.toLowerCase().contains('test') }.configureEach {
-	resolutionStrategy.eachDependency {
-		if (it.requested.group == 'org.apache.groovy') {
-			it.useVersion '4.0.16'
-		}
-		// Boot 4 BOM 이 testcontainers core 를 2.0.5 로 끌어올리지만 postgresql/junit-jupiter 모듈은
-		// 1.21.4 가 최신이라 어긋난다. core 를 포함해 org.testcontainers 전체를 1.21.4 로 고정한다.
-		if (it.requested.group == 'org.testcontainers') {
-			it.useVersion '1.21.4'
-		}
-	}
 }
 
 tasks.named('test') {
