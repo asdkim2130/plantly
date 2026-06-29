@@ -11,8 +11,11 @@ import project.plantly.companyTest.support.PostgresContainerTest;
 import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.certification.Certification;
 import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.entity.CompanyTag;
 import project.plantly.domain.company.entity.link.CompanyCategory;
 import project.plantly.domain.company.entity.link.CompanyCertification;
+import project.plantly.domain.company.entity.link.CompanyIndustry;
+import project.plantly.domain.company.industry.Industry;
 import project.plantly.domain.company.search.CompanySearchCriteria;
 import project.plantly.domain.company.search.CompanySearchCriteria.AdvancedText;
 import project.plantly.domain.company.search.CompanySearchDocumentWriter;
@@ -64,10 +67,10 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
         em.persist(otherRoot);
 
         Company a = persistCompany("가가", "x");
-        em.persist(new CompanyCategory(a, child));      // 중분류 연결 → closure 에 root 포함
+        em.persist(new CompanyCategory(a, child, 0));      // 중분류 연결 → closure 에 root 포함
         index(a);
         Company b = persistCompany("나나", "y");
-        em.persist(new CompanyCategory(b, otherRoot));  // 다른 대분류
+        em.persist(new CompanyCategory(b, otherRoot, 0));  // 다른 대분류
         index(b);
 
         assertThat(ids(search(new CompanySearchCriteria(null, null, null, null, List.of(root.getId())))))
@@ -81,7 +84,7 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
         em.persist(iso);
 
         Company a = persistCompany("가가", "x");
-        em.persist(new CompanyCertification(a, iso));
+        em.persist(new CompanyCertification(a, iso, 0));
         index(a);
         index(persistCompany("나나", "y"));
 
@@ -102,6 +105,35 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
 
         assertThat(ids(search(new CompanySearchCriteria(null, null, null, null, null))))
                 .containsExactly(spot.getId(), feat.getId(), plain.getId());
+    }
+
+    @Test
+    @DisplayName("카드에 직접 연결한 카테고리/태그/산업군 이름을 display_order 순으로 집계 (closure 조상 제외)")
+    void summaryAggregatesNames() {
+        Category root = Category.createRoot("제조", "MFG", null, null, 0);
+        em.persist(root);
+        Category precision = Category.createChild(root, "정밀가공", "MFG-P", null, null, 0);
+        em.persist(precision);
+        Category assembly = Category.createChild(root, "조립", "MFG-A", null, null, 0);
+        em.persist(assembly);
+        Industry industry = Industry.create("농업기술", "AGRI", null, null, 0);
+        em.persist(industry);
+
+        Company a = persistCompany("가가", "x");
+        // 링크 displayOrder(=회사가 고른 순서)로 정렬됨 — 이름순(정밀가공<조립)이 아니라 선택 순서(조립=0, 정밀가공=1)를 따른다.
+        em.persist(new CompanyCategory(a, precision, 1)); // 직접 링크 = 중분류만 (대분류 제조는 closure 에만)
+        em.persist(new CompanyCategory(a, assembly, 0));
+        em.persist(new CompanyIndustry(a, industry, 0));
+        em.persist(new CompanyTag(a, "스마트팜", 0));
+        em.persist(new CompanyTag(a, "IoT", 1));
+        index(a);
+
+        CompanySummary card = search(new CompanySearchCriteria(null, null, null, null, null))
+                .getContent().get(0);
+
+        assertThat(card.categoryNames()).containsExactly("조립", "정밀가공"); // 링크 displayOrder 0,1 (이름순 아님), 조상 제외
+        assertThat(card.tagNames()).containsExactly("스마트팜", "IoT");        // display_order 순
+        assertThat(card.industryNames()).containsExactly("농업기술");
     }
 
     // ===== helpers =====

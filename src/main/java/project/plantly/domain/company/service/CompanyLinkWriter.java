@@ -3,9 +3,13 @@ package project.plantly.domain.company.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
+import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.category.CategoryRepository;
+import project.plantly.domain.company.certification.Certification;
 import project.plantly.domain.company.certification.CertificationRepository;
+import project.plantly.domain.company.country.Country;
 import project.plantly.domain.company.country.CountryRepository;
+import project.plantly.domain.company.domesticRegion.DomesticRegion;
 import project.plantly.domain.company.domesticRegion.DomesticRegionRepository;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.Company;
@@ -15,14 +19,19 @@ import project.plantly.domain.company.entity.link.CompanyCountry;
 import project.plantly.domain.company.entity.link.CompanyDomesticRegion;
 import project.plantly.domain.company.entity.link.CompanyIndustry;
 import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.industry.Industry;
 import project.plantly.domain.company.industry.IndustryRepository;
 import project.plantly.domain.company.repository.*;
 import project.plantly.global.exception.BusinessException;
 
 import java.util.List;
-import java.util.function.BiFunction;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 // 링크(M:N) 엔티티 저장 전담. 마스터 존재 검증 후 연결 엔티티를 생성·저장한다.
+// 각 링크의 displayOrder 는 회사가 등록 시 보낸 요청(선택) 순서로 부여한다.
 @Component
 @RequiredArgsConstructor
 public class CompanyLinkWriter {
@@ -43,37 +52,46 @@ public class CompanyLinkWriter {
 
     public void write(Company company, CompanyCreateRequest request) {
         companyCategoryRepository.saveAll(
-                buildLinks(request.categoryIds(), categoryRepository, company, CompanyCategory::new, CompanyErrorCode.CATEGORY_NOT_FOUND));
+                buildLinks(request.categoryIds(), categoryRepository, Category::getId, company, CompanyCategory::new, CompanyErrorCode.CATEGORY_NOT_FOUND));
         companyCertificationRepository.saveAll(
-                buildLinks(request.certificationIds(), certificationRepository, company, CompanyCertification::new, CompanyErrorCode.CERTIFICATION_NOT_FOUND));
+                buildLinks(request.certificationIds(), certificationRepository, Certification::getId, company, CompanyCertification::new, CompanyErrorCode.CERTIFICATION_NOT_FOUND));
         companyCountryRepository.saveAll(
-                buildLinks(request.countryIds(), countryRepository, company, CompanyCountry::new, CompanyErrorCode.COUNTRY_NOT_FOUND));
+                buildLinks(request.countryIds(), countryRepository, Country::getId, company, CompanyCountry::new, CompanyErrorCode.COUNTRY_NOT_FOUND));
         companyDomesticRegionRepository.saveAll(
-                buildLinks(request.domesticRegionIds(), domesticRegionRepository, company, CompanyDomesticRegion::new, CompanyErrorCode.DOMESTIC_REGION_NOT_FOUND));
+                buildLinks(request.domesticRegionIds(), domesticRegionRepository, DomesticRegion::getId, company, CompanyDomesticRegion::new, CompanyErrorCode.DOMESTIC_REGION_NOT_FOUND));
         companyIndustryRepository.saveAll(
-                buildLinks(request.industryIds(), industryRepository, company, CompanyIndustry::new, CompanyErrorCode.INDUSTRY_NOT_FOUND));
+                buildLinks(request.industryIds(), industryRepository, Industry::getId, company, CompanyIndustry::new, CompanyErrorCode.INDUSTRY_NOT_FOUND));
     }
 
     // 요청 ID 리스트 → 마스터 일괄 조회(중복 제거) → 누락 시 예외 → 링크 엔티티 생성.
-    // 마스터 조회를 findAllById 한 번으로 처리해 N+1 을 피한다.
+    // findAllById 는 입력 순서를 보존하지 않으므로, displayOrder 는 요청(선택) 순서 기준 인덱스로 부여한다.
     private <M, L> List<L> buildLinks(List<Long> ids,
                                       JpaRepository<M, Long> masterRepository,
+                                      Function<M, Long> idExtractor,
                                       Company company,
-                                      BiFunction<Company, M, L> linkFactory,
+                                      LinkFactory<M, L> linkFactory,
                                       CompanyErrorCode notFound) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
 
-        List<Long> distinctIds = ids.stream().distinct().toList();
+        List<Long> distinctIds = ids.stream().distinct().toList(); // 요청(선택) 순서 보존
         List<M> masters = masterRepository.findAllById(distinctIds);
 
         if (masters.size() != distinctIds.size()) {
             throw new BusinessException(notFound);
         }
 
-        return masters.stream()
-                .map(master -> linkFactory.apply(company, master))
+        Map<Long, M> mastersById = masters.stream().collect(Collectors.toMap(idExtractor, Function.identity()));
+
+        return IntStream.range(0, distinctIds.size())
+                .mapToObj(i -> linkFactory.create(company, mastersById.get(distinctIds.get(i)), i))
                 .toList();
+    }
+
+    // 링크 엔티티 생성 팩토리. (회사, 마스터, 선택 순서) → 링크 엔티티.
+    @FunctionalInterface
+    private interface LinkFactory<M, L> {
+        L create(Company company, M master, int displayOrder);
     }
 }

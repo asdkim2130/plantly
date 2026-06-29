@@ -28,12 +28,17 @@ public class CompanyDomesticRegion {
     @JoinColumn(name = "domestic_region_id", nullable = false)
     private DomesticRegion domesticRegion;
 
+    // 회사가 등록 시 선택한 순서(요청 순서). 조회/노출은 이 순서를 따른다.
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int displayOrder;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public CompanyDomesticRegion(Company company, DomesticRegion domesticRegion) {
+    public CompanyDomesticRegion(Company company, DomesticRegion domesticRegion, int displayOrder) {
         this.company = company;
         this.domesticRegion = domesticRegion;
+        this.displayOrder = displayOrder;
     }
 }

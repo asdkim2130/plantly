@@ -28,12 +28,17 @@ public class CompanyCountry {
     @JoinColumn(name = "country_id", nullable = false)
     private Country country;
 
+    // 회사가 등록 시 선택한 순서(요청 순서). 조회/노출은 이 순서를 따른다.
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int displayOrder;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public CompanyCountry(Company company, Country country) {
+    public CompanyCountry(Company company, Country country, int displayOrder) {
         this.company = company;
         this.country = country;
+        this.displayOrder = displayOrder;
     }
 }

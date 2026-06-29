@@ -144,22 +144,22 @@ public class CompanyAggregateSeeder {
     private void attachLinks(Company company) {
         Category category = Category.createRoot(CATEGORY_NAME, "CAT-001", "https://cdn.plantly.test/cat.png", "정밀가공 카테고리", 0);
         em.persist(category);
-        em.persist(new CompanyCategory(company, category));
+        em.persist(new CompanyCategory(company, category, 0));
 
         Certification certification = Certification.create(CERTIFICATION_NAME, 0);
         em.persist(certification);
-        em.persist(new CompanyCertification(company, certification));
+        em.persist(new CompanyCertification(company, certification, 0));
 
         Country country = Country.create("KR", "KOR", "410", COUNTRY_NAME_KO, "South Korea", Continent.ASIA);
         em.persist(country);
-        em.persist(new CompanyCountry(company, country));
+        em.persist(new CompanyCountry(company, country, 0));
 
         DomesticRegion region = DomesticRegion.create("1100000000", REGION_NAME, RegionLevel.SIDO, null);
         em.persist(region);
-        em.persist(new CompanyDomesticRegion(company, region));
+        em.persist(new CompanyDomesticRegion(company, region, 0));
 
         Industry industry = Industry.create(INDUSTRY_NAME, "IND-001", "https://cdn.plantly.test/ind.png", "기계 산업", 0);
         em.persist(industry);
-        em.persist(new CompanyIndustry(company, industry));
+        em.persist(new CompanyIndustry(company, industry, 0));
     }
 }
