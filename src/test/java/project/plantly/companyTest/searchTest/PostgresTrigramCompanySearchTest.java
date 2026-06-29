@@ -108,17 +108,21 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
     }
 
     @Test
-    @DisplayName("결과 카드에 직접 연결한 카테고리/태그/산업군 이름을 집계해 담는다 (closure 조상 제외)")
+    @DisplayName("카드에 직접 연결한 카테고리/태그/산업군 이름을 display_order 순으로 집계 (closure 조상 제외)")
     void summaryAggregatesNames() {
         Category root = Category.createRoot("제조", "MFG", null, null, 0);
         em.persist(root);
-        Category child = Category.createChild(root, "정밀가공", "MFG-P", null, null, 0);
-        em.persist(child);
+        // 이름순(정밀가공 < 조립)과 display_order(조립=0 먼저)가 어긋나게 둬서 display_order 정렬을 검증한다.
+        Category precision = Category.createChild(root, "정밀가공", "MFG-P", null, null, 1);
+        em.persist(precision);
+        Category assembly = Category.createChild(root, "조립", "MFG-A", null, null, 0);
+        em.persist(assembly);
         Industry industry = Industry.create("농업기술", "AGRI", null, null, 0);
         em.persist(industry);
 
         Company a = persistCompany("가가", "x");
-        em.persist(new CompanyCategory(a, child));        // 직접 링크 = 중분류만
+        em.persist(new CompanyCategory(a, precision));    // 직접 링크 = 중분류만 (대분류 제조는 closure 에만)
+        em.persist(new CompanyCategory(a, assembly));
         em.persist(new CompanyIndustry(a, industry));
         em.persist(new CompanyTag(a, "스마트팜", 0));
         em.persist(new CompanyTag(a, "IoT", 1));
@@ -127,8 +131,8 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
         CompanySummary card = search(new CompanySearchCriteria(null, null, null, null, null))
                 .getContent().get(0);
 
-        assertThat(card.categoryNames()).containsExactly("정밀가공");   // closure 의 조상(제조)은 빠짐
-        assertThat(card.tagNames()).containsExactly("스마트팜", "IoT");  // display_order 순
+        assertThat(card.categoryNames()).containsExactly("조립", "정밀가공"); // display_order 0,1 (이름순 아님), 조상 제외
+        assertThat(card.tagNames()).containsExactly("스마트팜", "IoT");        // display_order 순
         assertThat(card.industryNames()).containsExactly("농업기술");
     }
 

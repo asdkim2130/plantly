@@ -36,16 +36,16 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
             """;
 
     // 카드 + 회사가 연결한 카테고리/태그/산업군 이름을 회사당 array_agg 로 집계(페이지당 ≤size 행이라 상관 서브쿼리로 충분).
-    // 카테고리는 company_category 직접 링크만(closure 조상 제외).
+    // 카테고리는 company_category 직접 링크만(closure 조상 제외). 셋 다 마스터의 display_order(큐레이션 순)로 정렬.
     private static final String SELECT_CARD = """
             SELECT c.id, c.company_name, c.intro_title, c.logo_url, c.address,
                    c.verified, c.featured, c.spotlight,
-                   (SELECT array_agg(cat.category_name ORDER BY cat.category_name)
+                   (SELECT array_agg(cat.category_name ORDER BY cat.display_order)
                       FROM company_category cc JOIN category cat ON cat.id = cc.category_id
                       WHERE cc.company_id = c.id) AS category_names,
                    (SELECT array_agg(t.tag_name ORDER BY t.display_order)
                       FROM company_tag t WHERE t.company_id = c.id) AS tag_names,
-                   (SELECT array_agg(ind.industry_name ORDER BY ind.industry_name)
+                   (SELECT array_agg(ind.industry_name ORDER BY ind.display_order)
                       FROM company_industry ci JOIN industry ind ON ind.id = ci.industry_id
                       WHERE ci.company_id = c.id) AS industry_names
             """ + FROM;
