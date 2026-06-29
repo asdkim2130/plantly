@@ -13,8 +13,8 @@ CREATE TABLE company_search_document (
     ceo_name        TEXT,
     address         TEXT,
     detail_address  TEXT,
-    lead_time       TEXT,
-    as_info         TEXT,
+    -- lead_time/as_info 는 의도적 제외: 기간·양 필드라 부분일치 검색은 무의미(오탐만 늘림).
+    -- 차후 별도 범위 패싯(예: 보증기간/납기 구간 필터)으로 독립 모델링 예정.
     -- (B) 1:N 자식 집계 (string_agg)
     reference_text  TEXT,   -- projectTitle + achievements + partners
     equipment_text  TEXT,   -- equipmentName
