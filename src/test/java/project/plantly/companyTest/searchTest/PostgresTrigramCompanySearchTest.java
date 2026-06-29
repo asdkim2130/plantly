@@ -11,8 +11,11 @@ import project.plantly.companyTest.support.PostgresContainerTest;
 import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.certification.Certification;
 import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.entity.CompanyTag;
 import project.plantly.domain.company.entity.link.CompanyCategory;
 import project.plantly.domain.company.entity.link.CompanyCertification;
+import project.plantly.domain.company.entity.link.CompanyIndustry;
+import project.plantly.domain.company.industry.Industry;
 import project.plantly.domain.company.search.CompanySearchCriteria;
 import project.plantly.domain.company.search.CompanySearchCriteria.AdvancedText;
 import project.plantly.domain.company.search.CompanySearchDocumentWriter;
@@ -102,6 +105,31 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
 
         assertThat(ids(search(new CompanySearchCriteria(null, null, null, null, null))))
                 .containsExactly(spot.getId(), feat.getId(), plain.getId());
+    }
+
+    @Test
+    @DisplayName("결과 카드에 직접 연결한 카테고리/태그/산업군 이름을 집계해 담는다 (closure 조상 제외)")
+    void summaryAggregatesNames() {
+        Category root = Category.createRoot("제조", "MFG", null, null, 0);
+        em.persist(root);
+        Category child = Category.createChild(root, "정밀가공", "MFG-P", null, null, 0);
+        em.persist(child);
+        Industry industry = Industry.create("농업기술", "AGRI", null, null, 0);
+        em.persist(industry);
+
+        Company a = persistCompany("가가", "x");
+        em.persist(new CompanyCategory(a, child));        // 직접 링크 = 중분류만
+        em.persist(new CompanyIndustry(a, industry));
+        em.persist(new CompanyTag(a, "스마트팜", 0));
+        em.persist(new CompanyTag(a, "IoT", 1));
+        index(a);
+
+        CompanySummary card = search(new CompanySearchCriteria(null, null, null, null, null))
+                .getContent().get(0);
+
+        assertThat(card.categoryNames()).containsExactly("정밀가공");   // closure 의 조상(제조)은 빠짐
+        assertThat(card.tagNames()).containsExactly("스마트팜", "IoT");  // display_order 순
+        assertThat(card.industryNames()).containsExactly("농업기술");
     }
 
     // ===== helpers =====

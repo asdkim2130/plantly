@@ -35,9 +35,19 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
             JOIN company_search_document d ON d.company_id = c.id
             """;
 
+    // 카드 + 회사가 연결한 카테고리/태그/산업군 이름을 회사당 array_agg 로 집계(페이지당 ≤size 행이라 상관 서브쿼리로 충분).
+    // 카테고리는 company_category 직접 링크만(closure 조상 제외).
     private static final String SELECT_CARD = """
             SELECT c.id, c.company_name, c.intro_title, c.logo_url, c.address,
-                   c.verified, c.featured, c.spotlight
+                   c.verified, c.featured, c.spotlight,
+                   (SELECT array_agg(cat.category_name ORDER BY cat.category_name)
+                      FROM company_category cc JOIN category cat ON cat.id = cc.category_id
+                      WHERE cc.company_id = c.id) AS category_names,
+                   (SELECT array_agg(t.tag_name ORDER BY t.display_order)
+                      FROM company_tag t WHERE t.company_id = c.id) AS tag_names,
+                   (SELECT array_agg(ind.industry_name ORDER BY ind.industry_name)
+                      FROM company_industry ci JOIN industry ind ON ind.id = ci.industry_id
+                      WHERE ci.company_id = c.id) AS industry_names
             """ + FROM;
 
     // 기본 정렬: 스팟라이트 → 추천 → 최신. id 는 안정 페이징용 tie-breaker.
@@ -52,7 +62,19 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
             rs.getString("address"),
             rs.getBoolean("verified"),
             rs.getBoolean("featured"),
-            rs.getBoolean("spotlight"));
+            rs.getBoolean("spotlight"),
+            toList(rs.getArray("category_names")),
+            toList(rs.getArray("tag_names")),
+            toList(rs.getArray("industry_names")));
+
+    // PG text[] → List<String>. 매칭 행이 없으면 array_agg 는 NULL → 빈 리스트. null 원소는 제거.
+    private static List<String> toList(java.sql.Array array) throws java.sql.SQLException {
+        if (array == null) {
+            return List.of();
+        }
+        String[] values = (String[]) array.getArray();
+        return java.util.Arrays.stream(values).filter(java.util.Objects::nonNull).toList();
+    }
 
     @Override
     public Page<CompanySummary> search(CompanySearchCriteria criteria, Pageable pageable) {

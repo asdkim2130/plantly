@@ -221,7 +221,8 @@ public class CompanyControllerTest {
     @DisplayName("공개 회사 목록/검색은 인증 없이 페이징된 요약 카드를 반환한다")
     void searchCompanies_public_success() throws Exception {
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
-                "https://cdn/logo.png", "서울 강남구", true, false, true);
+                "https://cdn/logo.png", "서울 강남구", true, false, true,
+                List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"));
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
         given(companyQueryService.search(any(CompanySearchCriteria.class), any(Pageable.class))).willReturn(page);
 
@@ -231,6 +232,9 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.data.content[0].id").value(1L))
                 .andExpect(jsonPath("$.data.content[0].companyName").value("플랜틀리"))
                 .andExpect(jsonPath("$.data.content[0].spotlight").value(true))
+                .andExpect(jsonPath("$.data.content[0].categoryNames[0]").value("제조"))
+                .andExpect(jsonPath("$.data.content[0].tagNames[1]").value("IoT"))
+                .andExpect(jsonPath("$.data.content[0].industryNames[0]").value("농업기술"))
                 .andExpect(jsonPath("$.data.pageInfo.totalElement").value(1))
                 .andDo(document("company-search",
                         queryParameters(CompanyApiDocs.companySearchQueryParameters()),
