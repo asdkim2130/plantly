@@ -135,6 +135,46 @@ public class CompanyApiDocs {
         };
     }
 
+    // 관리자 목록 쿼리 파라미터(GET /api/v1/admin/companies). 전부 선택적, 지정된 것만 AND(교집합).
+    public static ParameterDescriptor[] adminCompanyQueryParameters() {
+        return new ParameterDescriptor[]{
+                parameterWithName("verified").optional().description("인증 여부 (true/false, 생략 시 상관없음)"),
+                parameterWithName("featured").optional().description("추천 여부 (true/false, 생략 시 상관없음)"),
+                parameterWithName("spotlight").optional().description("스팟라이트 여부 (true/false, 생략 시 상관없음)"),
+                parameterWithName("deleted").optional().description("삭제 여부 (생략=삭제 포함 전체, true=삭제만, false=활성만)"),
+                parameterWithName("companyName").optional().description("회사명 부분일치"),
+                parameterWithName("ownerUserId").optional().description("소유자 유저 ID 정확 일치"),
+                parameterWithName("page").optional().description("페이지 번호 (1-base 입력)"),
+                parameterWithName("size").optional().description("페이지 크기 (기본 20)")
+        };
+    }
+
+    // 관리자 목록 응답(ApiResponse<PageResponse<AdminCompanySummary>>). 공개 카드 + 운영 필드(deleted/소유자/출처/등록시각).
+    public static FieldDescriptor[] adminCompanyListResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
+                fieldWithPath("data.content[].id").type(JsonFieldType.NUMBER).description("회사 ID"),
+                fieldWithPath("data.content[].companyName").type(JsonFieldType.STRING).description("기업 이름"),
+                fieldWithPath("data.content[].introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약 (없으면 null)"),
+                fieldWithPath("data.content[].logoUrl").type(JsonFieldType.STRING).description("로고 이미지 URL"),
+                fieldWithPath("data.content[].address").type(JsonFieldType.STRING).description("주소"),
+                fieldWithPath("data.content[].verified").type(JsonFieldType.BOOLEAN).description("관리자 인증 여부"),
+                fieldWithPath("data.content[].featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
+                fieldWithPath("data.content[].spotlight").type(JsonFieldType.BOOLEAN).description("스팟라이트 노출 여부"),
+                fieldWithPath("data.content[].deleted").type(JsonFieldType.BOOLEAN).description("소프트 삭제 여부"),
+                fieldWithPath("data.content[].ownerUserId").type(JsonFieldType.NUMBER).optional().description("소유 유저 ID (미연동이면 null)"),
+                fieldWithPath("data.content[].registrationSource").type(JsonFieldType.STRING).description("등록 출처 (USER / ADMIN)"),
+                fieldWithPath("data.content[].createdAt").type(JsonFieldType.STRING).description("등록 시각"),
+                fieldWithPath("data.content[].categoryNames").type(JsonFieldType.ARRAY).description("회사가 연결한 카테고리명 목록"),
+                fieldWithPath("data.content[].tagNames").type(JsonFieldType.ARRAY).description("태그명 목록"),
+                fieldWithPath("data.content[].industryNames").type(JsonFieldType.ARRAY).description("산업군명 목록"),
+                fieldWithPath("data.pageInfo.pageNumber").type(JsonFieldType.NUMBER).description("현재 페이지 (1-base)"),
+                fieldWithPath("data.pageInfo.size").type(JsonFieldType.NUMBER).description("페이지 크기"),
+                fieldWithPath("data.pageInfo.totalElement").type(JsonFieldType.NUMBER).description("전체 건수"),
+                fieldWithPath("data.pageInfo.totalPage").type(JsonFieldType.NUMBER).description("전체 페이지 수")
+        };
+    }
+
     // 공개 상세 조회 응답(ApiResponse<CompanyPublicResponse>). data 가 곧 공개 프로필이다.
     public static FieldDescriptor[] companyPublicResponseFields() {
         return concat(

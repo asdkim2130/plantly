@@ -78,7 +78,7 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
         for (int i = 0; i < tokens.length; i++) {
             String name = "kw" + i;
             conditions.add("d.search_all ILIKE :" + name + " ESCAPE '\\'");
-            params.addValue(name, likePattern(tokens[i]));
+            params.addValue(name, LikePatterns.contains(tokens[i]));
         }
     }
 
@@ -103,7 +103,7 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
             return;
         }
         conditions.add(column + " ILIKE :" + name + " ESCAPE '\\'");
-        params.addValue(name, likePattern(value));
+        params.addValue(name, LikePatterns.contains(value));
     }
 
     // 패싯: 선택 id 중 하나라도 링크된 회사(차원 내부 OR). 차원이 여러 개면 호출마다 AND 로 누적된다.
@@ -114,11 +114,5 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
         }
         conditions.add("c.id IN (SELECT company_id FROM " + linkTable + " WHERE " + idColumn + " IN (:" + name + "))");
         params.addValue(name, ids);
-    }
-
-    // LIKE 메타문자를 이스케이프하고 substring 매칭용으로 %로 감싼다. (ESCAPE '\' 와 짝)
-    private static String likePattern(String term) {
-        String escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-        return "%" + escaped + "%";
     }
 }

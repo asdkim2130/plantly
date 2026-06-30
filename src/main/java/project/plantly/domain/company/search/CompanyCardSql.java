@@ -49,7 +49,8 @@ public final class CompanyCardSql {
             toList(rs.getArray("industry_names")));
 
     // PG text[] → List<String>. 매칭 행이 없으면 array_agg 는 NULL → 빈 리스트. null 원소는 제거.
-    private static List<String> toList(Array array) throws SQLException {
+    // 관리자 카드 매퍼(AdminCompanyCardSql)도 같은 패키지에서 재사용한다.
+    static List<String> toList(Array array) throws SQLException {
         if (array == null) {
             return List.of();
         }
