@@ -104,7 +104,16 @@ public class CompanyApiDocs {
         };
     }
 
+    // 내 회사 목록 쿼리 파라미터(GET /api/v1/companies/my). 페이징만 — 검색/패싯 없음.
+    public static ParameterDescriptor[] companyMyQueryParameters() {
+        return new ParameterDescriptor[]{
+                parameterWithName("page").optional().description("페이지 번호 (1-base 입력)"),
+                parameterWithName("size").optional().description("페이지 크기 (기본 20)")
+        };
+    }
+
     // 목록/검색 응답(ApiResponse<PageResponse<CompanySummary>>). content[] = 요약 카드, pageInfo = 페이지 메타.
+    // 내 회사 목록(GET /api/v1/companies/my)도 동일한 요약 카드 페이지 구조라 이 디스크립터를 공유한다.
     public static FieldDescriptor[] companySearchResponseFields() {
         return new FieldDescriptor[]{
                 fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),

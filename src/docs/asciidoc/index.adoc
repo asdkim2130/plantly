@@ -213,6 +213,25 @@ include::{snippets}/company-search/http-response.adoc[]
 
 include::{snippets}/company-search/response-fields.adoc[]
 
+[[company-my]]
+=== 내 회사 목록 (인증)
+
+로그인한 사용자가 등록·소유한 회사 목록을 조회합니다. 인증이 필요하며, 응답에는 본인 소유(`userId`=본인)의 *미삭제* 회사만 담깁니다.
+
+검색·패싯 없이 최신 등록순으로, 회사 목록/검색과 동일한 요약 카드 형태로 페이징됩니다.
+
+==== 요청
+
+include::{snippets}/company-my/http-request.adoc[]
+
+include::{snippets}/company-my/query-parameters.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-my/http-response.adoc[]
+
+include::{snippets}/company-my/response-fields.adoc[]
+
 [[company-public-detail]]
 === 회사 상세 조회 (공개)
 

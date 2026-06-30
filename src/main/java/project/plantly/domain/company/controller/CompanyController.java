@@ -50,6 +50,14 @@ public class CompanyController {
         return ApiResponse.success(companyQueryService.search(request.toCriteria(), pageable));
     }
 
+    // 내가 등록한 회사 목록 — 인증된 본인 소유(userId=본인) 미삭제 회사를 요약 카드로, 최신순 페이징(검색 없음).
+    // 단일 세그먼트 'my' 라 공개 상세(/{id})보다 먼저 매칭된다(SecurityConfig 에서도 /{id} permitAll 앞에 인증 규칙을 둔다).
+    @GetMapping("/api/v1/companies/my")
+    public ApiResponse<PageResponse<CompanySummary>> getMyCompanies(@AuthenticationPrincipal UserPrincipal principal,
+                                                                    @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.success(companyQueryService.listMyCompanies(principal.getUser().getId(), pageable));
+    }
+
     // 일반(공개) 상세 조회 — 누구에게나 안전한 공개 필드만 반환한다. 소프트 삭제된 회사는 404.
     @GetMapping("/api/v1/companies/{id}")
     public ApiResponse<CompanyPublicResponse> getCompany(@PathVariable Long id) {

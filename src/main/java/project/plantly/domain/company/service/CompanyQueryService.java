@@ -11,6 +11,7 @@ import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
+import project.plantly.domain.company.repository.OwnedCompanyCardRepository;
 import project.plantly.domain.company.search.CompanySearchCriteria;
 import project.plantly.domain.company.search.CompanySearchRepository;
 import project.plantly.domain.company.search.dto.CompanySummary;
@@ -29,11 +30,18 @@ public class CompanyQueryService {
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanyAggregateLoader aggregateLoader;
     private final CompanySearchRepository companySearchRepository;
+    private final OwnedCompanyCardRepository ownedCompanyCardRepository;
 
     // 공개 회사 목록/검색: 통합 키워드 + 고급 + 패싯(인증/산업군/카테고리 서브트리). 색인된·비삭제 회사만,
     // 기본 정렬(spotlight→featured→최신). 엔진 교체(PG↔ES)는 CompanySearchRepository 뒤에서만 일어난다.
     public PageResponse<CompanySummary> search(CompanySearchCriteria criteria, Pageable pageable) {
         Page<CompanySummary> page = companySearchRepository.search(criteria, pageable);
+        return PageResponse.of(page.getContent(), page.getTotalElements(), pageable);
+    }
+
+    // 내 회사 목록: 로그인 유저가 소유(userId=본인)한 미삭제 회사를 요약 카드로, 최신 등록순 페이징. 검색/패싯 없음.
+    public PageResponse<CompanySummary> listMyCompanies(Long ownerUserId, Pageable pageable) {
+        Page<CompanySummary> page = ownedCompanyCardRepository.findOwnedBy(ownerUserId, pageable);
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageable);
     }
 

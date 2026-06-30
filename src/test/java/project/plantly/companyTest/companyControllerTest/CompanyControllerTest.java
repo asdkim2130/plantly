@@ -241,6 +241,30 @@ public class CompanyControllerTest {
                         responseFields(CompanyApiDocs.companySearchResponseFields())));
     }
 
+    @Test
+    @DisplayName("내 회사 목록은 인증된 본인 소유 회사를 페이징된 요약 카드로 반환한다")
+    void getMyCompanies_success() throws Exception {
+        CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
+                "https://cdn/logo.png", "서울 강남구", true, false, true,
+                List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"));
+        PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
+        given(companyQueryService.listMyCompanies(eq(7L), any(Pageable.class))).willReturn(page);
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/companies/my?page=1&size=20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].id").value(1L))
+                .andExpect(jsonPath("$.data.content[0].companyName").value("플랜틀리"))
+                .andExpect(jsonPath("$.data.content[0].categoryNames[0]").value("제조"))
+                .andExpect(jsonPath("$.data.content[0].tagNames[1]").value("IoT"))
+                .andExpect(jsonPath("$.data.content[0].industryNames[0]").value("농업기술"))
+                .andExpect(jsonPath("$.data.pageInfo.totalElement").value(1))
+                .andDo(document("company-my",
+                        queryParameters(CompanyApiDocs.companyMyQueryParameters()),
+                        responseFields(CompanyApiDocs.companySearchResponseFields())));
+    }
+
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
