@@ -232,6 +232,10 @@ include::{snippets}/company-my/http-response.adoc[]
 
 include::{snippets}/company-my/response-fields.adoc[]
 
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고). 본인 소유 회사만 조회하므로 접근 거부(`403`)는 발생하지 않습니다.
+
 [[company-public-detail]]
 === 회사 상세 조회 (공개)
 
