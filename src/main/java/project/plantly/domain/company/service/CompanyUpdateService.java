@@ -88,6 +88,63 @@ public class CompanyUpdateService {
         mutateOwned(companyId, userId, company -> linkWriter.replaceRegions(company, domesticRegionIds));
     }
 
+    // ===== 관리자 경로 =====
+    // 소유(멤버) 검증 없이 대상 회사를 로드한다(삭제/미연동 포함). 권한(ADMIN)은 컨트롤러 @PreAuthorize 가 담당한다.
+    // 변경 로직·구조 불변식은 유저 경로와 완전히 동일하게 재사용한다.
+
+    public void updateBasicInfoByAdmin(Long companyId, CompanyUpdateRequest request) {
+        mutateAsAdmin(companyId, company -> company.updateBasicInfo(
+                request.companyName(), request.ceoName(), request.establishmentDate(),
+                request.postalCode(), request.address(), request.detailAddress(),
+                request.website(), request.logoUrl(), request.introTitle(), request.content(),
+                request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
+                request.pricingType(), request.brandColor()));
+    }
+
+    public void replaceTagsByAdmin(Long companyId, List<String> tagNames) {
+        mutateAsAdmin(companyId, company -> childWriter.replaceTags(company, tagNames));
+    }
+
+    public void replaceMaterialsByAdmin(Long companyId, List<String> materialNames) {
+        mutateAsAdmin(companyId, company -> childWriter.replaceMaterials(company, materialNames));
+    }
+
+    public void replaceEquipmentByAdmin(Long companyId, List<String> equipmentNames) {
+        mutateAsAdmin(companyId, company -> childWriter.replaceEquipment(company, equipmentNames));
+    }
+
+    public void replaceGalleryImagesByAdmin(Long companyId, List<CompanyCreateRequest.ImageRequest> images) {
+        mutateAsAdmin(companyId, company -> childWriter.replaceGalleryImages(company, images));
+    }
+
+    public void replaceContactsByAdmin(Long companyId, List<CompanyCreateRequest.ContactRequest> contacts) {
+        mutateAsAdmin(companyId, company -> childWriter.replaceContacts(company, contacts));
+    }
+
+    public void replaceReferencesByAdmin(Long companyId, List<CompanyCreateRequest.ReferenceRequest> references) {
+        mutateAsAdmin(companyId, company -> childWriter.replaceReferences(company, references));
+    }
+
+    public void replaceCategoriesByAdmin(Long companyId, List<Long> categoryIds) {
+        mutateAsAdmin(companyId, company -> linkWriter.replaceCategories(company, categoryIds));
+    }
+
+    public void replaceIndustriesByAdmin(Long companyId, List<Long> industryIds) {
+        mutateAsAdmin(companyId, company -> linkWriter.replaceIndustries(company, industryIds));
+    }
+
+    public void replaceCertificationsByAdmin(Long companyId, List<Long> certificationIds) {
+        mutateAsAdmin(companyId, company -> linkWriter.replaceCertifications(company, certificationIds));
+    }
+
+    public void replaceCountriesByAdmin(Long companyId, List<Long> countryIds) {
+        mutateAsAdmin(companyId, company -> linkWriter.replaceCountries(company, countryIds));
+    }
+
+    public void replaceRegionsByAdmin(Long companyId, List<Long> domesticRegionIds) {
+        mutateAsAdmin(companyId, company -> linkWriter.replaceRegions(company, domesticRegionIds));
+    }
+
     // TODO(정책): 현재 수정 경로는 '구조 불변식'(갤러리 DETAIL-only·연락처/레퍼런스 1건)만 강제한다.
     //  등급 한도(카테고리 개수·갤러리 장수·동영상·레퍼런스 이미지)와 변형 정책(brandColor 고정·spotlight)은
     //  create 의 registrationPolicies 에만 있고 여기선 미적용 → 수정으로 우회 가능.
@@ -99,6 +156,14 @@ public class CompanyUpdateService {
     // (검색 색인 대상이 아닌 컬렉션까지 매번 재동기화하지만, 도큐먼트 재생성은 멱등이라 정합성 우선으로 일괄 호출한다)
     private void mutateOwned(Long companyId, Long userId, Consumer<Company> mutation) {
         Company company = loadOwnedCompany(companyId, userId);
+        mutation.accept(company);
+        searchDocumentWriter.write(companyId);
+    }
+
+    // 관리자 경로: 소유 검증 없이 로드 → 변경 → 재동기화. (getForAdmin 과 동일하게 상태 무관 로드)
+    private void mutateAsAdmin(Long companyId, Consumer<Company> mutation) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
         mutation.accept(company);
         searchDocumentWriter.write(companyId);
     }
