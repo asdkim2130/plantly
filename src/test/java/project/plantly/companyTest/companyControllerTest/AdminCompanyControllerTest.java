@@ -29,13 +29,23 @@ import project.plantly.companyTest.support.CompanyCreateRequestSamples;
 import project.plantly.companyTest.support.CompanyResponseSamples;
 import project.plantly.domain.company.controller.AdminCompanyController;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.enums.RegistrationSource;
+import project.plantly.domain.company.search.AdminCompanySearchCriteria;
+import project.plantly.domain.company.search.dto.AdminCompanySummary;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
+import project.plantly.domain.company.service.CompanyUpdateService;
+import project.plantly.global.PageInfo;
+import project.plantly.global.PageResponse;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
 import project.plantly.global.security.UserPrincipal;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.domain.Pageable;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -49,6 +59,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.requestF
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
+import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -75,6 +86,10 @@ public class AdminCompanyControllerTest {
     // 컨트롤러가 상세 조회용으로 주입받는 협력 객체. 등록 슬라이스 테스트에서는 사용하지 않지만 컨텍스트 로딩을 위해 모킹한다.
     @MockitoBean
     private CompanyQueryService companyQueryService;
+
+    // 컨트롤러가 수정용으로 주입받는 협력 객체. 이 테스트에서는 사용하지 않지만 컨텍스트 로딩을 위해 모킹한다.
+    @MockitoBean
+    private CompanyUpdateService companyUpdateService;
 
     private MockMvc mockMvc;
 
@@ -136,6 +151,44 @@ public class AdminCompanyControllerTest {
                 .andDo(document("admin-company-detail",
                         pathParameters(parameterWithName("id").description("회사 ID")),
                         responseFields(CompanyApiDocs.companyDetailResponseFields())));
+    }
+
+    @Test
+    @DisplayName("관리자 목록은 불리언 3-상태·회사명·소유자 id 필터로 운영 필드 포함 카드를 페이징해 반환한다")
+    void listCompaniesByAdmin_success() throws Exception {
+        AdminCompanySummary item = new AdminCompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
+                "https://cdn/logo.png", "서울 강남구", true, true, false,
+                true, 7L, RegistrationSource.USER, LocalDateTime.of(2024, 1, 2, 3, 4, 5),
+                List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"));
+        PageResponse<AdminCompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
+        given(companyQueryService.listForAdmin(any(AdminCompanySearchCriteria.class), any(Pageable.class))).willReturn(page);
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(get("/api/v1/admin/companies?verified=true&featured=true&companyName=플랜틀리&ownerUserId=7&page=1&size=20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].id").value(1L))
+                .andExpect(jsonPath("$.data.content[0].deleted").value(true))
+                .andExpect(jsonPath("$.data.content[0].ownerUserId").value(7L))
+                .andExpect(jsonPath("$.data.content[0].registrationSource").value("USER"))
+                .andExpect(jsonPath("$.data.content[0].categoryNames[0]").value("제조"))
+                .andExpect(jsonPath("$.data.pageInfo.totalElement").value(1))
+                .andDo(document("admin-company-list",
+                        queryParameters(CompanyApiDocs.adminCompanyQueryParameters()),
+                        responseFields(CompanyApiDocs.adminCompanyListResponseFields())));
+    }
+
+    @Test
+    @DisplayName("관리자가 아닌 유저가 관리자 목록을 호출하면 @PreAuthorize 가 막아 403 을 반환한다")
+    void listCompaniesByAdmin_forbidden_forNonAdmin() throws Exception {
+        authenticate(2L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/admin/companies"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("접근 권한이 없습니다."))
+                .andDo(document("admin-company-list-forbidden",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
     @Test

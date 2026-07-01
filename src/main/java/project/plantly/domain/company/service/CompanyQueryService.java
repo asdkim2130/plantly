@@ -9,10 +9,14 @@ import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.repository.AdminCompanyCardRepository;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
+import project.plantly.domain.company.repository.OwnedCompanyCardRepository;
+import project.plantly.domain.company.search.AdminCompanySearchCriteria;
 import project.plantly.domain.company.search.CompanySearchCriteria;
 import project.plantly.domain.company.search.CompanySearchRepository;
+import project.plantly.domain.company.search.dto.AdminCompanySummary;
 import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
@@ -29,11 +33,26 @@ public class CompanyQueryService {
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanyAggregateLoader aggregateLoader;
     private final CompanySearchRepository companySearchRepository;
+    private final OwnedCompanyCardRepository ownedCompanyCardRepository;
+    private final AdminCompanyCardRepository adminCompanyCardRepository;
 
     // 공개 회사 목록/검색: 통합 키워드 + 고급 + 패싯(인증/산업군/카테고리 서브트리). 색인된·비삭제 회사만,
     // 기본 정렬(spotlight→featured→최신). 엔진 교체(PG↔ES)는 CompanySearchRepository 뒤에서만 일어난다.
     public PageResponse<CompanySummary> search(CompanySearchCriteria criteria, Pageable pageable) {
         Page<CompanySummary> page = companySearchRepository.search(criteria, pageable);
+        return PageResponse.of(page.getContent(), page.getTotalElements(), pageable);
+    }
+
+    // 내 회사 목록: 로그인 유저가 소유(userId=본인)한 미삭제 회사를 요약 카드로, 최신 등록순 페이징. 검색/패싯 없음.
+    public PageResponse<CompanySummary> listMyCompanies(Long ownerUserId, Pageable pageable) {
+        Page<CompanySummary> page = ownedCompanyCardRepository.findOwnedBy(ownerUserId, pageable);
+        return PageResponse.of(page.getContent(), page.getTotalElements(), pageable);
+    }
+
+    // 관리자 회사 목록: 기본 전체(삭제 포함), 불리언 3-상태(verified/featured/spotlight/deleted)·회사명·소유자 id 로
+    // 교집합 필터링. 운영 필드를 포함한 카드로 최신 등록순 페이징. (권한 검증은 컨트롤러 @PreAuthorize 가 담당)
+    public PageResponse<AdminCompanySummary> listForAdmin(AdminCompanySearchCriteria criteria, Pageable pageable) {
+        Page<AdminCompanySummary> page = adminCompanyCardRepository.findForAdmin(criteria, pageable);
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageable);
     }
 

@@ -79,3 +79,8 @@ tasks.named('asciidoctor') {
 	}
 	baseDirFollowsSourceFile()       // include 경로를 각 .adoc 파일 기준으로 해석
 }
+
+// build 한 번으로 테스트 + 스니펫 + HTML 문서까지 항상 최신화한다.
+tasks.named('build') {
+	dependsOn asciidoctor
+}

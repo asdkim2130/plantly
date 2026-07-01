@@ -13,4 +13,7 @@ public interface CompanyIndustryRepository extends JpaRepository<CompanyIndustry
     // 링크를 거쳐 연결된 산업군 마스터를 한 번의 조회로 가져온다. (링크별 LAZY 로딩 N+1 회피)
     @Query("select l.industry from CompanyIndustry l where l.company.id = :companyId order by l.displayOrder, l.id")
     List<Industry> findIndustriesByCompanyId(@Param("companyId") Long companyId);
+
+    // 링크 전체 교체(PUT) 시 기존 산업군 링크를 일괄 삭제한다.
+    void deleteByCompanyId(Long companyId);
 }

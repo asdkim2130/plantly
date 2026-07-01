@@ -27,6 +27,10 @@ public enum CompanyErrorCode implements ErrorCode {
     // 회사 직속 갤러리(images)에 DETAIL 이 아닌 이미지 타입이 포함된 경우
     GALLERY_IMAGE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "갤러리에는 상세 이미지(DETAIL)만 등록할 수 있습니다."),
 
+    // 연락처/레퍼런스는 초기 버전상 각각 1건만 허용한다. (create 는 DTO @Size(max=1), 수정은 writer 가드로 강제)
+    CONTACT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "연락처는 1건만 등록할 수 있습니다."),
+    REFERENCE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "레퍼런스는 1건만 등록할 수 있습니다."),
+
     // 링크(M:N) 등록 시 요청에 존재하지 않는 마스터 ID가 포함된 경우
     CATEGORY_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 카테고리가 포함되어 있습니다."),
     CERTIFICATION_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 인증이 포함되어 있습니다."),

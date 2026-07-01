@@ -9,4 +9,7 @@ public interface CompanyEquipmentRepository extends JpaRepository<CompanyEquipme
 
     // 상세 조회 조립용. 저장 시 부여한 displayOrder 순서를 그대로 노출한다.
     List<CompanyEquipment> findByCompanyIdOrderByDisplayOrderAsc(Long companyId);
+
+    // 컬렉션 전체 교체(PUT) 시 기존 장비를 일괄 삭제한다.
+    void deleteByCompanyId(Long companyId);
 }

@@ -63,6 +63,40 @@ public class CompanyLinkWriter {
                 buildLinks(request.industryIds(), industryRepository, Industry::getId, company, CompanyIndustry::new, CompanyErrorCode.INDUSTRY_NOT_FOUND));
     }
 
+    // ===== 링크 전체 교체(PUT) 진입점 =====
+    // 각 메서드는 "기존 링크 삭제 → 새 id 리스트로 재생성(displayOrder 재부여)" 하며, create 경로와 검증·저장 로직을 공유한다.
+    // null/빈 리스트를 넘기면 삭제만 수행(= 전부 비우기)된다.
+
+    public void replaceCategories(Company company, List<Long> categoryIds) {
+        companyCategoryRepository.deleteByCompanyId(company.getId());
+        companyCategoryRepository.saveAll(
+                buildLinks(categoryIds, categoryRepository, Category::getId, company, CompanyCategory::new, CompanyErrorCode.CATEGORY_NOT_FOUND));
+    }
+
+    public void replaceCertifications(Company company, List<Long> certificationIds) {
+        companyCertificationRepository.deleteByCompanyId(company.getId());
+        companyCertificationRepository.saveAll(
+                buildLinks(certificationIds, certificationRepository, Certification::getId, company, CompanyCertification::new, CompanyErrorCode.CERTIFICATION_NOT_FOUND));
+    }
+
+    public void replaceCountries(Company company, List<Long> countryIds) {
+        companyCountryRepository.deleteByCompanyId(company.getId());
+        companyCountryRepository.saveAll(
+                buildLinks(countryIds, countryRepository, Country::getId, company, CompanyCountry::new, CompanyErrorCode.COUNTRY_NOT_FOUND));
+    }
+
+    public void replaceRegions(Company company, List<Long> domesticRegionIds) {
+        companyDomesticRegionRepository.deleteByCompanyId(company.getId());
+        companyDomesticRegionRepository.saveAll(
+                buildLinks(domesticRegionIds, domesticRegionRepository, DomesticRegion::getId, company, CompanyDomesticRegion::new, CompanyErrorCode.DOMESTIC_REGION_NOT_FOUND));
+    }
+
+    public void replaceIndustries(Company company, List<Long> industryIds) {
+        companyIndustryRepository.deleteByCompanyId(company.getId());
+        companyIndustryRepository.saveAll(
+                buildLinks(industryIds, industryRepository, Industry::getId, company, CompanyIndustry::new, CompanyErrorCode.INDUSTRY_NOT_FOUND));
+    }
+
     // 요청 ID 리스트 → 마스터 일괄 조회(중복 제거) → 누락 시 예외 → 링크 엔티티 생성.
     // findAllById 는 입력 순서를 보존하지 않으므로, displayOrder 는 요청(선택) 순서 기준 인덱스로 부여한다.
     private <M, L> List<L> buildLinks(List<Long> ids,

@@ -145,6 +145,43 @@ public class Company {
         return new Company(null, RegistrationSource.ADMIN, adminId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
     }
 
+    // ===== 기본 정보 부분 수정 =====
+    // null = 미변경. 선택(nullable) 문자열 필드는 blank("") 을 받으면 비운다(null 로 clear).
+    // 필수 필드의 blank 는 요청 DTO(@Size(min=1)) 에서 거르므로 여기선 null 여부만 본다.
+    // 날짜·enum 은 blank 개념이 없어 clear 를 지원하지 않는다(값이 오면 교체만).
+    // 시스템 플래그·사업자번호·등록 provenance(userId/registrationSource/registeredBy) 는 이 경로로 바꾸지 않는다.
+    public void updateBasicInfo(String companyName, String ceoName, LocalDate establishmentDate,
+                                String postalCode, String address, String detailAddress,
+                                String website, String logoUrl, String introTitle, String content,
+                                TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo,
+                                PricingType pricingType, String brandColor) {
+        // 필수 필드: null = 미변경 (blank 는 DTO 에서 차단)
+        if (companyName != null) this.companyName = companyName;
+        if (ceoName != null) this.ceoName = ceoName;
+        if (postalCode != null) this.postalCode = postalCode;
+        if (address != null) this.address = address;
+        if (detailAddress != null) this.detailAddress = detailAddress;
+        if (logoUrl != null) this.logoUrl = logoUrl;
+
+        // 선택 문자열 필드: null = 미변경, blank = 비움(null)
+        if (website != null) this.website = blankToNull(website);
+        if (introTitle != null) this.introTitle = blankToNull(introTitle);
+        if (content != null) this.content = blankToNull(content);
+        if (videoUrl != null) this.videoUrl = blankToNull(videoUrl);
+        if (leadTime != null) this.leadTime = blankToNull(leadTime);
+        if (asInfo != null) this.asInfo = blankToNull(asInfo);
+        if (brandColor != null) this.brandColor = blankToNull(brandColor);
+
+        // clear 미지원(날짜·enum): null = 미변경, 값 = 교체
+        if (establishmentDate != null) this.establishmentDate = establishmentDate;
+        if (trlLevel != null) this.trlLevel = trlLevel;
+        if (pricingType != null) this.pricingType = pricingType;
+    }
+
+    private static String blankToNull(String value) {
+        return value.isBlank() ? null : value;
+    }
+
     // ===== 상태 변경 (도메인 행위) =====
 
     // 소유자 연동. 관리자가 미연동(userId=null)으로 등록한 회사에 추후 관계자가 가입하면 호출한다.

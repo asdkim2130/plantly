@@ -222,6 +222,50 @@ class CompanyQueryAcceptanceTest extends AcceptanceTest {
                     .then()
                     .statusCode(401);
         }
+
+        // 관리자 목록의 권한 게이트(@PreAuthorize)는 컨트롤러 진입 전에 막으므로 H2 에서도 안전하다.
+        // (실제 목록 집계·필터링은 Postgres 전용 SQL 이라 AdminCompanyCardRepositoryTest 가 담당한다.)
+        @Test
+        @DisplayName("목록: 관리자가 아닌 유저가 호출하면 403")
+        void list_nonAdmin_isForbidden() {
+            CookieFilter owner = new CookieFilter();
+            signUpMember(owner, "list-member@example.com");
+
+            given()
+                    .filter(owner) // 일반 멤버 세션
+                    .when()
+                    .get("/api/v1/admin/companies")
+                    .then()
+                    .statusCode(403)
+                    .body("success", equalTo(false));
+        }
+
+        @Test
+        @DisplayName("목록: 미인증 상태로 호출하면 401")
+        void list_unauthenticated_isUnauthorized() {
+            given()
+                    .when()
+                    .get("/api/v1/admin/companies")
+                    .then()
+                    .statusCode(401);
+        }
+    }
+
+    @Nested
+    @DisplayName("내 회사 목록 GET /api/v1/companies/my")
+    class MyCompanies {
+
+        // 공개 상세(/{id} permitAll)가 단일 세그먼트 'my' 도 잡으므로, 그보다 앞선 인증 규칙이 실제로 먹는지 검증한다.
+        // (인증된 본인 소유 회사 집계·필터는 Postgres 전용 SQL 이라 OwnedCompanyCardRepositoryTest 가 담당한다.)
+        @Test
+        @DisplayName("미인증 상태로 호출하면 401 (공개 상세 /{id} 로 새지 않는다)")
+        void unauthenticated_isUnauthorized() {
+            given() // 세션 없음 = 익명
+                    .when()
+                    .get("/api/v1/companies/my")
+                    .then()
+                    .statusCode(401);
+        }
     }
 
     // ---- helpers ----

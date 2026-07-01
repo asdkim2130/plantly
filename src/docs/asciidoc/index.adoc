@@ -213,6 +213,29 @@ include::{snippets}/company-search/http-response.adoc[]
 
 include::{snippets}/company-search/response-fields.adoc[]
 
+[[company-my]]
+=== 내 회사 목록 (인증)
+
+로그인한 사용자가 등록·소유한 회사 목록을 조회합니다. 인증이 필요하며, 응답에는 본인 소유(`userId`=본인)의 *미삭제* 회사만 담깁니다.
+
+검색·패싯 없이 최신 등록순으로, 회사 목록/검색과 동일한 요약 카드 형태로 페이징됩니다.
+
+==== 요청
+
+include::{snippets}/company-my/http-request.adoc[]
+
+include::{snippets}/company-my/query-parameters.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-my/http-response.adoc[]
+
+include::{snippets}/company-my/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고). 본인 소유 회사만 조회하므로 접근 거부(`403`)는 발생하지 않습니다.
+
 [[company-public-detail]]
 === 회사 상세 조회 (공개)
 
@@ -311,6 +334,43 @@ include::{snippets}/admin-company-create-forbidden/http-response.adoc[]
 include::{snippets}/admin-company-create-forbidden/response-fields.adoc[]
 
 NOTE: 입력값 검증 실패(400)는 <<company-create>> 와 동일한 형태입니다. 단, 관리자 등록은 등급 한도 정책이 면제되며 마스터 ID 유효성 등 일부 검증만 동일하게 적용됩니다.
+
+[[admin-company-list]]
+=== 회사 목록 (관리자)
+
+관리자가 전체 회사를 목록으로 조회합니다. 기본은 *삭제된 회사까지 포함한 전체* 이며, 최신 등록순으로 페이징됩니다.
+공개 목록과 달리 각 카드에 운영 필드(삭제 여부·소유자 id·등록 출처·등록 시각)가 함께 내려갑니다.
+
+다음 조건으로 좁힐 수 있으며, *지정한 것만 AND(교집합)* 로 적용됩니다(미지정 = 상관없음):
+
+* *상태 필터* (`verified`/`featured`/`spotlight`): `true`/`false` 로 해당 값만. 생략하면 그 축은 무시됩니다. 예) `verified=true&featured=true` 면 둘 다 참인 회사만(스팟라이트는 무관).
+* *삭제 필터* (`deleted`): 생략하면 삭제 포함 전체, `true` 면 삭제된 회사만, `false` 면 활성 회사만.
+* *회사명* (`companyName`): 부분일치.
+* *소유자* (`ownerUserId`): 소유 유저 ID 정확 일치(미연동 회사는 제외됨).
+
+==== 요청
+
+include::{snippets}/admin-company-list/http-request.adoc[]
+
+include::{snippets}/admin-company-list/query-parameters.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/admin-company-list/http-response.adoc[]
+
+include::{snippets}/admin-company-list/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고).
+
+===== 권한 없음 (403 Forbidden)
+
+`ADMIN` 권한이 없는 회원이 호출하면 `403` 이 반환됩니다.
+
+include::{snippets}/admin-company-list-forbidden/http-response.adoc[]
+
+include::{snippets}/admin-company-list-forbidden/response-fields.adoc[]
 
 [[admin-company-detail]]
 === 회사 상세 조회 (관리자)

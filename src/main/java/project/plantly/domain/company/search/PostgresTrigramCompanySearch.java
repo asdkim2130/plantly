@@ -3,7 +3,6 @@ package project.plantly.domain.company.search;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -35,46 +34,12 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
             JOIN company_search_document d ON d.company_id = c.id
             """;
 
-    // 카드 + 회사가 연결한 카테고리/태그/산업군 이름을 회사당 array_agg 로 집계(페이지당 ≤size 행이라 상관 서브쿼리로 충분).
-    // 카테고리는 company_category 직접 링크만(closure 조상 제외). 셋 다 회사가 등록 시 고른 순서(링크/태그의 display_order)로 정렬.
-    private static final String SELECT_CARD = """
-            SELECT c.id, c.company_name, c.intro_title, c.logo_url, c.address,
-                   c.verified, c.featured, c.spotlight,
-                   (SELECT array_agg(cat.category_name ORDER BY cc.display_order)
-                      FROM company_category cc JOIN category cat ON cat.id = cc.category_id
-                      WHERE cc.company_id = c.id) AS category_names,
-                   (SELECT array_agg(t.tag_name ORDER BY t.display_order)
-                      FROM company_tag t WHERE t.company_id = c.id) AS tag_names,
-                   (SELECT array_agg(ind.industry_name ORDER BY ci.display_order)
-                      FROM company_industry ci JOIN industry ind ON ind.id = ci.industry_id
-                      WHERE ci.company_id = c.id) AS industry_names
-            """ + FROM;
+    // 카드 컬럼 + FROM(도큐먼트 JOIN). 카드 프로젝션·RowMapper 는 내 회사 목록과 공유(CompanyCardSql).
+    private static final String SELECT_CARD = "SELECT " + CompanyCardSql.CARD_COLUMNS + FROM;
 
     // 기본 정렬: 스팟라이트 → 추천 → 최신. id 는 안정 페이징용 tie-breaker.
     private static final String ORDER_BY =
             " ORDER BY c.spotlight DESC, c.featured DESC, c.created_at DESC, c.id DESC";
-
-    private static final RowMapper<CompanySummary> ROW_MAPPER = (rs, i) -> new CompanySummary(
-            rs.getLong("id"),
-            rs.getString("company_name"),
-            rs.getString("intro_title"),
-            rs.getString("logo_url"),
-            rs.getString("address"),
-            rs.getBoolean("verified"),
-            rs.getBoolean("featured"),
-            rs.getBoolean("spotlight"),
-            toList(rs.getArray("category_names")),
-            toList(rs.getArray("tag_names")),
-            toList(rs.getArray("industry_names")));
-
-    // PG text[] → List<String>. 매칭 행이 없으면 array_agg 는 NULL → 빈 리스트. null 원소는 제거.
-    private static List<String> toList(java.sql.Array array) throws java.sql.SQLException {
-        if (array == null) {
-            return List.of();
-        }
-        String[] values = (String[]) array.getArray();
-        return java.util.Arrays.stream(values).filter(java.util.Objects::nonNull).toList();
-    }
 
     @Override
     public Page<CompanySummary> search(CompanySearchCriteria criteria, Pageable pageable) {
@@ -96,7 +61,7 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
 
         List<CompanySummary> content = jdbc.query(
                 SELECT_CARD + where + ORDER_BY + " LIMIT :limit OFFSET :offset",
-                params, ROW_MAPPER);
+                params, CompanyCardSql.ROW_MAPPER);
 
         return PageableExecutionUtils.getPage(content, pageable, () -> {
             Long total = jdbc.queryForObject("SELECT count(*) " + FROM + where, params, Long.class);
@@ -113,7 +78,7 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
         for (int i = 0; i < tokens.length; i++) {
             String name = "kw" + i;
             conditions.add("d.search_all ILIKE :" + name + " ESCAPE '\\'");
-            params.addValue(name, likePattern(tokens[i]));
+            params.addValue(name, LikePatterns.contains(tokens[i]));
         }
     }
 
@@ -138,7 +103,7 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
             return;
         }
         conditions.add(column + " ILIKE :" + name + " ESCAPE '\\'");
-        params.addValue(name, likePattern(value));
+        params.addValue(name, LikePatterns.contains(value));
     }
 
     // 패싯: 선택 id 중 하나라도 링크된 회사(차원 내부 OR). 차원이 여러 개면 호출마다 AND 로 누적된다.
@@ -149,11 +114,5 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
         }
         conditions.add("c.id IN (SELECT company_id FROM " + linkTable + " WHERE " + idColumn + " IN (:" + name + "))");
         params.addValue(name, ids);
-    }
-
-    // LIKE 메타문자를 이스케이프하고 substring 매칭용으로 %로 감싼다. (ESCAPE '\' 와 짝)
-    private static String likePattern(String term) {
-        String escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-        return "%" + escaped + "%";
     }
 }
