@@ -20,6 +20,12 @@ public record ApiResponse<T>(boolean success, String message, T data, String err
         return new ApiResponse<>(true, message, null, null);
     }
 
+    // 성공 플래그만 (예: 수정 반영 — 화면에 이미 보이는 값이라 본문/메시지 불필요)
+    // (record 컴포넌트 accessor success() 와 충돌하지 않도록 ok() 로 둔다)
+    public static ApiResponse<Void> ok() {
+        return new ApiResponse<>(true, null, null, null);
+    }
+
     public static ApiResponse<Void> failure(String error) {
         return new ApiResponse<>(false, null, null, error);
     }

@@ -13,4 +13,7 @@ public interface CompanyCountryRepository extends JpaRepository<CompanyCountry, 
     // 링크를 거쳐 연결된 국가 마스터를 한 번의 조회로 가져온다. (링크별 LAZY 로딩 N+1 회피)
     @Query("select l.country from CompanyCountry l where l.company.id = :companyId order by l.displayOrder, l.id")
     List<Country> findCountriesByCompanyId(@Param("companyId") Long companyId);
+
+    // 링크 전체 교체(PUT) 시 기존 국가 링크를 일괄 삭제한다.
+    void deleteByCompanyId(Long companyId);
 }

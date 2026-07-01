@@ -13,4 +13,7 @@ public interface CompanyCategoryRepository extends JpaRepository<CompanyCategory
     // 링크를 거쳐 연결된 카테고리 마스터를 한 번의 조회로 가져온다. (링크별 LAZY 로딩 N+1 회피)
     @Query("select l.category from CompanyCategory l where l.company.id = :companyId order by l.displayOrder, l.id")
     List<Category> findCategoriesByCompanyId(@Param("companyId") Long companyId);
+
+    // 링크 전체 교체(PUT) 시 기존 카테고리 링크를 일괄 삭제한다.
+    void deleteByCompanyId(Long companyId);
 }
