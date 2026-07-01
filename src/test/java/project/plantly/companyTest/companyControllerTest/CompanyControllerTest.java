@@ -34,6 +34,7 @@ import project.plantly.domain.company.search.CompanySearchCriteria;
 import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
+import project.plantly.domain.company.service.CompanyUpdateService;
 import project.plantly.global.PageInfo;
 import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
@@ -85,6 +86,10 @@ public class CompanyControllerTest {
     // 컨트롤러가 상세 조회용으로 주입받는 협력 객체. 등록 슬라이스 테스트에서는 사용하지 않지만 컨텍스트 로딩을 위해 모킹한다.
     @MockitoBean
     private CompanyQueryService companyQueryService;
+
+    // 컨트롤러가 수정용으로 주입받는 협력 객체. 이 테스트에서는 사용하지 않지만 컨텍스트 로딩을 위해 모킹한다.
+    @MockitoBean
+    private CompanyUpdateService companyUpdateService;
 
     private MockMvc mockMvc;
 
