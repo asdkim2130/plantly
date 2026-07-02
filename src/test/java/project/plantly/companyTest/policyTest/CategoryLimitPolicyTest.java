@@ -4,12 +4,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.exception.CompanyErrorCode;
-import project.plantly.domain.company.policy.CompanyRegistrationContext;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.CategoryLimitPolicy;
-import project.plantly.domain.user.enums.UserGrade;
-import project.plantly.domain.user.policy.GradePolicyRegistry;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -21,9 +22,9 @@ class CategoryLimitPolicyTest {
 
     private final CategoryLimitPolicy policy = new CategoryLimitPolicy(new GradePolicyRegistry());
 
-    private final CompanyRegistrationContext free = CompanyRegistrationContext.ofUser();           // FREE, 상한 1
-    private final CompanyRegistrationContext premium = new CompanyRegistrationContext(UserGrade.PREMIUM); // 상한 10
-    private final CompanyRegistrationContext admin = CompanyRegistrationContext.ofAdmin();          // 면제
+    private final CompanySubscription free = CompanySubscription.freeForUser(LocalDate.now());           // FREE, 상한 1
+    private final CompanySubscription premium = CompanySubscription.active(CompanyGrade.PREMIUM, LocalDate.now(), null); // 상한 10
+    private final CompanySubscription admin = CompanySubscription.adminExempt(LocalDate.now());          // 면제
 
     @Test
     @DisplayName("FREE 상한(1) 이내면 통과")

@@ -22,7 +22,6 @@ import project.plantly.domain.user.dto.request.SignUpRequest;
 import project.plantly.domain.user.dto.request.UpdateProfileRequest;
 import project.plantly.domain.user.dto.response.ProfileResponse;
 import project.plantly.domain.user.dto.response.UserDetailResponse;
-import project.plantly.domain.user.enums.UserGrade;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
 import project.plantly.domain.user.exception.UserErrorCode;
@@ -139,7 +138,6 @@ public class UserServiceTest {
         assertThat(result.phone()).isEqualTo("01012345678");
         assertThat(result.nickname()).isNull();
         assertThat(result.userStatus()).isEqualTo(UserStatus.ACTIVE);
-        assertThat(result.trialEndDate()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
         assertThat(result.createdAt()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
     }
 
@@ -174,7 +172,6 @@ public class UserServiceTest {
         assertThat(profile.nickname()).isEqualTo("닉네임");
         assertThat(profile.userStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(profile.createdAt()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
-        assertThat(profile.trialEndDate()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
 
     }
 
@@ -194,11 +191,9 @@ public class UserServiceTest {
         assertThat(result.name()).isEqualTo("홍길동");
         assertThat(result.phone()).isEqualTo("01012345678");
         assertThat(result.userStatus()).isEqualTo(UserStatus.ACTIVE);
-        assertThat(result.trialEndDate()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
         assertThat(result.createdAt()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
         assertThat(result.updatedAt()).isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
         assertThat(result.userRole()).isEqualTo(UserRole.MEMBER);
-        assertThat(result.userGrade()).isEqualTo(UserGrade.BASIC);
     }
 
     @Test
@@ -225,13 +220,13 @@ public class UserServiceTest {
 
         AdminUserListResponse user1 = new AdminUserListResponse(
                 "a@example.com", "회원A", "01011111111",
-                UserGrade.BASIC, LocalDateTime.of(2026, 1, 2, 0, 0),
+                LocalDateTime.of(2026, 1, 2, 0, 0),
                 UserRole.MEMBER, UserStatus.ACTIVE
         );
 
         AdminUserListResponse user2 = new AdminUserListResponse(
                 "b@example.com", "회원B", "01022222222",
-                UserGrade.BASIC, LocalDateTime.of(2026, 1, 1, 0, 0),
+                LocalDateTime.of(2026, 1, 1, 0, 0),
                 UserRole.MEMBER, UserStatus.ACTIVE
         );
 
@@ -278,11 +273,9 @@ public class UserServiceTest {
         ReflectionTestUtils.setField(user, "name", "홍길동");
         ReflectionTestUtils.setField(user, "phone", "01012345678");
         ReflectionTestUtils.setField(user, "userStatus", UserStatus.ACTIVE);
-        ReflectionTestUtils.setField(user, "trialEndDate", LocalDateTime.of(2026, 1, 1, 0, 0));
         ReflectionTestUtils.setField(user, "createdAt", LocalDateTime.of(2026, 1, 1, 0, 0));
         ReflectionTestUtils.setField(user, "updatedAt", LocalDateTime.of(2026, 1, 1, 0, 0));
         ReflectionTestUtils.setField(user, "userRole", UserRole.MEMBER);
-        ReflectionTestUtils.setField(user, "userGrade", UserGrade.BASIC);
 
         return user;
 

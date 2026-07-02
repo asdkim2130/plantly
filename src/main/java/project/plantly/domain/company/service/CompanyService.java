@@ -5,13 +5,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.entity.link.CompanyMember;
-import project.plantly.domain.company.policy.CompanyRegistrationContext;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
+import project.plantly.domain.company.repository.CompanySubscriptionRepository;
 import project.plantly.domain.company.search.CompanySearchDocumentWriter;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -27,6 +29,9 @@ public class CompanyService {
     // 회사-유저 멤버십. 자가등록 시 등록자를 OWNER 로 1건 기록한다.
     private final CompanyMemberRepository companyMemberRepository;
 
+    // 회사 구독. 등록 시 회사의 초기 구독(등급)을 1건 저장한다. 정책은 이 구독의 등급을 참조한다.
+    private final CompanySubscriptionRepository companySubscriptionRepository;
+
     // 검색 동기화. 본체·자식·링크 저장 후 비정규화 검색 도큐먼트와 카테고리 closure 를 재생성한다.
     private final CompanySearchDocumentWriter searchDocumentWriter;
 
@@ -34,7 +39,7 @@ public class CompanyService {
     // 새 정책은 CompanyRegistrationPolicy 구현 @Component 추가만으로 자동 합류한다.
     private final List<CompanyRegistrationPolicy> registrationPolicies;
 
-    // 유저 자가등록: 등록 즉시 소유자 = 본인. 회사는 FREE 등급으로 시작하며 그 한도로 정책이 적용된다.
+    // 유저 자가등록: 등록 즉시 소유자 = 본인. 회사는 FREE 구독으로 시작하며 그 한도로 정책이 적용된다.
     @Transactional
     public Long createByUser(Long userId, CompanyCreateRequest request) {
         Company company = Company.createByUser(
@@ -43,7 +48,7 @@ public class CompanyService {
                 request.postalCode(), request.address(), request.detailAddress(), request.website(), request.logoUrl(),
                 request.introTitle(), request.content(), request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(), request.pricingType(), request.brandColor());
 
-        Long companyId = persist(company, request, CompanyRegistrationContext.ofUser());
+        Long companyId = persist(company, request, CompanySubscription.freeForUser(LocalDate.now()));
 
         // 자가등록자 = OWNER. 관리자 등록(createByAdmin)은 소유자 미연동이라 멤버를 만들지 않는다.
         // (Company.userId 와 병행 기록 — 추후 멤버십이 단일 진실원이 되면 userId 는 정리)
@@ -52,6 +57,7 @@ public class CompanyService {
     }
 
     // 관리자 등록: 소유자 미연동(userId=null) 상태로 시작. registeredBy = 등록한 admin id.
+    // 구독은 등급 한도 면제(ADMIN_EXEMPT)로 시작한다.
     @Transactional
     public Long createByAdmin(Long adminId, CompanyCreateRequest request) {
         Company company = Company.createByAdmin(
@@ -60,14 +66,19 @@ public class CompanyService {
                 request.postalCode(), request.address(), request.detailAddress(), request.website(), request.logoUrl(),
                 request.introTitle(), request.content(), request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(), request.pricingType(), request.brandColor());
 
-        return persist(company, request, CompanyRegistrationContext.ofAdmin());
+        return persist(company, request, CompanySubscription.adminExempt(LocalDate.now()));
     }
 
-    // 공통 코어: 등록 정책 일괄 검증 후, 본체 INSERT(=id 확보) → 부속(자식/링크)을 같은 트랜잭션으로 저장한다.
-    private Long persist(Company company, CompanyCreateRequest request, CompanyRegistrationContext context) {
-        registrationPolicies.forEach(policy -> policy.apply(company, request, context));
+    // 공통 코어: 등록 정책 일괄 검증 후, 본체 INSERT(=id 확보) → 구독·부속(자식/링크)을 같은 트랜잭션으로 저장한다.
+    // 정책은 아직 저장 전인 company 와 subscription(등급 출처)을 받아 검증/변형한다. throw 시 아무것도 영속화되지 않는다.
+    private Long persist(Company company, CompanyCreateRequest request, CompanySubscription subscription) {
+        registrationPolicies.forEach(policy -> policy.apply(company, request, subscription));
 
         companyRepository.save(company);
+        // 본체 저장으로 확보한 id 로 구독을 회사에 연결(1:1)해 저장한다.
+        subscription.assignCompany(company.getId());
+        companySubscriptionRepository.save(subscription);
+
         childWriter.write(company, request);
         linkWriter.write(company, request);
         // 자식·링크가 모두 저장된 뒤라야 도큐먼트 집계와 카테고리 closure 가 온전하다.

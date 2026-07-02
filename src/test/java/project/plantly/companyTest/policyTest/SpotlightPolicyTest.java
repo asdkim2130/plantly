@@ -6,10 +6,12 @@ import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.companyTest.support.CompanyFixture;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.Company;
-import project.plantly.domain.company.policy.CompanyRegistrationContext;
+import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.SpotlightPolicy;
-import project.plantly.domain.user.enums.UserGrade;
-import project.plantly.domain.user.policy.GradePolicyRegistry;
+
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,9 +21,9 @@ class SpotlightPolicyTest {
 
     private final SpotlightPolicy policy = new SpotlightPolicy(new GradePolicyRegistry());
 
-    private final CompanyRegistrationContext free = CompanyRegistrationContext.ofUser();              // 자동 활성화 아님
-    private final CompanyRegistrationContext premium = new CompanyRegistrationContext(UserGrade.PREMIUM); // 자동 활성화
-    private final CompanyRegistrationContext admin = CompanyRegistrationContext.ofAdmin();
+    private final CompanySubscription free = CompanySubscription.freeForUser(LocalDate.now());              // 자동 활성화 아님
+    private final CompanySubscription premium = CompanySubscription.active(CompanyGrade.PREMIUM, LocalDate.now(), null); // 자동 활성화
+    private final CompanySubscription admin = CompanySubscription.adminExempt(LocalDate.now());
 
     private final CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().build();
 

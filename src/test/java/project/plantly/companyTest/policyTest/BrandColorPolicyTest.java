@@ -6,10 +6,12 @@ import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.companyTest.support.CompanyFixture;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.Company;
-import project.plantly.domain.company.policy.CompanyRegistrationContext;
+import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.BrandColorPolicy;
-import project.plantly.domain.user.enums.UserGrade;
-import project.plantly.domain.user.policy.GradePolicyRegistry;
+
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,9 +23,9 @@ class BrandColorPolicyTest {
 
     private final BrandColorPolicy policy = new BrandColorPolicy(new GradePolicyRegistry());
 
-    private final CompanyRegistrationContext free = CompanyRegistrationContext.ofUser();              // 커스텀 불가
-    private final CompanyRegistrationContext standard = new CompanyRegistrationContext(UserGrade.STANDARD); // 커스텀 허용
-    private final CompanyRegistrationContext admin = CompanyRegistrationContext.ofAdmin();
+    private final CompanySubscription free = CompanySubscription.freeForUser(LocalDate.now());              // 커스텀 불가
+    private final CompanySubscription standard = CompanySubscription.active(CompanyGrade.STANDARD, LocalDate.now(), null); // 커스텀 허용
+    private final CompanySubscription admin = CompanySubscription.adminExempt(LocalDate.now());
 
     @Test
     @DisplayName("FREE 는 요청한 색을 무시하고 기본값으로 고정한다")

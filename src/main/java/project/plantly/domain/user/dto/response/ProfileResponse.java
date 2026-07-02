@@ -13,7 +13,6 @@ public record ProfileResponse(
         String nickname,
         String phone,
         UserStatus userStatus,
-        LocalDateTime trialEndDate,
         LocalDateTime createdAt
 ) {
 
@@ -25,7 +24,6 @@ public record ProfileResponse(
                 .nickname(user.getNickname())
                 .phone(user.getPhone())
                 .userStatus(user.getUserStatus())
-                .trialEndDate(user.getTrialEndDate())
                 .createdAt(user.getCreatedAt())
                 .build();
     }

@@ -5,12 +5,13 @@ import org.junit.jupiter.api.Test;
 import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
+import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.exception.CompanyErrorCode;
-import project.plantly.domain.company.policy.CompanyRegistrationContext;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.ReferenceImagePolicy;
-import project.plantly.domain.user.enums.UserGrade;
-import project.plantly.domain.user.policy.GradePolicyRegistry;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -22,9 +23,9 @@ class ReferenceImagePolicyTest {
 
     private final ReferenceImagePolicy policy = new ReferenceImagePolicy(new GradePolicyRegistry());
 
-    private final CompanyRegistrationContext free = CompanyRegistrationContext.ofUser();              // 0 = 업로드 비활성
-    private final CompanyRegistrationContext enterprise = new CompanyRegistrationContext(UserGrade.ENTERPRISE); // 1건당 10장
-    private final CompanyRegistrationContext admin = CompanyRegistrationContext.ofAdmin();
+    private final CompanySubscription free = CompanySubscription.freeForUser(LocalDate.now());              // 0 = 업로드 비활성
+    private final CompanySubscription enterprise = CompanySubscription.active(CompanyGrade.ENTERPRISE, LocalDate.now(), null); // 1건당 10장
+    private final CompanySubscription admin = CompanySubscription.adminExempt(LocalDate.now());
 
     @Test
     @DisplayName("업로드 비활성 등급(FREE)이 레퍼런스 이미지를 보내면 REFERENCE_IMAGE_NOT_ALLOWED")

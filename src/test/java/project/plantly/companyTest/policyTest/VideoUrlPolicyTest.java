@@ -4,11 +4,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.exception.CompanyErrorCode;
-import project.plantly.domain.company.policy.CompanyRegistrationContext;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.VideoUrlPolicy;
-import project.plantly.domain.user.enums.UserGrade;
-import project.plantly.domain.user.policy.GradePolicyRegistry;
+
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -19,9 +21,9 @@ class VideoUrlPolicyTest {
 
     private final VideoUrlPolicy policy = new VideoUrlPolicy(new GradePolicyRegistry());
 
-    private final CompanyRegistrationContext free = CompanyRegistrationContext.ofUser();              // 동영상 불가
-    private final CompanyRegistrationContext standard = new CompanyRegistrationContext(UserGrade.STANDARD); // 동영상 허용
-    private final CompanyRegistrationContext admin = CompanyRegistrationContext.ofAdmin();
+    private final CompanySubscription free = CompanySubscription.freeForUser(LocalDate.now());              // 동영상 불가
+    private final CompanySubscription standard = CompanySubscription.active(CompanyGrade.STANDARD, LocalDate.now(), null); // 동영상 허용
+    private final CompanySubscription admin = CompanySubscription.adminExempt(LocalDate.now());
 
     @Test
     @DisplayName("FREE 가 videoUrl 을 보내면 VIDEO_NOT_ALLOWED")

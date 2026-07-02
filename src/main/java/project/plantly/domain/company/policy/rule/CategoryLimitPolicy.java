@@ -4,17 +4,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.exception.CompanyErrorCode;
-import project.plantly.domain.company.policy.CompanyRegistrationContext;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
-import project.plantly.domain.user.policy.GradePolicyRegistry;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.global.exception.BusinessException;
 
 import java.util.List;
 
 // 정책: 실제 저장될 카테고리(중복 제거 후) 개수가 등급별 상한을 넘으면 등록을 거부한다.
-// - 유저 자가등록: 본인 회사 등급(FREE)의 상한을 따른다.
-// - 관리자 등록(ADMIN_REGISTER): 등급 한도 면제 — 스킵한다.
+// - 유저 자가등록: 회사 구독 등급(FREE)의 상한을 따른다.
+// - 관리자 등록(ADMIN_EXEMPT): 등급 한도 면제 — 스킵한다.
 // 등급별 상한 값 자체는 GradePolicyRegistry 가 소유한다.
 @Component
 @RequiredArgsConstructor
@@ -23,8 +23,8 @@ public class CategoryLimitPolicy implements CompanyRegistrationPolicy {
     private final GradePolicyRegistry gradePolicyRegistry;
 
     @Override
-    public void apply(Company company, CompanyCreateRequest request, CompanyRegistrationContext context) {
-        if (context.isAdminRegistration()) {
+    public void apply(Company company, CompanyCreateRequest request, CompanySubscription subscription) {
+        if (subscription.isExempt()) {
             return;
         }
 
@@ -33,7 +33,7 @@ public class CategoryLimitPolicy implements CompanyRegistrationPolicy {
             return;
         }
 
-        int maxCategories = gradePolicyRegistry.of(context.grade()).maxCompanyCategories();
+        int maxCategories = gradePolicyRegistry.of(subscription.effectiveGrade()).maxCompanyCategories();
 
         long distinctCount = categoryIds.stream().distinct().count();
         if (distinctCount > maxCategories) {
