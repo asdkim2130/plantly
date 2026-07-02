@@ -42,7 +42,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import project.plantly.domain.user.dto.response.UserDetailResponse;
-import project.plantly.domain.user.enums.UserGrade;
 
 
 import java.time.LocalDateTime;
@@ -191,7 +190,6 @@ public class UserControllerTest {
                 null,
                 "01012345678",
                 UserStatus.ACTIVE,
-                LocalDateTime.of(2026, 1, 1, 0, 0),
                 LocalDateTime.of(2026, 1, 1, 0, 0)
         );
 
@@ -211,7 +209,6 @@ public class UserControllerTest {
                                 fieldWithPath("data.nickname").type(STRING).optional().description("닉네임 (미설정 시 null)"),
                                 fieldWithPath("data.phone").type(STRING).description("휴대폰 번호"),
                                 fieldWithPath("data.userStatus").type(STRING).description("회원 상태 (ACTIVE, SUSPENDED 등)"),
-                                fieldWithPath("data.trialEndDate").type(STRING).optional().description("체험 종료 일시 (ISO-8601, 없으면 null)"),
                                 fieldWithPath("data.createdAt").type(STRING).description("가입 일시 (ISO-8601)")
                         )
                 ));
@@ -247,7 +244,6 @@ public class UserControllerTest {
                 null,
                 "01012345678",
                 UserStatus.ACTIVE,
-                LocalDateTime.of(2026, 1, 1, 0, 0),
                 LocalDateTime.of(2026, 1, 1, 0, 0)
         );
 
@@ -276,7 +272,6 @@ public class UserControllerTest {
                                 fieldWithPath("data.nickname").type(STRING).optional().description("닉네임 (미설정 시 null)"),
                                 fieldWithPath("data.phone").type(STRING).description("휴대폰 번호"),
                                 fieldWithPath("data.userStatus").type(STRING).description("회원 상태"),
-                                fieldWithPath("data.trialEndDate").type(STRING).optional().description("체험 종료 일시 (없으면 null)"),
                                 fieldWithPath("data.createdAt").type(STRING).description("가입 일시")
                         )
                 ));
@@ -294,9 +289,7 @@ public class UserControllerTest {
                 .nickname("닉네임")
                 .phone("01099998888")
                 .userStatus(UserStatus.ACTIVE)
-                .userGrade(UserGrade.BASIC)
                 .userRole(UserRole.MEMBER)
-                .trialEndDate(LocalDateTime.of(2026, 1, 1, 0, 0))
                 .createdAt(LocalDateTime.of(2026, 1, 1, 0, 0))
                 .deletedAt(null)
                 .build();
@@ -322,9 +315,7 @@ public class UserControllerTest {
                                 fieldWithPath("data.nickname").type(STRING).optional().description("닉네임 (미설정 시 null)"),
                                 fieldWithPath("data.phone").type(STRING).description("휴대폰 번호"),
                                 fieldWithPath("data.userStatus").type(STRING).description("회원 상태 (ACTIVE, SUSPENDED 등)"),
-                                fieldWithPath("data.userGrade").type(STRING).description("회원 등급 (BASIC 등)"),
                                 fieldWithPath("data.userRole").type(STRING).description("권한 (MEMBER, ADMIN)"),
-                                fieldWithPath("data.trialEndDate").type(STRING).optional().description("체험 종료 일시 (없으면 null)"),
                                 fieldWithPath("data.createdAt").type(STRING).description("가입 일시"),
                                 fieldWithPath("data.updatedAt").type(STRING).optional().description("수정 일시 (없으면 null)"),
                                 fieldWithPath("data.deletedAt").type(STRING).optional().description("탈퇴 일시 (없으면 null)")
@@ -358,7 +349,7 @@ public class UserControllerTest {
         //given
         AdminUserListResponse content = new AdminUserListResponse(
                 "target@example.com", "대상회원", "01099998888",
-                UserGrade.BASIC, LocalDateTime.of(2026, 1, 1, 0, 0),
+                LocalDateTime.of(2026, 1, 1, 0, 0),
                 UserRole.MEMBER, UserStatus.ACTIVE
         );
 
@@ -386,7 +377,6 @@ public class UserControllerTest {
                                 fieldWithPath("data.content[].email").type(STRING).description("이메일"),
                                 fieldWithPath("data.content[].name").type(STRING).description("이름"),
                                 fieldWithPath("data.content[].phone").type(STRING).description("휴대폰 번호"),
-                                fieldWithPath("data.content[].userGrade").type(STRING).description("회원 등급"),
                                 fieldWithPath("data.content[].createdAt").type(STRING).description("가입 일시"),
                                 fieldWithPath("data.content[].userRole").type(STRING).description("권한 (MEMBER, ADMIN)"),
                                 fieldWithPath("data.content[].userStatus").type(STRING).description("회원 상태"),

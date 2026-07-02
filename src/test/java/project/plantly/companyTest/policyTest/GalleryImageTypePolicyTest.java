@@ -6,10 +6,11 @@ import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.enums.ImageType;
+import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.exception.CompanyErrorCode;
-import project.plantly.domain.company.policy.CompanyRegistrationContext;
 import project.plantly.domain.company.policy.rule.GalleryImageTypePolicy;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -21,8 +22,8 @@ class GalleryImageTypePolicyTest {
 
     private final GalleryImageTypePolicy policy = new GalleryImageTypePolicy();
 
-    private final CompanyRegistrationContext free = CompanyRegistrationContext.ofUser();
-    private final CompanyRegistrationContext admin = CompanyRegistrationContext.ofAdmin();
+    private final CompanySubscription free = CompanySubscription.freeForUser(LocalDate.now());
+    private final CompanySubscription admin = CompanySubscription.adminExempt(LocalDate.now());
 
     @Test
     @DisplayName("전부 DETAIL 이면 통과")

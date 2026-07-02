@@ -2,7 +2,6 @@ package project.plantly.domain.user.dto.response;
 
 import lombok.Builder;
 import project.plantly.domain.user.User;
-import project.plantly.domain.user.enums.UserGrade;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
 
@@ -15,9 +14,7 @@ public record UserDetailResponse(Long id,
                                  String nickname,
                                  String phone,
                                  UserStatus userStatus,
-                                 UserGrade userGrade,
                                  UserRole userRole,
-                                 LocalDateTime trialEndDate,
                                  LocalDateTime createdAt,
                                  LocalDateTime updatedAt,
                                  LocalDateTime deletedAt) {
@@ -30,9 +27,7 @@ public record UserDetailResponse(Long id,
                 .nickname(user.getNickname())
                 .phone(user.getPhone())
                 .userStatus(user.getUserStatus())
-                .userGrade(user.getUserGrade())
                 .userRole(user.getUserRole())
-                .trialEndDate(user.getTrialEndDate())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .deletedAt(user.getDeletedAt())

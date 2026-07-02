@@ -26,7 +26,6 @@ public class QUserRepository {
                         qUser.email,
                         qUser.name,
                         qUser.phone,
-                        qUser.userGrade,
                         qUser.createdAt,
                         qUser.userRole,
                         qUser.userStatus))

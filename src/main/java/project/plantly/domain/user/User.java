@@ -8,7 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import project.plantly.domain.user.enums.UserGrade;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
 
@@ -46,13 +45,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserGrade userGrade;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private UserRole userRole;
-
-    private LocalDateTime trialEndDate;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -63,16 +56,14 @@ public class User {
     private LocalDateTime deletedAt;
 
     @Builder
-    public User(String email, String password, String name, String phone, String nickname, UserStatus userStatus, UserGrade userGrade, UserRole userRole, LocalDateTime trialEndDate, LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime deletedAt) {
+    public User(String email, String password, String name, String phone, String nickname, UserStatus userStatus, UserRole userRole, LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime deletedAt) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.phone = phone;
         this.nickname = nickname;
         this.userStatus = (userStatus != null) ? userStatus : UserStatus.ACTIVE;
-        this.userGrade = (userGrade != null) ? userGrade : UserGrade.FREE;
         this.userRole = (userRole != null) ? userRole : UserRole.MEMBER;
-        this.trialEndDate = trialEndDate;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.deletedAt = deletedAt;

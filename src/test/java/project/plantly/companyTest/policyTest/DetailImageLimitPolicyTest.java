@@ -6,12 +6,12 @@ import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.enums.ImageType;
+import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.exception.CompanyErrorCode;
-import project.plantly.domain.company.policy.CompanyRegistrationContext;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.DetailImageLimitPolicy;
-import project.plantly.domain.user.enums.UserGrade;
-import project.plantly.domain.user.policy.GradePolicyRegistry;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -23,8 +23,8 @@ class DetailImageLimitPolicyTest {
 
     private final DetailImageLimitPolicy policy = new DetailImageLimitPolicy(new GradePolicyRegistry());
 
-    private final CompanyRegistrationContext free = CompanyRegistrationContext.ofUser();   // 상한 3
-    private final CompanyRegistrationContext admin = CompanyRegistrationContext.ofAdmin();
+    private final CompanySubscription free = CompanySubscription.freeForUser(LocalDate.now());   // 상한 3
+    private final CompanySubscription admin = CompanySubscription.adminExempt(LocalDate.now());
 
     @Test
     @DisplayName("FREE 상한(3) 이내면 통과")

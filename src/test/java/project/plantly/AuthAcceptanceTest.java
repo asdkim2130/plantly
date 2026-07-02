@@ -49,8 +49,7 @@ class AuthAcceptanceTest extends AcceptanceTest {
                 .body("success", equalTo(true))
                 .body("data.email", equalTo("flow@example.com"))
                 .body("data.name", equalTo("홍길동"))
-                .body("data.userStatus", equalTo("ACTIVE"))
-                .body("data.userGrade", equalTo("FREE"));
+                .body("data.userStatus", equalTo("ACTIVE"));
 
         assertThat(loginRes.cookie("JSESSIONID")).isNotNull();
 
