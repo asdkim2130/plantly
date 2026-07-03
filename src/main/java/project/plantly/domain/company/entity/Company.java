@@ -23,9 +23,8 @@ public class Company {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 소유 유저 식별자. 관리자가 대신 등록한 회사는 등록 시점에 소유자가 없을 수 있으므로 nullable.
-    // 추후 관계자가 가입하면 assignOwner()로 연동한다. (도메인 결합 회피 위해 raw id로 참조)
-    private Long userId;
+    // 소유는 CompanyMember(role=OWNER) 가 단일 진실원(SSOT). 관리자 대신등록 회사는 미연동(멤버 0건)일 수 있다.
+    // (소유 유저 식별자 userId 필드는 CompanyMember 로 이관 — Company 는 더 이상 소유자를 직접 참조하지 않는다)
 
     // 등록 경로(USER/ADMIN). 연동 정책 확정 전까지 누가 어떤 경로로 등록했는지 추적하는 provenance 용도.
     @NotNull
@@ -112,8 +111,7 @@ public class Company {
 
     // 비즈니스 필드만 받는다. 시스템 관리 플래그(verified/featured/spotlight/spotlightOrder/deleted)는
     // 생성 시 기본값(false/0)으로 시작하고, 상태 전환은 도메인 행위 메서드로만 수행한다.
-    private Company(Long userId, RegistrationSource registrationSource, Long registeredBy, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
-        this.userId = userId;
+    private Company(RegistrationSource registrationSource, Long registeredBy, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
         this.registrationSource = registrationSource;
         this.registeredBy = registeredBy;
         this.businessNumber = businessNumber;
@@ -135,21 +133,21 @@ public class Company {
         this.brandColor = brandColor;
     }
 
-    // 유저 자가등록: 등록 즉시 소유자 = 본인. registeredBy 도 본인.
+    // 유저 자가등록: registeredBy = 본인. 소유자 연동은 호출부가 CompanyMember(OWNER) 로 별도 기록한다.
     public static Company createByUser(Long userId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
-        return new Company(userId, RegistrationSource.USER, userId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
+        return new Company(RegistrationSource.USER, userId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
     }
 
-    // 관리자 등록: 소유자 미연동(userId=null) 상태로 시작. registeredBy 는 등록한 admin id.
+    // 관리자 등록: 소유자 미연동(멤버 0건) 상태로 시작. registeredBy 는 등록한 admin id.
     public static Company createByAdmin(Long adminId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel,  String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
-        return new Company(null, RegistrationSource.ADMIN, adminId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
+        return new Company(RegistrationSource.ADMIN, adminId, businessNumber, companyName, ceoName, establishmentDate, postalCode, address, detailAddress, website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
     }
 
     // ===== 기본 정보 부분 수정 =====
     // null = 미변경. 선택(nullable) 문자열 필드는 blank("") 을 받으면 비운다(null 로 clear).
     // 필수 필드의 blank 는 요청 DTO(@Size(min=1)) 에서 거르므로 여기선 null 여부만 본다.
     // 날짜·enum 은 blank 개념이 없어 clear 를 지원하지 않는다(값이 오면 교체만).
-    // 시스템 플래그·사업자번호·등록 provenance(userId/registrationSource/registeredBy) 는 이 경로로 바꾸지 않는다.
+    // 시스템 플래그·사업자번호·등록 provenance(registrationSource/registeredBy) 는 이 경로로 바꾸지 않는다.
     public void updateBasicInfo(String companyName, String ceoName, LocalDate establishmentDate,
                                 String postalCode, String address, String detailAddress,
                                 String website, String logoUrl, String introTitle, String content,
@@ -183,16 +181,6 @@ public class Company {
     }
 
     // ===== 상태 변경 (도메인 행위) =====
-
-    // 소유자 연동. 관리자가 미연동(userId=null)으로 등록한 회사에 추후 관계자가 가입하면 호출한다.
-    public void assignOwner(Long userId) {
-        this.userId = userId;
-    }
-
-    // 소유자 연동 여부
-    public boolean isClaimed() {
-        return this.userId != null;
-    }
 
     // 관리자 인증 처리 / 해제
     public void verify() {

@@ -9,9 +9,9 @@ import java.time.LocalDateTime;
 /**
  * 관리자 회사 목록 카드({@link AdminCompanySummary}) 프로젝션 SQL·RowMapper.
  *
- * <p>공개 카드 컬럼({@link CompanyCardSql#CARD_COLUMNS})을 그대로 이어붙이고 운영 컬럼(deleted/user_id/
+ * <p>공개 카드 컬럼({@link CompanyCardSql#CARD_COLUMNS})을 그대로 이어붙이고 운영 컬럼(deleted/owner_user_id/
  * registration_source/created_at)만 추가한다 — 카테고리/태그/산업군 array_agg 집계는 복붙 없이 공유한다.
- * 별칭 {@code c = company} 전제(SELECT/FROM 은 호출부가 붙인다).
+ * 소유자는 company_member(role=OWNER) 스칼라 서브쿼리로 뽑는다(미연동이면 null). 별칭 {@code c = company} 전제(SELECT/FROM 은 호출부가 붙인다).
  */
 public final class AdminCompanyCardSql {
 
@@ -19,7 +19,9 @@ public final class AdminCompanyCardSql {
     }
 
     public static final String COLUMNS = CompanyCardSql.CARD_COLUMNS
-            + ", c.deleted, c.user_id, c.registration_source, c.created_at";
+            + ", c.deleted"
+            + ", (SELECT cm.user_id FROM company_member cm WHERE cm.company_id = c.id AND cm.role = 'OWNER' LIMIT 1) AS owner_user_id"
+            + ", c.registration_source, c.created_at";
 
     public static final RowMapper<AdminCompanySummary> ROW_MAPPER = (rs, i) -> new AdminCompanySummary(
             rs.getLong("id"),
@@ -31,7 +33,7 @@ public final class AdminCompanyCardSql {
             rs.getBoolean("featured"),
             rs.getBoolean("spotlight"),
             rs.getBoolean("deleted"),
-            rs.getObject("user_id", Long.class),                 // 미연동이면 null (getLong 은 0 으로 뭉갬)
+            rs.getObject("owner_user_id", Long.class),           // 미연동이면 null (getLong 은 0 으로 뭉갬)
             RegistrationSource.valueOf(rs.getString("registration_source")),
             rs.getObject("created_at", LocalDateTime.class),
             CompanyCardSql.toList(rs.getArray("category_names")),

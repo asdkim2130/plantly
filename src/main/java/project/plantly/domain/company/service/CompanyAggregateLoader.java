@@ -7,6 +7,8 @@ import project.plantly.domain.company.dto.CompanyAggregate;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanyImage;
 import project.plantly.domain.company.entity.CompanyProjectReference;
+import project.plantly.domain.company.entity.link.CompanyMember;
+import project.plantly.domain.company.enums.MemberRole;
 import project.plantly.domain.company.repository.*;
 
 import java.util.List;
@@ -25,6 +27,7 @@ class CompanyAggregateLoader {
     private final CompanyEquipmentRepository equipmentRepository;
     private final CompanyTagRepository tagRepository;
     private final CompanyProjectReferenceRepository referenceRepository;
+    private final CompanyMemberRepository memberRepository;
 
     private final CompanyCategoryRepository categoryRepository;
     private final CompanyCertificationRepository certificationRepository;
@@ -56,8 +59,14 @@ class CompanyAggregateLoader {
                         .findFirst()
                         .orElse(null);
 
+        // 소유자 id: OWNER 멤버(있으면 1건)에서 뽑는다. 관리자 대신등록·미연동이면 null.
+        Long ownerUserId = memberRepository.findByCompanyIdAndRole(companyId, MemberRole.OWNER)
+                .map(CompanyMember::getUserId)
+                .orElse(null);
+
         return new CompanyAggregate(
                 company,
+                ownerUserId,
                 contactRepository.findFirstByCompanyIdAndRepresentativeTrueOrderByDisplayOrderAsc(companyId)
                         .orElse(null),
                 galleryImages,

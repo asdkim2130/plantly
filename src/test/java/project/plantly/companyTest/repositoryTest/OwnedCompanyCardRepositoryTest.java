@@ -13,6 +13,7 @@ import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanyTag;
 import project.plantly.domain.company.entity.link.CompanyCategory;
 import project.plantly.domain.company.entity.link.CompanyIndustry;
+import project.plantly.domain.company.entity.link.CompanyMember;
 import project.plantly.domain.company.industry.Industry;
 import project.plantly.domain.company.repository.OwnedCompanyCardRepository;
 import project.plantly.domain.company.search.dto.CompanySummary;
@@ -89,11 +90,13 @@ class OwnedCompanyCardRepositoryTest extends PostgresContainerTest {
 
     // ===== helpers =====
 
+    // 회사 + OWNER 멤버를 함께 저장한다. 소유는 company_member(role=OWNER) 로만 표현된다.
     private Company persistCompany(Long ownerId, String name) {
         Company c = Company.createByUser(ownerId, null, name, "대표자", null,
                 "06236", "서울 강남구", "1층", null, "logo-" + name,
                 null, null, null, null, null, null, null, null);
         em.persist(c);
+        em.persist(CompanyMember.owner(c.getId(), ownerId)); // IDENTITY 라 persist 직후 id 확정
         return c;
     }
 }

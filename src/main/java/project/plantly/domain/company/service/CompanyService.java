@@ -51,7 +51,7 @@ public class CompanyService {
         Long companyId = persist(company, request, CompanySubscription.freeForUser(LocalDate.now()));
 
         // 자가등록자 = OWNER. 관리자 등록(createByAdmin)은 소유자 미연동이라 멤버를 만들지 않는다.
-        // (Company.userId 와 병행 기록 — 추후 멤버십이 단일 진실원이 되면 userId 는 정리)
+        // 소유의 단일 진실원(SSOT) — Company 는 소유자를 직접 참조하지 않고 이 멤버십으로만 표현한다.
         companyMemberRepository.save(CompanyMember.owner(companyId, userId));
         return companyId;
     }

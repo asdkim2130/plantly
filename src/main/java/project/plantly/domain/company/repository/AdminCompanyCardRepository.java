@@ -80,12 +80,13 @@ public class AdminCompanyCardRepository {
         params.addValue("companyName", LikePatterns.contains(companyName));
     }
 
-    // 소유자 정확 등치. (user_id 가 null 인 미연동 회사는 자연히 제외된다)
+    // 소유자 정확 등치. 소유는 company_member(role=OWNER) 로 판정한다. (멤버 없는 미연동 회사는 자연히 제외된다)
     private void appendOwner(List<String> conditions, MapSqlParameterSource params, Long ownerUserId) {
         if (ownerUserId == null) {
             return;
         }
-        conditions.add("c.user_id = :ownerUserId");
+        conditions.add("EXISTS (SELECT 1 FROM company_member cm" +
+                " WHERE cm.company_id = c.id AND cm.user_id = :ownerUserId AND cm.role = 'OWNER')");
         params.addValue("ownerUserId", ownerUserId);
     }
 }

@@ -24,6 +24,7 @@ import java.util.List;
 // 갤러리 이미지(projectReference == null)는 galleryImages 로 따로 담는다.
 public record CompanyAggregate(
         Company company,
+        Long ownerUserId,   // 회사의 OWNER 멤버 user id. 관리자 대신등록·미연동이면 null. (소유는 CompanyMember 가 SSOT)
         CompanyContact representativeContact,
         List<CompanyImage> galleryImages,
         CompanyProjectReference representativeReference,

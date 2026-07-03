@@ -13,7 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 // 회사의 구독. 구독의 주인은 회사(Company 1:1) 이며, 정책이 참조하는 등급의 유일한 출처다.
-// raw id(companyId) 로 느슨하게 참조한다. (Company.userId / CompanyMember 와 동일 철학 — @ManyToOne 으로 묶지 않는다)
+// raw id(companyId) 로 느슨하게 참조한다. (CompanyMember 와 동일 철학 — @ManyToOne 으로 묶지 않는다)
 //
 // 저장하는 건 "무엇을(grade) 어떤 상태로(status) 언제부터(startedAt) 언제까지(expiresAt)" 라는 '사실' 뿐이다.
 // 정책이 실제로 참조하는 '지금 유효한 등급' 은 저장하지 않고 effectiveGrade() 로 파생한다.

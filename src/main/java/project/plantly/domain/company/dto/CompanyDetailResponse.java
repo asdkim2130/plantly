@@ -19,7 +19,7 @@ public record CompanyDetailResponse(
     public static CompanyDetailResponse from(CompanyAggregate aggregate) {
         return new CompanyDetailResponse(
                 CompanyPublicResponse.from(aggregate),
-                ManagementMeta.from(aggregate.company()));
+                ManagementMeta.from(aggregate));
     }
 
     // 소유자/관리자에게만 보이는 내부·운영 메타데이터.
@@ -37,13 +37,15 @@ public record CompanyDetailResponse(
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {
-        public static ManagementMeta from(Company c) {
+        public static ManagementMeta from(CompanyAggregate aggregate) {
+            Company c = aggregate.company();
+            Long ownerUserId = aggregate.ownerUserId();   // OWNER 멤버 없음(관리자 대신등록·미연동) → null
             return new ManagementMeta(
                     c.getBusinessNumber(),
                     c.getRegistrationSource(),
                     c.getRegisteredBy(),
-                    c.getUserId(),
-                    c.isClaimed(),
+                    ownerUserId,
+                    ownerUserId != null,          // claimed = 소유자 연동 여부
                     c.getSpotlightOrder(),
                     c.isVerified(),
                     c.isFeatured(),

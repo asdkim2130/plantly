@@ -10,8 +10,8 @@ import project.plantly.domain.company.enums.MemberRole;
 import java.time.LocalDateTime;
 
 // 회사-유저 멤버십. User↔Company N:M 관계가 사는 곳(association table)이며,
-// 두 애그리거트를 raw id로 느슨하게 참조한다. (Company.userId 와 동일 철학 — @ManyToOne 으로 객체 그래프를 묶지 않는다)
-// 현재는 회사 등록자를 OWNER 로 1건 기록하는 최소 구조만 둔다. (초대/수락/권한분화는 추후)
+// 두 애그리거트를 raw id로 느슨하게 참조한다. (@ManyToOne 으로 객체 그래프를 묶지 않는다)
+// 회사 소유의 단일 진실원(SSOT) — 현재는 회사 등록자를 OWNER 로 1건 기록하는 최소 구조만 둔다. (초대/수락/권한분화는 추후)
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
