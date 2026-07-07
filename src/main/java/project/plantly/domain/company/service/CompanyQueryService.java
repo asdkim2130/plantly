@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
@@ -104,5 +105,17 @@ public class CompanyQueryService {
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
 
         return CompanySubscriptionResponse.from(subscription, company.getCompanyName());
+    }
+
+    // 관리자 구독 조회: 소유(멤버) 검증 없이(상태 무관) 회사+구독을 로드해 감사 필드까지 내려준다.
+    // 권한(ADMIN)은 컨트롤러 @PreAuthorize 가 담당한다. getForAdmin 과 동일하게 삭제/미연동 회사도 조회된다.
+    public AdminCompanySubscriptionResponse getSubscriptionForAdmin(Long companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+
+        CompanySubscription subscription = companySubscriptionRepository.findByCompanyId(companyId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+
+        return AdminCompanySubscriptionResponse.from(subscription, company.getCompanyName());
     }
 }

@@ -26,7 +26,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import project.plantly.companyTest.support.CompanyApiDocs;
 import project.plantly.domain.company.controller.AdminCompanyController;
+import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
+import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
+import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
 import project.plantly.domain.company.service.CompanyUpdateService;
@@ -35,11 +39,16 @@ import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
 import project.plantly.global.security.UserPrincipal;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.patch;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.put;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
@@ -149,6 +158,78 @@ public class AdminCompanyUpdateControllerTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error").value("접근 권한이 없습니다."));
+    }
+
+    @Test
+    @DisplayName("관리자가 구독을 조회하면 200 과 구독 정보(감사 타임스탬프 포함)를 반환한다")
+    void getSubscriptionByAdmin_success() throws Exception {
+        AdminCompanySubscriptionResponse response = new AdminCompanySubscriptionResponse(
+                5L, "플랜틀리테크", CompanyGrade.PREMIUM, CompanyGrade.PREMIUM, SubscriptionStatus.ACTIVE,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
+                LocalDateTime.of(2026, 1, 1, 9, 0), LocalDateTime.of(2026, 7, 7, 15, 0));
+        given(companyQueryService.getSubscriptionForAdmin(eq(5L))).willReturn(response);
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(get("/api/v1/admin/companies/{id}/subscription", 5L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.companyId").value(5L))
+                .andExpect(jsonPath("$.data.companyName").value("플랜틀리테크"))
+                .andExpect(jsonPath("$.data.grade").value("PREMIUM"))
+                .andExpect(jsonPath("$.data.effectiveGrade").value("PREMIUM"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.createdAt").exists())
+                .andExpect(jsonPath("$.data.updatedAt").exists())
+                .andDo(document("admin-company-subscription",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        responseFields(CompanyApiDocs.adminCompanySubscriptionResponseFields())));
+    }
+
+    @Test
+    @DisplayName("관리자가 구독을 수정(grade/status/expiresAt)하면 200 ok 를 반환하고 서비스에 위임한다")
+    void updateSubscriptionByAdmin_success() throws Exception {
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(patch("/api/v1/admin/companies/{id}/subscription", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"grade\":\"PREMIUM\",\"status\":\"ACTIVE\",\"expiresAt\":\"2026-12-31\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andDo(document("admin-company-subscription-update",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        requestFields(CompanyApiDocs.adminSubscriptionUpdateRequestFields()),
+                        responseFields(CompanyApiDocs.okResponseFields())));
+
+        verify(companyUpdateService).updateSubscriptionByAdmin(eq(5L), any(AdminSubscriptionUpdateRequest.class));
+    }
+
+    @Test
+    @DisplayName("등급/상태를 누락하면 400(@NotNull 위반) 을 반환한다")
+    void updateSubscriptionByAdmin_missingRequiredField_validationError() throws Exception {
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(patch("/api/v1/admin/companies/{id}/subscription", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expiresAt\":\"2026-12-31\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    @DisplayName("관리자가 아닌 유저가 구독 수정을 호출하면 @PreAuthorize 가 막아 403 을 반환한다")
+    void updateSubscriptionByAdmin_forbidden_forNonAdmin() throws Exception {
+        authenticate(2L, UserRole.MEMBER);
+
+        mockMvc.perform(patch("/api/v1/admin/companies/{id}/subscription", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"grade\":\"PREMIUM\",\"status\":\"ACTIVE\",\"expiresAt\":null}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("접근 권한이 없습니다."))
+                .andDo(document("admin-company-subscription-update-forbidden",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
     @AfterEach

@@ -228,6 +228,31 @@ public class CompanyApiDocs {
         };
     }
 
+    // 관리자 구독 조회 응답(ApiResponse<AdminCompanySubscriptionResponse>). 사용자용 + 감사 타임스탬프.
+    public static FieldDescriptor[] adminCompanySubscriptionResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
+                fieldWithPath("data.companyId").type(JsonFieldType.NUMBER).description("구독 주체(회사) ID"),
+                fieldWithPath("data.companyName").type(JsonFieldType.STRING).description("구독 주체(회사) 이름"),
+                fieldWithPath("data.grade").type(JsonFieldType.STRING).description("계약(저장) 등급: FREE, BASIC, STANDARD, PREMIUM, ENTERPRISE"),
+                fieldWithPath("data.effectiveGrade").type(JsonFieldType.STRING).description("지금 유효한 등급 (체험/만료 반영, 정책이 실제 참조하는 값). 만료 시 FREE 로 강등됨"),
+                fieldWithPath("data.status").type(JsonFieldType.STRING).description("구독 상태: ACTIVE(정상), TRIAL(체험), ADMIN_EXEMPT(관리자 등록·한도 면제)"),
+                fieldWithPath("data.startedAt").type(JsonFieldType.STRING).description("구독 시작일 (yyyy-MM-dd)"),
+                fieldWithPath("data.expiresAt").type(JsonFieldType.STRING).optional().description("구독 만료일 (yyyy-MM-dd, null = 무기한)"),
+                fieldWithPath("data.createdAt").type(JsonFieldType.STRING).description("구독 생성 시각 (감사용)"),
+                fieldWithPath("data.updatedAt").type(JsonFieldType.STRING).description("구독 최종 수정 시각 (감사용)")
+        };
+    }
+
+    // 관리자 구독 수정 요청(AdminSubscriptionUpdateRequest). 팝업이 세 필드를 항상 채워 보내는 full-replace.
+    public static FieldDescriptor[] adminSubscriptionUpdateRequestFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("grade").type(JsonFieldType.STRING).description("변경할 등급 (필수): FREE, BASIC, STANDARD, PREMIUM, ENTERPRISE"),
+                fieldWithPath("status").type(JsonFieldType.STRING).description("변경할 상태 (필수): ACTIVE, TRIAL, ADMIN_EXEMPT"),
+                fieldWithPath("expiresAt").type(JsonFieldType.STRING).optional().description("만료일 (yyyy-MM-dd). null = 무기한(만료 없음). startedAt 은 수정하지 않는다")
+        };
+    }
+
     // 공개 상세 조회 응답(ApiResponse<CompanyPublicResponse>). data 가 곧 공개 프로필이다.
     public static FieldDescriptor[] companyPublicResponseFields() {
         return concat(

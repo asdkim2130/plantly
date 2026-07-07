@@ -89,6 +89,15 @@ public class CompanySubscription {
         this.companyId = companyId;
     }
 
+    // 관리자 오버라이드: grade/status/expiresAt 를 그대로 교체한다(full-replace). startedAt/companyId 는 보존한다.
+    // effectiveGrade 는 저장하지 않고 이 세 값에서 파생하므로 별도 갱신이 필요 없다.
+    // 조합의 타당성(예: ADMIN_EXEMPT 인데 grade=FREE)은 관리자가 수정 팝업의 드롭다운으로 직접 통제한다(raw 편집).
+    public void changeByAdmin(CompanyGrade grade, SubscriptionStatus status, LocalDate expiresAt) {
+        this.grade = grade;
+        this.status = status;
+        this.expiresAt = expiresAt;
+    }
+
     // 등급 한도 정책 면제 여부(관리자 등록). 구조 검증 정책은 면제하지 않는다.
     public boolean isExempt() {
         return status == SubscriptionStatus.ADMIN_EXEMPT;

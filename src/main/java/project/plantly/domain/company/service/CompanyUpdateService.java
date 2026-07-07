@@ -3,6 +3,7 @@ package project.plantly.domain.company.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.entity.Company;
@@ -169,6 +170,18 @@ public class CompanyUpdateService {
 
     public void replaceRegionsByAdmin(Long companyId, List<Long> domesticRegionIds) {
         mutateAsAdmin(companyId, company -> linkWriter.replaceRegions(company, domesticRegionIds));
+    }
+
+    // ===== 관리자 구독 수정 (raw full-replace) =====
+    // 관리자가 grade/status/expiresAt 를 직접 지정한다(팝업의 라인별 드롭다운). 회사 컬렉션 변경이 아니라
+    // 구독 테이블만 건드리므로 등급 정책 재실행·검색 재동기화가 필요 없다(검색 도큐먼트에 grade 없음).
+    // 다운그레이드로 초과된 기존 데이터(카테고리 수 등)를 소급해서 잘라내지도 않는다 — 그 컬렉션을 수정하는 시점에
+    // 정책이 자연히 적용된다(기존 결정과 일관). effectiveGrade 는 파생이라 저장 갱신이 없다.
+    public void updateSubscriptionByAdmin(Long companyId, AdminSubscriptionUpdateRequest request) {
+        CompanySubscription subscription = companySubscriptionRepository.findByCompanyId(companyId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+
+        subscription.changeByAdmin(request.grade(), request.status(), request.expiresAt());
     }
 
     // ===== 공통 실행 골격 =====
