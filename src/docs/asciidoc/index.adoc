@@ -527,6 +527,54 @@ include::{snippets}/admin-company-detail-forbidden/http-response.adoc[]
 
 include::{snippets}/admin-company-detail-forbidden/response-fields.adoc[]
 
+[[admin-company-update]]
+=== 회사 수정 (관리자)
+
+관리자가 임의의 회사를 수정합니다. 소유 여부와 무관하게 모든 회사를 대상으로 하며, 변경 규약(본체 sparse PATCH·컬렉션 전체 교체 PUT)과 요청/응답 형태는 소유자 수정(<<company-update>>, <<company-update-collections>>)과 동일합니다.
+차이는 인가뿐입니다 — 소유자 멤버십 검증 대신 `ADMIN` 권한(`@PreAuthorize`)을 요구하며, 권한이 없으면 `403` 이 반환됩니다.
+
+* *기본 정보 수정*: `PATCH /api/v1/admin/companies/{id}` (본체 스칼라, sparse)
+* *부속 컬렉션 교체*: `PUT /api/v1/admin/companies/{id}/{컬렉션}` — 컬렉션 종류·본문 형태는 <<company-update-collections>> 의 표와 동일하며 경로 접두사만 `/api/v1/admin/companies` 로 바뀝니다.
+
+변경 요청이므로 세션 쿠키와 CSRF 토큰이 필요합니다(<<overview-auth>> 참고). 성공 응답은 본문 없이 `success` 플래그만 내려갑니다.
+
+==== 기본 정보 수정 요청
+
+include::{snippets}/admin-company-update/http-request.adoc[]
+
+include::{snippets}/admin-company-update/path-parameters.adoc[]
+
+include::{snippets}/admin-company-update/request-fields.adoc[]
+
+==== 컬렉션 교체 요청 (태그 예시)
+
+다른 컬렉션도 본문 형태와 응답이 동일합니다(<<company-update-collections>> 표 참고).
+
+include::{snippets}/admin-company-update-tags/http-request.adoc[]
+
+include::{snippets}/admin-company-update-tags/path-parameters.adoc[]
+
+include::{snippets}/admin-company-update-tags/request-fields.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/admin-company-update/http-response.adoc[]
+
+include::{snippets}/admin-company-update/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고).
+대상 회사가 없으면 `404`(`COMPANY_NOT_FOUND`), 컬렉션별 데이터 제약 위반 시 `400` 이 반환되며, 형태는 <<company-update>> 와 동일합니다.
+
+===== 권한 없음 (403 Forbidden)
+
+`ADMIN` 권한이 없는 회원이 호출하면 `403` 이 반환됩니다(기본 정보 수정·컬렉션 교체 모든 엔드포인트 공통).
+
+include::{snippets}/admin-company-update-forbidden/http-response.adoc[]
+
+include::{snippets}/admin-company-update-forbidden/response-fields.adoc[]
+
 [[admin-user-detail]]
 === 회원 상세 조회
 

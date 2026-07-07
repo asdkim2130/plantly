@@ -4,12 +4,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.restdocs.RestDocumentationContextProvider;
+import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.core.Authentication;
@@ -21,6 +24,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import project.plantly.companyTest.support.CompanyApiDocs;
 import project.plantly.domain.company.controller.AdminCompanyController;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.service.CompanyQueryService;
@@ -34,14 +38,23 @@ import project.plantly.global.security.UserPrincipal;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.patch;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.put;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
+import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
+import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// 관리자 수정 API 컨트롤러 슬라이스 테스트 — 라우팅/응답 형태 + @PreAuthorize 권한 게이트(ADMIN)를 검증한다.
+// 관리자 수정 API 컨트롤러 슬라이스 테스트 — 라우팅/응답 형태 + @PreAuthorize 권한 게이트(ADMIN)를 검증하고,
+// 성공/권한 예외 응답을 REST Docs 스니펫으로 문서화한다. 요청/응답 형태는 유저 수정과 동일해 같은 디스크립터를 공유한다.
 @ActiveProfiles("test")
 @WebMvcTest(controllers = AdminCompanyController.class)
+@ExtendWith(RestDocumentationExtension.class)
 @Import(AdminCompanyUpdateControllerTest.MethodSecurityTestConfig.class)
 public class AdminCompanyUpdateControllerTest {
 
@@ -64,8 +77,13 @@ public class AdminCompanyUpdateControllerTest {
     private MockMvc mockMvc;
 
     @BeforeEach
-    void setUpMockMvc() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+    void setUpMockMvc(RestDocumentationContextProvider restDocumentation) {
+        mockMvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(documentationConfiguration(restDocumentation)
+                        .operationPreprocessors()
+                        .withRequestDefaults(prettyPrint())
+                        .withResponseDefaults(prettyPrint()))
+                .build();
     }
 
     @Test
@@ -78,7 +96,11 @@ public class AdminCompanyUpdateControllerTest {
                         .content("{\"introTitle\":\"관리자 수정\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").doesNotExist());
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andDo(document("admin-company-update",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        requestFields(CompanyApiDocs.companyUpdateRequestFields()),
+                        responseFields(CompanyApiDocs.okResponseFields())));
 
         verify(companyUpdateService).updateBasicInfoByAdmin(eq(5L), any(CompanyUpdateRequest.class));
     }
@@ -93,7 +115,9 @@ public class AdminCompanyUpdateControllerTest {
                         .content("{\"introTitle\":\"관리자 수정\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error").value("접근 권한이 없습니다."));
+                .andExpect(jsonPath("$.error").value("접근 권한이 없습니다."))
+                .andDo(document("admin-company-update-forbidden",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
     @Test
@@ -105,7 +129,11 @@ public class AdminCompanyUpdateControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("[\"정밀\"]"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath("$.success").value(true))
+                .andDo(document("admin-company-update-tags",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        requestFields(CompanyApiDocs.replaceListRequestFields("교체할 태그명 목록 (빈 배열이면 전부 비움)")),
+                        responseFields(CompanyApiDocs.okResponseFields())));
 
         verify(companyUpdateService).replaceTagsByAdmin(eq(5L), any());
     }
