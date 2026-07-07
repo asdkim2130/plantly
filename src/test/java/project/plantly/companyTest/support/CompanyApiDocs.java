@@ -83,6 +83,45 @@ public class CompanyApiDocs {
         };
     }
 
+    // 본문 없는 성공 응답(ApiResponse.ok). success=true 만 존재하고 message/data/error 는 NON_NULL 로 생략된다.
+    // 수정 API(본체 PATCH·컬렉션 PUT)는 변경 결과가 이미 화면에 반영되므로 성공 플래그만 내려준다.
+    public static FieldDescriptor[] okResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부 (true)")
+        };
+    }
+
+    // 기본 정보 부분 수정(PATCH /api/v1/companies/{id}) 요청 필드. 모두 선택 = null 이면 미변경(sparse update).
+    // 선택 문자열은 빈 문자열("")로 비울 수 있고, 필수(NOT NULL) 필드는 @Size(min=1) 로 빈 문자열을 막는다.
+    public static FieldDescriptor[] companyUpdateRequestFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("companyName").type(JsonFieldType.STRING).optional().description("기업 이름 (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("ceoName").type(JsonFieldType.STRING).optional().description("대표자 (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("establishmentDate").type(JsonFieldType.STRING).optional().description("설립일 (yyyy-MM-dd, clear 미지원)"),
+                fieldWithPath("postalCode").type(JsonFieldType.STRING).optional().description("우편번호 (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("address").type(JsonFieldType.STRING).optional().description("주소 (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("detailAddress").type(JsonFieldType.STRING).optional().description("상세주소 (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("website").type(JsonFieldType.STRING).optional().description("기업 홈페이지 (빈 문자열 = 비우기)"),
+                fieldWithPath("logoUrl").type(JsonFieldType.STRING).optional().description("로고 이미지 URL (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약 (빈 문자열 = 비우기)"),
+                fieldWithPath("content").type(JsonFieldType.STRING).optional().description("소개글 (빈 문자열 = 비우기)"),
+                fieldWithPath("trlLevel").type(JsonFieldType.STRING).optional().description("기술성숙도: PROTOTYPE, MASS_PRODUCTION, GLOBAL_STANDARD (clear 미지원)"),
+                fieldWithPath("videoUrl").type(JsonFieldType.STRING).optional().description("동영상 링크 (등급별 사용 제한, 빈 문자열 = 비우기)"),
+                fieldWithPath("leadTime").type(JsonFieldType.STRING).optional().description("예상 리드타임 (빈 문자열 = 비우기)"),
+                fieldWithPath("asInfo").type(JsonFieldType.STRING).optional().description("유지보수/AS 정보 (빈 문자열 = 비우기)"),
+                fieldWithPath("pricingType").type(JsonFieldType.STRING).optional().description("견적 산출 방식: FIXED, CONSULTATION, PROJECT_BASED (clear 미지원)"),
+                fieldWithPath("brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러 (커스텀 불가 등급은 무시, 빈 문자열 = 비우기)")
+        };
+    }
+
+    // 컬렉션 전체 교체(PUT) 요청이 원시 배열 본문일 때(태그·소재·설비 이름 목록, 링크 마스터 ID 목록)의 루트 배열 디스크립터.
+    // 빈 배열([])을 보내면 해당 컬렉션을 전부 비운다. 표시 순서는 서버가 배열 인덱스로 재부여한다.
+    public static FieldDescriptor[] replaceListRequestFields(String description) {
+        return new FieldDescriptor[]{
+                fieldWithPath("[]").description(description)
+        };
+    }
+
     // 목록/검색 쿼리 파라미터(GET /api/v1/companies). 전부 선택적.
     public static ParameterDescriptor[] companySearchQueryParameters() {
         return new ParameterDescriptor[]{

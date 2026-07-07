@@ -298,6 +298,131 @@ include::{snippets}/company-owner-detail-forbidden/http-response.adoc[]
 
 include::{snippets}/company-owner-detail-forbidden/response-fields.adoc[]
 
+[[company-update]]
+=== 회사 기본 정보 수정 (소유자)
+
+회사 멤버 본인이 자기 회사의 기본 정보를 부분 수정합니다. 변경 요청이므로 세션 쿠키와 CSRF 토큰이 필요합니다(<<overview-auth>> 참고).
+
+본체 스칼라 필드만 수정하며, 부속 컬렉션(태그·소재·설비·연락처·이미지·레퍼런스·링크 마스터)은 <<company-update-collections>> 로 따로 교체합니다.
+
+* *부분 수정(sparse)*: 모든 필드가 선택이며, 요청에 담긴 필드만 변경됩니다(`null`/미포함 = 미변경).
+* *비우기(clear) 규약*: 선택 문자열 필드는 빈 문자열(`""`)을 보내면 값을 비웁니다. 필수 필드(회사명·대표자·주소 등)는 빈 문자열로 비울 수 없어 `400` 이 반환됩니다. 날짜·enum 은 비우기를 지원하지 않습니다(값이 오면 교체만).
+* 시스템 플래그(`verified`/`featured`/`spotlight`/`spotlightOrder`/`deleted`)·사업자번호·등록 provenance 는 이 API 로 바꿀 수 없습니다(요청 필드에서 제외).
+
+수정 값은 이미 화면에 반영되어 있으므로, 성공 응답은 본문 없이 `success` 플래그만 내려갑니다.
+
+==== 요청
+
+include::{snippets}/company-update/http-request.adoc[]
+
+include::{snippets}/company-update/path-parameters.adoc[]
+
+include::{snippets}/company-update/request-fields.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-update/http-response.adoc[]
+
+include::{snippets}/company-update/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고).
+모든 실패 응답은 `{ "success": false, "error": "<메시지>" }` 형태이며, `error` 문구로 원인을 구분합니다.
+
+===== 소유자 아님 (403 Forbidden)
+
+요청자가 해당 회사의 멤버가 아니면 `403`(`COMPANY_ACCESS_DENIED`) 이 반환됩니다.
+
+include::{snippets}/company-update-forbidden/http-response.adoc[]
+
+include::{snippets}/company-update-forbidden/response-fields.adoc[]
+
+===== 회사 없음 (404 Not Found)
+
+존재하지 않는 회사를 수정하면 `404`(`COMPANY_NOT_FOUND`) 이 반환됩니다.
+
+include::{snippets}/company-update-not-found/http-response.adoc[]
+
+include::{snippets}/company-update-not-found/response-fields.adoc[]
+
+===== 입력값 검증 실패 (400 Bad Request)
+
+필수 필드를 빈 문자열(`""`)로 비우려 하는 등 제약을 위반하면 `400` 이 반환됩니다(`error` 에 첫 번째 위반 메시지).
+
+include::{snippets}/company-update-validation-error/http-response.adoc[]
+
+include::{snippets}/company-update-validation-error/response-fields.adoc[]
+
+[[company-update-collections]]
+=== 회사 부속 컬렉션 교체 (소유자)
+
+회사 멤버 본인이 자기 회사의 부속 컬렉션을 *통째로 교체(PUT)* 합니다. 변경 요청이므로 세션 쿠키와 CSRF 토큰이 필요합니다(<<overview-auth>> 참고).
+
+각 컬렉션은 독립된 엔드포인트로 나뉘며, 요청 본문의 리스트가 기존 컬렉션을 완전히 대체합니다(부분 수정이 아니라 전체 교체). *빈 배열(`[]`)을 보내면 해당 컬렉션을 전부 비웁니다.* 표시 순서(`displayOrder`)는 클라이언트가 보내지 않고 서버가 배열 인덱스로 재부여합니다. 성공 응답은 본문 없이 `success` 플래그만 내려갑니다.
+
+[cols="3,4,4"]
+|===
+| 엔드포인트 | 본문 | 설명
+
+| `PUT /api/v1/companies/{id}/tags` | `["문자열", ...]` | 태그명 목록
+| `PUT /api/v1/companies/{id}/materials` | `["문자열", ...]` | 취급 소재명 목록
+| `PUT /api/v1/companies/{id}/equipment` | `["문자열", ...]` | 보유 설비명 목록
+| `PUT /api/v1/companies/{id}/contacts` | `[{연락처}, ...]` | 담당자 연락처 (현재 1건 제한)
+| `PUT /api/v1/companies/{id}/images` | `[{이미지}, ...]` | 갤러리 이미지 (DETAIL 타입만 허용)
+| `PUT /api/v1/companies/{id}/references` | `[{레퍼런스}, ...]` | 프로젝트 레퍼런스 (현재 1건 제한, 등급별 이미지 장수 제한)
+| `PUT /api/v1/companies/{id}/categories` | `[숫자, ...]` | 카테고리 ID 목록 (등급별 개수 제한)
+| `PUT /api/v1/companies/{id}/certifications` | `[숫자, ...]` | 인증 ID 목록
+| `PUT /api/v1/companies/{id}/industries` | `[숫자, ...]` | 산업군 ID 목록
+| `PUT /api/v1/companies/{id}/countries` | `[숫자, ...]` | 수출 국가 ID 목록
+| `PUT /api/v1/companies/{id}/regions` | `[숫자, ...]` | 국내 지역 ID 목록
+|===
+
+아래는 이름 목록 교체(태그)와 ID 목록 교체(카테고리)를 대표 예시로 든 것입니다. 다른 컬렉션도 본문 형태와 응답이 동일합니다.
+
+==== 태그 교체 요청
+
+include::{snippets}/company-update-tags/http-request.adoc[]
+
+include::{snippets}/company-update-tags/path-parameters.adoc[]
+
+include::{snippets}/company-update-tags/request-fields.adoc[]
+
+==== 카테고리 교체 요청
+
+include::{snippets}/company-update-categories/http-request.adoc[]
+
+include::{snippets}/company-update-categories/path-parameters.adoc[]
+
+include::{snippets}/company-update-categories/request-fields.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-update-tags/http-response.adoc[]
+
+include::{snippets}/company-update-tags/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 `401`, 소유자 아님 `403`(`COMPANY_ACCESS_DENIED`), 회사 없음 `404`(`COMPANY_NOT_FOUND`)는 <<company-update>> 와 동일합니다.
+컬렉션별 데이터 제약에 걸리면 `400` 이 반환되며, `error` 메시지로 원인을 구분합니다.
+
+===== 갤러리 이미지 타입 오류 (400 Bad Request)
+
+갤러리(`/images`)에 상세 이미지(`DETAIL`) 외 타입이 섞이면 `400` 이 반환됩니다.
+
+include::{snippets}/company-update-images-type-error/http-response.adoc[]
+
+include::{snippets}/company-update-images-type-error/response-fields.adoc[]
+
+===== 연락처 1건 초과 (400 Bad Request)
+
+연락처(`/contacts`)를 현재 허용치인 1건보다 많이 교체하려 하면 `400` 이 반환됩니다.
+
+include::{snippets}/company-update-contacts-limit-error/http-response.adoc[]
+
+include::{snippets}/company-update-contacts-limit-error/response-fields.adoc[]
+
 [[admin]]
 == 관리자 (Admin)
 
