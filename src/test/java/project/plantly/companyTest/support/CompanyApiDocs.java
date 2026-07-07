@@ -219,6 +219,7 @@ public class CompanyApiDocs {
         return new FieldDescriptor[]{
                 fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
                 fieldWithPath("data.companyId").type(JsonFieldType.NUMBER).description("구독 주체(회사) ID"),
+                fieldWithPath("data.companyName").type(JsonFieldType.STRING).description("구독 주체(회사) 이름"),
                 fieldWithPath("data.grade").type(JsonFieldType.STRING).description("계약(저장) 등급: FREE, BASIC, STANDARD, PREMIUM, ENTERPRISE"),
                 fieldWithPath("data.effectiveGrade").type(JsonFieldType.STRING).description("지금 유효한 등급 (체험/만료 반영, 정책이 실제 참조하는 값). 만료 시 FREE 로 강등됨"),
                 fieldWithPath("data.status").type(JsonFieldType.STRING).description("구독 상태: ACTIVE(정상), TRIAL(체험), ADMIN_EXEMPT(관리자 등록·한도 면제)"),

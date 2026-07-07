@@ -201,7 +201,7 @@ public class CompanyControllerTest {
     @DisplayName("소유자 전용 구독 조회는 멤버 본인에게 구독 정보(등급/유효등급/상태/기간)를 반환한다")
     void getMySubscription_owner_success() throws Exception {
         CompanySubscriptionResponse subscription = new CompanySubscriptionResponse(
-                9L, CompanyGrade.PREMIUM, CompanyGrade.PREMIUM, SubscriptionStatus.ACTIVE,
+                9L, "플랜틀리테크", CompanyGrade.PREMIUM, CompanyGrade.PREMIUM, SubscriptionStatus.ACTIVE,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
         given(companyQueryService.getSubscriptionForOwner(eq(9L), eq(7L))).willReturn(subscription);
         authenticate(7L, UserRole.MEMBER);
@@ -210,6 +210,7 @@ public class CompanyControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.companyId").value(9L))
+                .andExpect(jsonPath("$.data.companyName").value("플랜틀리테크"))
                 .andExpect(jsonPath("$.data.grade").value("PREMIUM"))
                 .andExpect(jsonPath("$.data.effectiveGrade").value("PREMIUM"))
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"))

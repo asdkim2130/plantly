@@ -191,6 +191,7 @@ class CompanyQueryAcceptanceTest extends AcceptanceTest {
                     .statusCode(200)
                     .body("success", equalTo(true))
                     .body("data.companyId", equalTo((int) companyId))
+                    .body("data.companyName", equalTo(CompanyAggregateSeeder.COMPANY_NAME))
                     .body("data.grade", equalTo(CompanyAggregateSeeder.SUBSCRIPTION_GRADE.name()))
                     // FREE·미만료라 계약 등급과 유효 등급이 같다
                     .body("data.effectiveGrade", equalTo(CompanyAggregateSeeder.SUBSCRIPTION_GRADE.name()))

@@ -92,9 +92,10 @@ public class CompanyQueryService {
     // 소유자 전용 구독 조회: 요청자가 해당 회사의 멤버여야 한다. 접근제어는 getOwnerView 와 동일하게 미러한다.
     // 회사 집계는 적재하지 않고 구독 사실만 단독으로 내려준다. (구독은 등록 트랜잭션에서 회사당 1건 생성되므로 항상 존재)
     public CompanySubscriptionResponse getSubscriptionForOwner(Long companyId, Long requesterId) {
-        if (!companyRepository.existsById(companyId)) {
-            throw new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND);
-        }
+        // 존재 검증 겸 companyName 확보. 어차피 하던 존재 조회(existsById)를 findById 로 승격했을 뿐 — 조인·추가 쿼리 없음.
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+
         if (!companyMemberRepository.existsByCompanyIdAndUserId(companyId, requesterId)) {
             throw new BusinessException(CompanyErrorCode.COMPANY_ACCESS_DENIED);
         }
@@ -102,6 +103,6 @@ public class CompanyQueryService {
         CompanySubscription subscription = companySubscriptionRepository.findByCompanyId(companyId)
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
 
-        return CompanySubscriptionResponse.from(subscription);
+        return CompanySubscriptionResponse.from(subscription, company.getCompanyName());
     }
 }

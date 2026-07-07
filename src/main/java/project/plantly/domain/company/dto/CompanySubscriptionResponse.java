@@ -14,6 +14,7 @@ import java.time.LocalDate;
 // 만료 판정은 서버 시계 기준이라 클라가 계산하지 않고 서버가 파생(effectiveGrade())해 내려준다.
 public record CompanySubscriptionResponse(
         Long companyId,
+        String companyName,          // 구독 주체(회사) 이름. 구독은 companyId 만 알아 호출부에서 함께 넘겨준다.
         CompanyGrade grade,          // 계약(저장)된 등급
         CompanyGrade effectiveGrade, // 지금 유효한 등급 (만료/체험 반영, 정책이 실제로 참조하는 값)
         SubscriptionStatus status,
@@ -21,9 +22,11 @@ public record CompanySubscriptionResponse(
         LocalDate expiresAt          // null = 무기한(만료 없음)
 ) {
 
-    public static CompanySubscriptionResponse from(CompanySubscription subscription) {
+    // companyName 은 CompanySubscription 이 갖지 않으므로(companyId 만 raw 참조) 호출부가 회사에서 읽어 넘긴다.
+    public static CompanySubscriptionResponse from(CompanySubscription subscription, String companyName) {
         return new CompanySubscriptionResponse(
                 subscription.getCompanyId(),
+                companyName,
                 subscription.getGrade(),
                 subscription.effectiveGrade(),
                 subscription.getStatus(),
