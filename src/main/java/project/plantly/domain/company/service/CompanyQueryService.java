@@ -9,8 +9,10 @@ import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
+import project.plantly.domain.company.dto.OwnerSubscriptionSummary;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.enums.MemberRole;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.repository.AdminCompanyCardRepository;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
@@ -24,6 +26,10 @@ import project.plantly.domain.company.search.dto.AdminCompanySummary;
 import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 // 회사 상세 조회 전담 서비스. 등록(CompanyService)과 분리한 읽기 전용 경로.
 // 세 진입점(공개 / 소유자 / 관리자)은 '누가 무엇을 볼 수 있는가'(접근 제어 + 응답 형태)만 다르다.
@@ -117,5 +123,19 @@ public class CompanyQueryService {
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
 
         return AdminCompanySubscriptionResponse.from(subscription, company.getCompanyName());
+    }
+
+    // 유저 → '소유(OWNER)한 회사의 구독 요약' 매핑을 배치로 해석한다. 관리자 유저 목록의 등급 배지(연착륙)용.
+    // 구독은 회사 소유라 유저 관점에선 파생 뷰일 뿐이다 — effectiveGrade 는 엔티티 규칙을 그대로 재사용해 파생한다.
+    // 소유 회사가 없는 유저는 맵에 없다(호출부가 배지 null 처리). 계정당 소유 회사 1건 가정이며, 다건이면 임의 1건을 남긴다.
+    public Map<Long, OwnerSubscriptionSummary> findOwnerSubscriptionSummaries(Collection<Long> userIds) {
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+        return companySubscriptionRepository.findOwnerSubscriptionRows(MemberRole.OWNER, userIds).stream()
+                .collect(Collectors.toMap(
+                        row -> row.userId(),
+                        row -> OwnerSubscriptionSummary.from(row.subscription()),
+                        (existing, duplicate) -> existing));
     }
 }

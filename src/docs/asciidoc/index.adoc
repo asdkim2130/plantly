@@ -702,6 +702,10 @@ include::{snippets}/admin-user-detail-forbidden/response-fields.adoc[]
 
 회원 목록을 페이지 단위로 조회합니다.
 
+각 회원 행에는 그 회원이 *소유(OWNER)한 회사의 구독 요약*(`subscription`)이 읽기 전용 배지로 함께 내려갑니다.
+회사를 소유하지 않은 회원은 `subscription` 이 `null` 입니다. 구독의 주인은 회사이므로 이 값은 유저 관점에서 파생해 보여줄 뿐이며,
+등급 수정은 배지의 `companyId` 로 회사 구독(<<admin-company-subscription>>)을 편집해 이뤄집니다. `status` 로 체험(`TRIAL`)·결제(`ACTIVE`)·면제(`ADMIN_EXEMPT`)를 목록에서 구분할 수 있습니다.
+
 ==== 요청
 
 include::{snippets}/admin-user-list/http-request.adoc[]
