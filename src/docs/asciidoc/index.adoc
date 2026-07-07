@@ -298,6 +298,43 @@ include::{snippets}/company-owner-detail-forbidden/http-response.adoc[]
 
 include::{snippets}/company-owner-detail-forbidden/response-fields.adoc[]
 
+[[company-subscription]]
+=== 회사 구독 조회 (소유자)
+
+회사 멤버 본인이 자기 회사의 구독 정보를 조회합니다. 세션 쿠키가 필요합니다(<<overview-auth>> 참고).
+회사 프로필과 섞지 않고 구독 정보만 단독으로 내려갑니다.
+
+응답에는 계약 등급(`grade`)과 함께 *지금 실제 유효한 등급*(`effectiveGrade`)이 포함됩니다.
+체험(`TRIAL`)이거나 만료된 유료 구독은 `grade` 는 그대로여도 `effectiveGrade` 가 `FREE` 로 강등되므로,
+클라이언트는 현재 적용 등급을 판단할 때 반드시 `effectiveGrade` 를 사용해야 합니다.
+만료 판정은 서버 시계 기준으로 서버가 파생해 내려줍니다.
+
+요청자가 해당 회사의 멤버가 아니면 `403`, 미인증이면 `401` 이 반환됩니다.
+
+==== 요청
+
+include::{snippets}/company-subscription/http-request.adoc[]
+
+include::{snippets}/company-subscription/path-parameters.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-subscription/http-response.adoc[]
+
+include::{snippets}/company-subscription/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고).
+
+===== 멤버 아님 (403 Forbidden)
+
+요청자가 해당 회사의 멤버가 아니면 `403`(`COMPANY_ACCESS_DENIED`) 이 반환됩니다.
+
+include::{snippets}/company-subscription-forbidden/http-response.adoc[]
+
+include::{snippets}/company-subscription-forbidden/response-fields.adoc[]
+
 [[company-update]]
 === 회사 기본 정보 수정 (소유자)
 

@@ -173,6 +173,68 @@ class CompanyQueryAcceptanceTest extends AcceptanceTest {
     }
 
     @Nested
+    @DisplayName("소유자 구독 조회 GET /api/v1/companies/{id}/subscription")
+    class SubscriptionView {
+
+        @Test
+        @DisplayName("회사 멤버 본인은 구독 정보(등급/유효등급/상태/기간)를 받는다")
+        void member_receivesSubscription() {
+            CookieFilter owner = new CookieFilter();
+            long ownerId = signUpMember(owner, "owner-sub@example.com");
+            long companyId = seeder.seedPublishedCompany(ownerId);
+
+            given()
+                    .filter(owner)
+                    .when()
+                    .get("/api/v1/companies/{id}/subscription", companyId)
+                    .then()
+                    .statusCode(200)
+                    .body("success", equalTo(true))
+                    .body("data.companyId", equalTo((int) companyId))
+                    .body("data.grade", equalTo(CompanyAggregateSeeder.SUBSCRIPTION_GRADE.name()))
+                    // FREE·미만료라 계약 등급과 유효 등급이 같다
+                    .body("data.effectiveGrade", equalTo(CompanyAggregateSeeder.SUBSCRIPTION_GRADE.name()))
+                    .body("data.status", equalTo(CompanyAggregateSeeder.SUBSCRIPTION_STATUS.name()))
+                    .body("data.startedAt", equalTo(CompanyAggregateSeeder.SUBSCRIPTION_STARTED_AT.toString()))
+                    // 무기한 구독은 만료일이 없다
+                    .body("data.expiresAt", nullValue());
+        }
+
+        @Test
+        @DisplayName("회사 멤버가 아닌 다른 유저가 호출하면 403(COMPANY_ACCESS_DENIED)")
+        void nonMember_isForbidden() {
+            CookieFilter owner = new CookieFilter();
+            long ownerId = signUpMember(owner, "owner-sub-x@example.com");
+            long companyId = seeder.seedPublishedCompany(ownerId);
+
+            CookieFilter intruder = new CookieFilter();
+            signUpMember(intruder, "intruder-sub@example.com");
+
+            given()
+                    .filter(intruder)
+                    .when()
+                    .get("/api/v1/companies/{id}/subscription", companyId)
+                    .then()
+                    .statusCode(403)
+                    .body("success", equalTo(false));
+        }
+
+        @Test
+        @DisplayName("미인증 상태로 호출하면 401 (공개 상세 /{id} 로 새지 않는다)")
+        void unauthenticated_isUnauthorized() {
+            CookieFilter owner = new CookieFilter();
+            long ownerId = signUpMember(owner, "owner-sub-unauth@example.com");
+            long companyId = seeder.seedPublishedCompany(ownerId);
+
+            given() // 세션 없음
+                    .when()
+                    .get("/api/v1/companies/{id}/subscription", companyId)
+                    .then()
+                    .statusCode(401);
+        }
+    }
+
+    @Nested
     @DisplayName("관리자 조회 GET /api/v1/admin/companies/{id}")
     class AdminView {
 

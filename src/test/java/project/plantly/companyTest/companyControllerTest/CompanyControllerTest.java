@@ -29,6 +29,9 @@ import project.plantly.companyTest.support.CompanyCreateRequestSamples;
 import project.plantly.companyTest.support.CompanyResponseSamples;
 import project.plantly.domain.company.controller.CompanyController;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.dto.CompanySubscriptionResponse;
+import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.search.CompanySearchCriteria;
 import project.plantly.domain.company.search.dto.CompanySummary;
@@ -40,6 +43,7 @@ import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.enums.UserRole;
@@ -191,6 +195,44 @@ public class CompanyControllerTest {
                 .andDo(document("company-owner-detail",
                         pathParameters(parameterWithName("id").description("회사 ID")),
                         responseFields(CompanyApiDocs.companyDetailResponseFields())));
+    }
+
+    @Test
+    @DisplayName("소유자 전용 구독 조회는 멤버 본인에게 구독 정보(등급/유효등급/상태/기간)를 반환한다")
+    void getMySubscription_owner_success() throws Exception {
+        CompanySubscriptionResponse subscription = new CompanySubscriptionResponse(
+                9L, CompanyGrade.PREMIUM, CompanyGrade.PREMIUM, SubscriptionStatus.ACTIVE,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        given(companyQueryService.getSubscriptionForOwner(eq(9L), eq(7L))).willReturn(subscription);
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/companies/{id}/subscription", 9L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.companyId").value(9L))
+                .andExpect(jsonPath("$.data.grade").value("PREMIUM"))
+                .andExpect(jsonPath("$.data.effectiveGrade").value("PREMIUM"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.startedAt").value("2026-01-01"))
+                .andExpect(jsonPath("$.data.expiresAt").value("2026-12-31"))
+                .andDo(document("company-subscription",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        responseFields(CompanyApiDocs.companySubscriptionResponseFields())));
+    }
+
+    @Test
+    @DisplayName("소유자 전용 구독 조회를 멤버가 아닌 유저가 호출하면 403(COMPANY_ACCESS_DENIED) 를 반환한다")
+    void getMySubscription_accessDenied() throws Exception {
+        given(companyQueryService.getSubscriptionForOwner(eq(9L), eq(7L)))
+                .willThrow(new BusinessException(CompanyErrorCode.COMPANY_ACCESS_DENIED));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/companies/{id}/subscription", 9L))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("해당 회사에 대한 접근 권한이 없습니다."))
+                .andDo(document("company-subscription-forbidden",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
     @Test

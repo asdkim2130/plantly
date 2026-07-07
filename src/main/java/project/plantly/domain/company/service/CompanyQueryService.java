@@ -7,11 +7,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
+import project.plantly.domain.company.dto.CompanySubscriptionResponse;
 import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.repository.AdminCompanyCardRepository;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
+import project.plantly.domain.company.repository.CompanySubscriptionRepository;
 import project.plantly.domain.company.repository.OwnedCompanyCardRepository;
 import project.plantly.domain.company.search.AdminCompanySearchCriteria;
 import project.plantly.domain.company.search.CompanySearchCriteria;
@@ -31,6 +34,7 @@ public class CompanyQueryService {
 
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
+    private final CompanySubscriptionRepository companySubscriptionRepository;
     private final CompanyAggregateLoader aggregateLoader;
     private final CompanySearchRepository companySearchRepository;
     private final OwnedCompanyCardRepository ownedCompanyCardRepository;
@@ -83,5 +87,21 @@ public class CompanyQueryService {
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
 
         return CompanyDetailResponse.from(aggregateLoader.load(company));
+    }
+
+    // 소유자 전용 구독 조회: 요청자가 해당 회사의 멤버여야 한다. 접근제어는 getOwnerView 와 동일하게 미러한다.
+    // 회사 집계는 적재하지 않고 구독 사실만 단독으로 내려준다. (구독은 등록 트랜잭션에서 회사당 1건 생성되므로 항상 존재)
+    public CompanySubscriptionResponse getSubscriptionForOwner(Long companyId, Long requesterId) {
+        if (!companyRepository.existsById(companyId)) {
+            throw new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND);
+        }
+        if (!companyMemberRepository.existsByCompanyIdAndUserId(companyId, requesterId)) {
+            throw new BusinessException(CompanyErrorCode.COMPANY_ACCESS_DENIED);
+        }
+
+        CompanySubscription subscription = companySubscriptionRepository.findByCompanyId(companyId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+
+        return CompanySubscriptionResponse.from(subscription);
     }
 }

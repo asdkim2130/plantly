@@ -11,7 +11,10 @@ import project.plantly.domain.company.country.Country;
 import project.plantly.domain.company.domesticRegion.DomesticRegion;
 import project.plantly.domain.company.domesticRegion.RegionLevel;
 import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.entity.CompanyContact;
+import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.entity.CompanyEquipment;
 import project.plantly.domain.company.entity.CompanyImage;
 import project.plantly.domain.company.entity.CompanyMaterial;
@@ -59,6 +62,11 @@ public class CompanyAggregateSeeder {
     public static final String REGION_NAME = "서울특별시";
     public static final String INDUSTRY_NAME = "기계";
 
+    // 유저 자가등록 회사의 구독(seedPublishedCompany): FREE, ACTIVE, 무기한(expiresAt 없음).
+    public static final CompanyGrade SUBSCRIPTION_GRADE = CompanyGrade.FREE;
+    public static final SubscriptionStatus SUBSCRIPTION_STATUS = SubscriptionStatus.ACTIVE;
+    public static final LocalDate SUBSCRIPTION_STARTED_AT = LocalDate.of(2024, 1, 1);
+
     @PersistenceContext
     private EntityManager em;
 
@@ -77,6 +85,7 @@ public class CompanyAggregateSeeder {
         em.persist(company);
 
         attachOwner(company, ownerUserId);
+        attachSubscription(company);
         attachChildren(company);
         attachLinks(company);
         return company.getId();
@@ -111,6 +120,13 @@ public class CompanyAggregateSeeder {
 
     private void attachOwner(Company company, Long ownerUserId) {
         em.persist(CompanyMember.owner(company.getId(), ownerUserId));
+    }
+
+    // 등록 트랜잭션에서 회사당 1건 생기는 구독을 재현한다(유저 자가등록 = FREE 무기한).
+    private void attachSubscription(Company company) {
+        CompanySubscription subscription = CompanySubscription.freeForUser(SUBSCRIPTION_STARTED_AT);
+        subscription.assignCompany(company.getId());
+        em.persist(subscription);
     }
 
     private void attachChildren(Company company) {
