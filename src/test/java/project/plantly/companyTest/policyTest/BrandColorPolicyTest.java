@@ -8,6 +8,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.BrandColorPolicy;
 
@@ -33,7 +34,7 @@ class BrandColorPolicyTest {
         Company company = CompanyFixture.userCompanyWithBrandColor("#FF0000");
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().brandColor("#FF0000").build();
 
-        policy.apply(company, request, free);
+        policy.apply(CompanyPolicyView.forCreate(company, request, free));
 
         assertThat(company.getBrandColor()).isEqualTo(DEFAULT_BRAND_COLOR);
     }
@@ -44,7 +45,7 @@ class BrandColorPolicyTest {
         Company company = CompanyFixture.userCompanyWithBrandColor("#FF0000");
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().brandColor("#FF0000").build();
 
-        policy.apply(company, request, standard);
+        policy.apply(CompanyPolicyView.forCreate(company, request, standard));
 
         assertThat(company.getBrandColor()).isEqualTo("#FF0000");
     }
@@ -55,7 +56,19 @@ class BrandColorPolicyTest {
         Company company = CompanyFixture.userCompanyWithBrandColor("#FF0000");
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().brandColor("#FF0000").build();
 
-        policy.apply(company, request, admin);
+        policy.apply(CompanyPolicyView.forCreate(company, request, admin));
+
+        assertThat(company.getBrandColor()).isEqualTo("#FF0000");
+    }
+
+    @Test
+    @DisplayName("수정에서 brandColor 를 건드리지 않으면(brandColorInScope=false) FREE 라도 색을 바꾸지 않는다")
+    void notInScope_keepsColor() {
+        Company company = CompanyFixture.userCompanyWithBrandColor("#FF0000");
+        // 기본정보 수정이지만 brandColor 미포함(brandColorProvided=false) → 정책 스킵
+        CompanyPolicyView view = CompanyPolicyView.forBasicInfoUpdate(company, free, null, false);
+
+        policy.apply(view);
 
         assertThat(company.getBrandColor()).isEqualTo("#FF0000");
     }

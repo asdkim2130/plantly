@@ -6,13 +6,18 @@ import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.policy.CompanyMutationPolicy;
+import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
+import project.plantly.domain.company.repository.CompanySubscriptionRepository;
 import project.plantly.domain.company.search.CompanySearchDocumentWriter;
 import project.plantly.global.exception.BusinessException;
 
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 // 회사 수정 전담 서비스. 등록(CompanyService)·조회(CompanyQueryService)와 분리한 변경 경로.
@@ -26,19 +31,26 @@ public class CompanyUpdateService {
 
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
+    private final CompanySubscriptionRepository companySubscriptionRepository;
     private final CompanyChildWriter childWriter;
     private final CompanyLinkWriter linkWriter;
     private final CompanySearchDocumentWriter searchDocumentWriter;
 
+    // 등록·수정 공통 등급 정책 중 '수정에도 재실행돼야 하는' 것들(CompanyMutationPolicy). 등급 한도 우회를 막는다.
+    // create 는 전 정책(List<CompanyRegistrationPolicy>)을, 수정은 이 부분집합만 실행한다. Spotlight/GalleryImageType 은 자연 제외.
+    private final List<CompanyMutationPolicy> mutationPolicies;
+
     // ===== 기본 정보 부분 수정 =====
 
     public void updateBasicInfoByUser(Long companyId, Long userId, CompanyUpdateRequest request) {
-        mutateOwned(companyId, userId, company -> company.updateBasicInfo(
-                request.companyName(), request.ceoName(), request.establishmentDate(),
-                request.postalCode(), request.address(), request.detailAddress(),
-                request.website(), request.logoUrl(), request.introTitle(), request.content(),
-                request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
-                request.pricingType(), request.brandColor()));
+        mutateOwnedGraded(companyId, userId,
+                company -> company.updateBasicInfo(
+                        request.companyName(), request.ceoName(), request.establishmentDate(),
+                        request.postalCode(), request.address(), request.detailAddress(),
+                        request.website(), request.logoUrl(), request.introTitle(), request.content(),
+                        request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
+                        request.pricingType(), request.brandColor()),
+                (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl(), request.brandColor() != null));
     }
 
     // ===== 컬렉션 전체 교체 =====
@@ -57,7 +69,9 @@ public class CompanyUpdateService {
     }
 
     public void replaceGalleryImagesByUser(Long companyId, Long userId, List<CompanyCreateRequest.ImageRequest> images) {
-        mutateOwned(companyId, userId, company -> childWriter.replaceGalleryImages(company, images));
+        mutateOwnedGraded(companyId, userId,
+                company -> childWriter.replaceGalleryImages(company, images),
+                (company, sub) -> CompanyPolicyView.forGalleryUpdate(company, sub, images));
     }
 
     public void replaceContactsByUser(Long companyId, Long userId, List<CompanyCreateRequest.ContactRequest> contacts) {
@@ -65,11 +79,15 @@ public class CompanyUpdateService {
     }
 
     public void replaceReferencesByUser(Long companyId, Long userId, List<CompanyCreateRequest.ReferenceRequest> references) {
-        mutateOwned(companyId, userId, company -> childWriter.replaceReferences(company, references));
+        mutateOwnedGraded(companyId, userId,
+                company -> childWriter.replaceReferences(company, references),
+                (company, sub) -> CompanyPolicyView.forReferenceUpdate(company, sub, references));
     }
 
     public void replaceCategoriesByUser(Long companyId, Long userId, List<Long> categoryIds) {
-        mutateOwned(companyId, userId, company -> linkWriter.replaceCategories(company, categoryIds));
+        mutateOwnedGraded(companyId, userId,
+                company -> linkWriter.replaceCategories(company, categoryIds),
+                (company, sub) -> CompanyPolicyView.forCategoryUpdate(company, sub, categoryIds));
     }
 
     public void replaceIndustriesByUser(Long companyId, Long userId, List<Long> industryIds) {
@@ -93,12 +111,14 @@ public class CompanyUpdateService {
     // 변경 로직·구조 불변식은 유저 경로와 완전히 동일하게 재사용한다.
 
     public void updateBasicInfoByAdmin(Long companyId, CompanyUpdateRequest request) {
-        mutateAsAdmin(companyId, company -> company.updateBasicInfo(
-                request.companyName(), request.ceoName(), request.establishmentDate(),
-                request.postalCode(), request.address(), request.detailAddress(),
-                request.website(), request.logoUrl(), request.introTitle(), request.content(),
-                request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
-                request.pricingType(), request.brandColor()));
+        mutateAsAdminGraded(companyId,
+                company -> company.updateBasicInfo(
+                        request.companyName(), request.ceoName(), request.establishmentDate(),
+                        request.postalCode(), request.address(), request.detailAddress(),
+                        request.website(), request.logoUrl(), request.introTitle(), request.content(),
+                        request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
+                        request.pricingType(), request.brandColor()),
+                (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl(), request.brandColor() != null));
     }
 
     public void replaceTagsByAdmin(Long companyId, List<String> tagNames) {
@@ -114,7 +134,9 @@ public class CompanyUpdateService {
     }
 
     public void replaceGalleryImagesByAdmin(Long companyId, List<CompanyCreateRequest.ImageRequest> images) {
-        mutateAsAdmin(companyId, company -> childWriter.replaceGalleryImages(company, images));
+        mutateAsAdminGraded(companyId,
+                company -> childWriter.replaceGalleryImages(company, images),
+                (company, sub) -> CompanyPolicyView.forGalleryUpdate(company, sub, images));
     }
 
     public void replaceContactsByAdmin(Long companyId, List<CompanyCreateRequest.ContactRequest> contacts) {
@@ -122,11 +144,15 @@ public class CompanyUpdateService {
     }
 
     public void replaceReferencesByAdmin(Long companyId, List<CompanyCreateRequest.ReferenceRequest> references) {
-        mutateAsAdmin(companyId, company -> childWriter.replaceReferences(company, references));
+        mutateAsAdminGraded(companyId,
+                company -> childWriter.replaceReferences(company, references),
+                (company, sub) -> CompanyPolicyView.forReferenceUpdate(company, sub, references));
     }
 
     public void replaceCategoriesByAdmin(Long companyId, List<Long> categoryIds) {
-        mutateAsAdmin(companyId, company -> linkWriter.replaceCategories(company, categoryIds));
+        mutateAsAdminGraded(companyId,
+                company -> linkWriter.replaceCategories(company, categoryIds),
+                (company, sub) -> CompanyPolicyView.forCategoryUpdate(company, sub, categoryIds));
     }
 
     public void replaceIndustriesByAdmin(Long companyId, List<Long> industryIds) {
@@ -145,14 +171,9 @@ public class CompanyUpdateService {
         mutateAsAdmin(companyId, company -> linkWriter.replaceRegions(company, domesticRegionIds));
     }
 
-    // TODO(정책): 현재 수정 경로는 '구조 불변식'(갤러리 DETAIL-only·연락처/레퍼런스 1건)만 강제한다.
-    //  등급 한도(카테고리 개수·갤러리 장수·동영상·레퍼런스 이미지)와 변형 정책(brandColor 고정·spotlight)은
-    //  create 의 registrationPolicies 에만 있고 여기선 미적용 → 수정으로 우회 가능.
-    //  '등급 → Company 이전' 완료 후, CompanyRegistrationPolicy 를 검증/변형으로 분리해 검증 정책만 재실행하도록 확장한다.
-
     // ===== 공통 실행 골격 =====
 
-    // 소유(멤버) 검증 → 변경 적용 → 검색 도큐먼트 재동기화. 모든 수정 경로가 이 순서를 공유한다.
+    // 소유(멤버) 검증 → 변경 적용 → 검색 도큐먼트 재동기화. 등급 정책이 없는 컬렉션(태그·소재·장비·연락처·산업군 등)이 쓴다.
     // (검색 색인 대상이 아닌 컬렉션까지 매번 재동기화하지만, 도큐먼트 재생성은 멱등이라 정합성 우선으로 일괄 호출한다)
     private void mutateOwned(Long companyId, Long userId, Consumer<Company> mutation) {
         Company company = loadOwnedCompany(companyId, userId);
@@ -162,19 +183,53 @@ public class CompanyUpdateService {
 
     // 관리자 경로: 소유 검증 없이 로드 → 변경 → 재동기화. (getForAdmin 과 동일하게 상태 무관 로드)
     private void mutateAsAdmin(Long companyId, Consumer<Company> mutation) {
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+        Company company = loadCompany(companyId);
         mutation.accept(company);
+        searchDocumentWriter.write(companyId);
+    }
+
+    // ===== 등급 정책 재실행 골격 (등급 한도가 걸리는 수정 경로 전용) =====
+    // 소유 검증 → 변경 적용 → '이번에 바뀐 부분'만 담은 delta 뷰로 등급 정책(CompanyMutationPolicy) 재실행 → 재동기화.
+    // 정책이 던지면 트랜잭션이 롤백되어 아무것도 반영되지 않는다(수정으로 등급 한도를 우회하는 구멍을 닫는다).
+    // 한도는 '행위자'가 아니라 '회사의 구독'이 정한다(유저/관리자 동일). ADMIN_EXEMPT 회사는 각 정책이 자연히 면제한다.
+    private void mutateOwnedGraded(Long companyId, Long userId, Consumer<Company> mutation,
+                                   BiFunction<Company, CompanySubscription, CompanyPolicyView> viewFactory) {
+        Company company = loadOwnedCompany(companyId, userId);
+        applyGradedMutation(companyId, company, mutation, viewFactory);
+    }
+
+    private void mutateAsAdminGraded(Long companyId, Consumer<Company> mutation,
+                                     BiFunction<Company, CompanySubscription, CompanyPolicyView> viewFactory) {
+        Company company = loadCompany(companyId);
+        applyGradedMutation(companyId, company, mutation, viewFactory);
+    }
+
+    private void applyGradedMutation(Long companyId, Company company, Consumer<Company> mutation,
+                                     BiFunction<Company, CompanySubscription, CompanyPolicyView> viewFactory) {
+        CompanySubscription subscription = loadSubscription(companyId);
+        mutation.accept(company);
+        CompanyPolicyView view = viewFactory.apply(company, subscription);
+        mutationPolicies.forEach(policy -> policy.apply(view));
         searchDocumentWriter.write(companyId);
     }
 
     // 소유(멤버) 검증까지 통과한 회사를 로드한다. (getOwnerView 와 동일 정책)
     private Company loadOwnedCompany(Long companyId, Long userId) {
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+        Company company = loadCompany(companyId);
         if (!companyMemberRepository.existsByCompanyIdAndUserId(companyId, userId)) {
             throw new BusinessException(CompanyErrorCode.COMPANY_ACCESS_DENIED);
         }
         return company;
+    }
+
+    private Company loadCompany(Long companyId) {
+        return companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+    }
+
+    // 등급 정책이 참조할 회사 구독(1:1). 모든 회사는 등록 시 구독을 1건 갖는 불변식이라, 없으면 데이터 정합성 오류다.
+    private CompanySubscription loadSubscription(Long companyId) {
+        return companySubscriptionRepository.findByCompanyId(companyId)
+                .orElseThrow(() -> new IllegalStateException("회사 구독이 존재하지 않습니다(불변식 위반): companyId=" + companyId));
     }
 }

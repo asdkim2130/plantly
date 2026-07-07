@@ -7,6 +7,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.CategoryLimitPolicy;
 
@@ -32,7 +33,7 @@ class CategoryLimitPolicyTest {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
                 .categoryIds(List.of(1L)).build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 
     @Test
@@ -41,7 +42,7 @@ class CategoryLimitPolicyTest {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
                 .categoryIds(List.of(1L, 2L)).build();
 
-        assertThatThrownBy(() -> policy.apply(null, request, free))
+        assertThatThrownBy(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free)))
                 .extracting("errorCode")
                 .isEqualTo(CompanyErrorCode.CATEGORY_LIMIT_EXCEEDED);
     }
@@ -52,7 +53,7 @@ class CategoryLimitPolicyTest {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
                 .categoryIds(List.of(1L, 1L, 1L)).build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 
     @Test
@@ -60,7 +61,7 @@ class CategoryLimitPolicyTest {
     void nullCategoryIds_passes() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 
     @Test
@@ -69,7 +70,7 @@ class CategoryLimitPolicyTest {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
                 .categoryIds(List.of(1L, 2L, 3L, 4L, 5L)).build();
 
-        assertThatCode(() -> policy.apply(null, request, premium)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, premium))).doesNotThrowAnyException();
     }
 
     @Test
@@ -78,6 +79,6 @@ class CategoryLimitPolicyTest {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
                 .categoryIds(List.of(1L, 2L, 3L)).build();
 
-        assertThatCode(() -> policy.apply(null, request, admin)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, admin))).doesNotThrowAnyException();
     }
 }

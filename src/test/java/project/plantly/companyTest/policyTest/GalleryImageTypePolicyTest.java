@@ -8,6 +8,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.enums.ImageType;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.rule.GalleryImageTypePolicy;
 
 import java.time.LocalDate;
@@ -30,7 +31,7 @@ class GalleryImageTypePolicyTest {
     void allDetail_passes() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().detailImages(3).build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 
     @Test
@@ -42,7 +43,7 @@ class GalleryImageTypePolicyTest {
         );
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().images(images).build();
 
-        assertThatThrownBy(() -> policy.apply(null, request, free))
+        assertThatThrownBy(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free)))
                 .extracting("errorCode")
                 .isEqualTo(CompanyErrorCode.GALLERY_IMAGE_TYPE_NOT_ALLOWED);
     }
@@ -53,7 +54,7 @@ class GalleryImageTypePolicyTest {
         List<ImageRequest> images = List.of(new ImageRequest("p1", ImageType.PROJECT));
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().images(images).build();
 
-        assertThatThrownBy(() -> policy.apply(null, request, admin))
+        assertThatThrownBy(() -> policy.apply(CompanyPolicyView.forCreate(null, request, admin)))
                 .extracting("errorCode")
                 .isEqualTo(CompanyErrorCode.GALLERY_IMAGE_TYPE_NOT_ALLOWED);
     }
@@ -63,6 +64,6 @@ class GalleryImageTypePolicyTest {
     void nullImages_passes() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 }

@@ -7,6 +7,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.VideoUrlPolicy;
 
@@ -31,7 +32,7 @@ class VideoUrlPolicyTest {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
                 .videoUrl("https://youtu.be/x").build();
 
-        assertThatThrownBy(() -> policy.apply(null, request, free))
+        assertThatThrownBy(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free)))
                 .extracting("errorCode")
                 .isEqualTo(CompanyErrorCode.VIDEO_NOT_ALLOWED);
     }
@@ -41,7 +42,7 @@ class VideoUrlPolicyTest {
     void free_nullVideo_passes() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 
     @Test
@@ -50,7 +51,7 @@ class VideoUrlPolicyTest {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
                 .videoUrl("   ").build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 
     @Test
@@ -59,7 +60,7 @@ class VideoUrlPolicyTest {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
                 .videoUrl("https://youtu.be/x").build();
 
-        assertThatCode(() -> policy.apply(null, request, standard)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, standard))).doesNotThrowAnyException();
     }
 
     @Test
@@ -68,6 +69,6 @@ class VideoUrlPolicyTest {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
                 .videoUrl("https://youtu.be/x").build();
 
-        assertThatCode(() -> policy.apply(null, request, admin)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, admin))).doesNotThrowAnyException();
     }
 }
