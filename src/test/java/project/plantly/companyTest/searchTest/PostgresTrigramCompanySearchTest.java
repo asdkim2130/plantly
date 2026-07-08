@@ -46,6 +46,35 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
     }
 
     @Test
+    @DisplayName("통합 키워드: 태그 텍스트도 search_all 에 접혀 매칭된다 (본문/이름에 없어도)")
+    void unifiedKeywordMatchesTag() {
+        Company a = persistCompany("가가전자", "일반 제조");   // '친환경' 은 이름·본문에 없음
+        em.persist(new CompanyTag(a, "친환경", 0));
+        index(a);
+        index(persistCompany("나나기계", "금속 절삭"));
+
+        assertThat(ids(search(kw("친환경")))).containsExactly(a.getId());
+    }
+
+    @Test
+    @DisplayName("재색인(수정 훅): 태그를 바꾸면 이전 태그는 빠지고 새 태그로 검색된다 (backfill 불필요)")
+    void reindexReflectsTagChange() {
+        Company a = persistCompany("가가전자", "일반 제조");
+        CompanyTag before = new CompanyTag(a, "친환경", 0);
+        em.persist(before);
+        index(a);
+        assertThat(ids(search(kw("친환경")))).containsExactly(a.getId());
+
+        // 수정(replaceTags 와 동일 형태): 기존 태그 삭제 + 새 태그 → 재색인(write). 수정 서비스의 write() 훅을 재현한다.
+        em.remove(em.find(CompanyTag.class, before.getId()));
+        em.persist(new CompanyTag(a, "고효율", 0));
+        index(a);
+
+        assertThat(ids(search(kw("고효율")))).containsExactly(a.getId()); // 새 태그로 잡히고
+        assertThat(ids(search(kw("친환경")))).isEmpty();                   // 이전 태그는 더 이상 매칭 안 됨
+    }
+
+    @Test
     @DisplayName("고급 검색: 지정한 필드(회사명) 컬럼에만 매칭한다")
     void advancedTargetsColumn() {
         Company a = index(persistCompany("플랜틀리", "일반 제조"));
