@@ -1,11 +1,9 @@
 package project.plantly.domain.company.policy.rule;
 
 import org.springframework.stereotype.Component;
-import project.plantly.domain.company.dto.CompanyCreateRequest;
-import project.plantly.domain.company.entity.Company;
-import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.enums.ImageType;
 import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
 import project.plantly.global.exception.BusinessException;
 
@@ -13,16 +11,17 @@ import project.plantly.global.exception.BusinessException;
 // PROJECT 이미지는 references 경로로만 들어와야 하므로, images 에 DETAIL 외(또는 null) 타입이 섞이면 거부한다.
 // 이를 통해 DetailImageLimitPolicy 의 DETAIL-only 카운팅이 타입 우회로 무력화되는 것을 막는다.
 // 등급과 무관한 구조 검증이므로 면제(관리자 등록) 여부와 상관없이 전원 적용한다.
+// 수정 경로에서는 CompanyChildWriter.replaceGalleryImages 가 동일 규칙을 강제하므로 CompanyMutationPolicy 를 달지 않는다(등록 전용).
 @Component
 public class GalleryImageTypePolicy implements CompanyRegistrationPolicy {
 
     @Override
-    public void apply(Company company, CompanyCreateRequest request, CompanySubscription subscription) {
-        if (request.images() == null) {
+    public void apply(CompanyPolicyView view) {
+        if (view.galleryImages() == null) {
             return;
         }
 
-        boolean hasNonDetail = request.images().stream()
+        boolean hasNonDetail = view.galleryImages().stream()
                 .anyMatch(image -> image.imageType() != ImageType.DETAIL);
         if (hasNonDetail) {
             throw new BusinessException(CompanyErrorCode.GALLERY_IMAGE_TYPE_NOT_ALLOWED);

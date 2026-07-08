@@ -15,6 +15,7 @@ import project.plantly.domain.company.entity.link.CompanyMember;
 import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.enums.MemberRole;
 import project.plantly.domain.company.enums.SubscriptionStatus;
+import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
@@ -105,11 +106,13 @@ class CompanyServiceTest {
 
         service.createByUser(7L, request);
 
-        ArgumentCaptor<CompanySubscription> sub = ArgumentCaptor.forClass(CompanySubscription.class);
-        verify(policyA).apply(any(Company.class), eq(request), sub.capture());
-        verify(policyB).apply(any(Company.class), eq(request), any(CompanySubscription.class));
-        assertThat(sub.getValue().effectiveGrade()).isEqualTo(CompanyGrade.FREE);
-        assertThat(sub.getValue().isExempt()).isFalse();
+        // 정책은 이제 CompanyPolicyView 를 받는다. 뷰가 실은 구독(FREE, 미면제)을 담고 전 정책이 실행됨을 본다.
+        ArgumentCaptor<CompanyPolicyView> viewCaptor = ArgumentCaptor.forClass(CompanyPolicyView.class);
+        verify(policyA).apply(viewCaptor.capture());
+        verify(policyB).apply(any(CompanyPolicyView.class));
+        CompanySubscription captured = viewCaptor.getValue().subscription();
+        assertThat(captured.effectiveGrade()).isEqualTo(CompanyGrade.FREE);
+        assertThat(captured.isExempt()).isFalse();
     }
 
     @Test
@@ -129,10 +132,11 @@ class CompanyServiceTest {
         verify(searchDocumentWriter).write(20L);
         verify(companyMemberRepository, never()).save(any());
 
-        ArgumentCaptor<CompanySubscription> sub = ArgumentCaptor.forClass(CompanySubscription.class);
-        verify(policy).apply(any(Company.class), eq(request), sub.capture());
-        assertThat(sub.getValue().isExempt()).isTrue();
-        assertThat(sub.getValue().getStatus()).isEqualTo(SubscriptionStatus.ADMIN_EXEMPT);
+        ArgumentCaptor<CompanyPolicyView> viewCaptor = ArgumentCaptor.forClass(CompanyPolicyView.class);
+        verify(policy).apply(viewCaptor.capture());
+        CompanySubscription captured = viewCaptor.getValue().subscription();
+        assertThat(captured.isExempt()).isTrue();
+        assertThat(captured.getStatus()).isEqualTo(SubscriptionStatus.ADMIN_EXEMPT);
     }
 
     @Test
@@ -140,7 +144,7 @@ class CompanyServiceTest {
     void createByUser_policyThrows_nothingPersisted() {
         CompanyRegistrationPolicy failing = mock(CompanyRegistrationPolicy.class);
         org.mockito.BDDMockito.willThrow(new BusinessException(TestError.FAIL))
-                .given(failing).apply(any(Company.class), any(CompanyCreateRequest.class), any(CompanySubscription.class));
+                .given(failing).apply(any(CompanyPolicyView.class));
         CompanyService service = service(failing);
 
         assertThatThrownBy(() -> service.createByUser(7L, request))

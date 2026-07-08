@@ -8,6 +8,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.SpotlightPolicy;
 
@@ -32,7 +33,7 @@ class SpotlightPolicyTest {
     void premium_activatesSpotlight() {
         Company company = CompanyFixture.userCompany();
 
-        policy.apply(company, request, premium);
+        policy.apply(CompanyPolicyView.forCreate(company, request, premium));
 
         assertThat(company.isSpotlight()).isTrue();
     }
@@ -42,7 +43,7 @@ class SpotlightPolicyTest {
     void free_keepsSpotlightOff() {
         Company company = CompanyFixture.userCompany();
 
-        policy.apply(company, request, free);
+        policy.apply(CompanyPolicyView.forCreate(company, request, free));
 
         assertThat(company.isSpotlight()).isFalse();
     }
@@ -52,7 +53,7 @@ class SpotlightPolicyTest {
     void admin_keepsSpotlightOff() {
         Company company = CompanyFixture.userCompany();
 
-        policy.apply(company, request, admin);
+        policy.apply(CompanyPolicyView.forCreate(company, request, admin));
 
         assertThat(company.isSpotlight()).isFalse();
     }

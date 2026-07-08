@@ -4,12 +4,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.restdocs.RestDocumentationContextProvider;
+import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.core.Authentication;
@@ -21,6 +24,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import project.plantly.companyTest.support.CompanyApiDocs;
 import project.plantly.domain.company.controller.CompanyController;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.exception.CompanyErrorCode;
@@ -37,15 +41,24 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.patch;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.put;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
+import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
+import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// 유저(소유자) 수정 API 컨트롤러 슬라이스 테스트 — 라우팅/검증/인가 매핑/응답 형태(ok())를 서비스 목킹으로 검증한다.
+// 유저(소유자) 수정 API 컨트롤러 슬라이스 테스트 — 라우팅/검증/인가 매핑/응답 형태(ok())를 서비스 목킹으로 검증하고,
+// 성공/예외 응답을 REST Docs 스니펫으로 문서화한다.
 // 실제 수정 동작(전체 교체·삭제 스코프·검색 재동기화)은 실DB 통합 테스트(후속)가 담당한다.
 @ActiveProfiles("test")
 @WebMvcTest(controllers = CompanyController.class)
+@ExtendWith(RestDocumentationExtension.class)
 @Import(CompanyUpdateControllerTest.MethodSecurityTestConfig.class)
 public class CompanyUpdateControllerTest {
 
@@ -69,8 +82,13 @@ public class CompanyUpdateControllerTest {
     private MockMvc mockMvc;
 
     @BeforeEach
-    void setUpMockMvc() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+    void setUpMockMvc(RestDocumentationContextProvider restDocumentation) {
+        mockMvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(documentationConfiguration(restDocumentation)
+                        .operationPreprocessors()
+                        .withRequestDefaults(prettyPrint())
+                        .withResponseDefaults(prettyPrint()))
+                .build();
     }
 
     @Test
@@ -84,7 +102,11 @@ public class CompanyUpdateControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").doesNotExist())
-                .andExpect(jsonPath("$.message").doesNotExist());
+                .andExpect(jsonPath("$.message").doesNotExist())
+                .andDo(document("company-update",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        requestFields(CompanyApiDocs.companyUpdateRequestFields()),
+                        responseFields(CompanyApiDocs.okResponseFields())));
 
         verify(companyUpdateService).updateBasicInfoByUser(eq(9L), eq(7L), any(CompanyUpdateRequest.class));
     }
@@ -99,7 +121,9 @@ public class CompanyUpdateControllerTest {
                         .content("{\"companyName\":\"\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.error").exists())
+                .andDo(document("company-update-validation-error",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
     @Test
@@ -114,7 +138,9 @@ public class CompanyUpdateControllerTest {
                         .content("{\"introTitle\":\"x\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error").value("해당 회사에 대한 접근 권한이 없습니다."));
+                .andExpect(jsonPath("$.error").value("해당 회사에 대한 접근 권한이 없습니다."))
+                .andDo(document("company-update-forbidden",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
     @Test
@@ -129,7 +155,9 @@ public class CompanyUpdateControllerTest {
                         .content("{\"introTitle\":\"x\"}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error").value("존재하지 않는 회사입니다."));
+                .andExpect(jsonPath("$.error").value("존재하지 않는 회사입니다."))
+                .andDo(document("company-update-not-found",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
     @Test
@@ -142,7 +170,11 @@ public class CompanyUpdateControllerTest {
                         .content("[\"정밀\",\"자동화\"]"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").doesNotExist());
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andDo(document("company-update-tags",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        requestFields(CompanyApiDocs.replaceListRequestFields("교체할 태그명 목록 (빈 배열이면 전부 비움)")),
+                        responseFields(CompanyApiDocs.okResponseFields())));
 
         verify(companyUpdateService).replaceTagsByUser(eq(9L), eq(7L), any());
     }
@@ -156,7 +188,12 @@ public class CompanyUpdateControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("[1,2,3]"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath("$.success").value(true))
+                .andDo(document("company-update-categories",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        requestFields(CompanyApiDocs.replaceListRequestFields(
+                                "교체할 카테고리 ID 목록 (등급별 개수 제한, 빈 배열이면 전부 비움)")),
+                        responseFields(CompanyApiDocs.okResponseFields())));
 
         verify(companyUpdateService).replaceCategoriesByUser(eq(9L), eq(7L), any());
     }
@@ -173,7 +210,9 @@ public class CompanyUpdateControllerTest {
                         .content("[{\"imageUrl\":\"https://cdn/x.png\",\"imageType\":\"PROJECT\"}]"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error").value("갤러리에는 상세 이미지(DETAIL)만 등록할 수 있습니다."));
+                .andExpect(jsonPath("$.error").value("갤러리에는 상세 이미지(DETAIL)만 등록할 수 있습니다."))
+                .andDo(document("company-update-images-type-error",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
     @Test
@@ -188,7 +227,9 @@ public class CompanyUpdateControllerTest {
                         .content("[{\"contactName\":\"a\"},{\"contactName\":\"b\"}]"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error").value("연락처는 1건만 등록할 수 있습니다."));
+                .andExpect(jsonPath("$.error").value("연락처는 1건만 등록할 수 있습니다."))
+                .andDo(document("company-update-contacts-limit-error",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
     @AfterEach

@@ -8,6 +8,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.enums.ImageType;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.DetailImageLimitPolicy;
 
@@ -31,7 +32,7 @@ class DetailImageLimitPolicyTest {
     void free_withinLimit_passes() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().detailImages(3).build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 
     @Test
@@ -39,7 +40,7 @@ class DetailImageLimitPolicyTest {
     void free_overLimit_throws() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().detailImages(4).build();
 
-        assertThatThrownBy(() -> policy.apply(null, request, free))
+        assertThatThrownBy(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free)))
                 .extracting("errorCode")
                 .isEqualTo(CompanyErrorCode.DETAIL_IMAGE_LIMIT_EXCEEDED);
     }
@@ -60,7 +61,7 @@ class DetailImageLimitPolicyTest {
         );
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().images(images).build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 
     @Test
@@ -68,7 +69,7 @@ class DetailImageLimitPolicyTest {
     void nullImages_passes() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 
     @Test
@@ -76,6 +77,6 @@ class DetailImageLimitPolicyTest {
     void admin_exempt_passes() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().detailImages(10).build();
 
-        assertThatCode(() -> policy.apply(null, request, admin)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, admin))).doesNotThrowAnyException();
     }
 }

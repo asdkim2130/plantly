@@ -7,6 +7,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.entity.link.CompanyMember;
+import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
@@ -51,7 +52,7 @@ public class CompanyService {
         Long companyId = persist(company, request, CompanySubscription.freeForUser(LocalDate.now()));
 
         // 자가등록자 = OWNER. 관리자 등록(createByAdmin)은 소유자 미연동이라 멤버를 만들지 않는다.
-        // (Company.userId 와 병행 기록 — 추후 멤버십이 단일 진실원이 되면 userId 는 정리)
+        // 소유의 단일 진실원(SSOT) — Company 는 소유자를 직접 참조하지 않고 이 멤버십으로만 표현한다.
         companyMemberRepository.save(CompanyMember.owner(companyId, userId));
         return companyId;
     }
@@ -72,7 +73,8 @@ public class CompanyService {
     // 공통 코어: 등록 정책 일괄 검증 후, 본체 INSERT(=id 확보) → 구독·부속(자식/링크)을 같은 트랜잭션으로 저장한다.
     // 정책은 아직 저장 전인 company 와 subscription(등급 출처)을 받아 검증/변형한다. throw 시 아무것도 영속화되지 않는다.
     private Long persist(Company company, CompanyCreateRequest request, CompanySubscription subscription) {
-        registrationPolicies.forEach(policy -> policy.apply(company, request, subscription));
+        CompanyPolicyView view = CompanyPolicyView.forCreate(company, request, subscription);
+        registrationPolicies.forEach(policy -> policy.apply(view));
 
         companyRepository.save(company);
         // 본체 저장으로 확보한 id 로 구독을 회사에 연결(1:1)해 저장한다.

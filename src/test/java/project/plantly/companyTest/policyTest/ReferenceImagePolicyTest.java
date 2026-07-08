@@ -8,6 +8,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.ReferenceImagePolicy;
 
@@ -32,7 +33,7 @@ class ReferenceImagePolicyTest {
     void free_withImages_throwsNotAllowed() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().referenceWithImages(1).build();
 
-        assertThatThrownBy(() -> policy.apply(null, request, free))
+        assertThatThrownBy(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free)))
                 .extracting("errorCode")
                 .isEqualTo(CompanyErrorCode.REFERENCE_IMAGE_NOT_ALLOWED);
     }
@@ -43,7 +44,7 @@ class ReferenceImagePolicyTest {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
                 .references(List.of(new ReferenceRequest("프로젝트", null, null, null, List.of()))).build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 
     @Test
@@ -51,7 +52,7 @@ class ReferenceImagePolicyTest {
     void enterprise_withinLimit_passes() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().referenceWithImages(10).build();
 
-        assertThatCode(() -> policy.apply(null, request, enterprise)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, enterprise))).doesNotThrowAnyException();
     }
 
     @Test
@@ -59,7 +60,7 @@ class ReferenceImagePolicyTest {
     void enterprise_overLimit_throws() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().referenceWithImages(11).build();
 
-        assertThatThrownBy(() -> policy.apply(null, request, enterprise))
+        assertThatThrownBy(() -> policy.apply(CompanyPolicyView.forCreate(null, request, enterprise)))
                 .extracting("errorCode")
                 .isEqualTo(CompanyErrorCode.REFERENCE_IMAGE_LIMIT_EXCEEDED);
     }
@@ -69,7 +70,7 @@ class ReferenceImagePolicyTest {
     void nullReferences_passes() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().build();
 
-        assertThatCode(() -> policy.apply(null, request, free)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, free))).doesNotThrowAnyException();
     }
 
     @Test
@@ -77,6 +78,6 @@ class ReferenceImagePolicyTest {
     void admin_exempt_passes() {
         CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().referenceWithImages(5).build();
 
-        assertThatCode(() -> policy.apply(null, request, admin)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.apply(CompanyPolicyView.forCreate(null, request, admin))).doesNotThrowAnyException();
     }
 }

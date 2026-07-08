@@ -83,6 +83,45 @@ public class CompanyApiDocs {
         };
     }
 
+    // 본문 없는 성공 응답(ApiResponse.ok). success=true 만 존재하고 message/data/error 는 NON_NULL 로 생략된다.
+    // 수정 API(본체 PATCH·컬렉션 PUT)는 변경 결과가 이미 화면에 반영되므로 성공 플래그만 내려준다.
+    public static FieldDescriptor[] okResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부 (true)")
+        };
+    }
+
+    // 기본 정보 부분 수정(PATCH /api/v1/companies/{id}) 요청 필드. 모두 선택 = null 이면 미변경(sparse update).
+    // 선택 문자열은 빈 문자열("")로 비울 수 있고, 필수(NOT NULL) 필드는 @Size(min=1) 로 빈 문자열을 막는다.
+    public static FieldDescriptor[] companyUpdateRequestFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("companyName").type(JsonFieldType.STRING).optional().description("기업 이름 (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("ceoName").type(JsonFieldType.STRING).optional().description("대표자 (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("establishmentDate").type(JsonFieldType.STRING).optional().description("설립일 (yyyy-MM-dd, clear 미지원)"),
+                fieldWithPath("postalCode").type(JsonFieldType.STRING).optional().description("우편번호 (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("address").type(JsonFieldType.STRING).optional().description("주소 (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("detailAddress").type(JsonFieldType.STRING).optional().description("상세주소 (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("website").type(JsonFieldType.STRING).optional().description("기업 홈페이지 (빈 문자열 = 비우기)"),
+                fieldWithPath("logoUrl").type(JsonFieldType.STRING).optional().description("로고 이미지 URL (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약 (빈 문자열 = 비우기)"),
+                fieldWithPath("content").type(JsonFieldType.STRING).optional().description("소개글 (빈 문자열 = 비우기)"),
+                fieldWithPath("trlLevel").type(JsonFieldType.STRING).optional().description("기술성숙도: PROTOTYPE, MASS_PRODUCTION, GLOBAL_STANDARD (clear 미지원)"),
+                fieldWithPath("videoUrl").type(JsonFieldType.STRING).optional().description("동영상 링크 (등급별 사용 제한, 빈 문자열 = 비우기)"),
+                fieldWithPath("leadTime").type(JsonFieldType.STRING).optional().description("예상 리드타임 (빈 문자열 = 비우기)"),
+                fieldWithPath("asInfo").type(JsonFieldType.STRING).optional().description("유지보수/AS 정보 (빈 문자열 = 비우기)"),
+                fieldWithPath("pricingType").type(JsonFieldType.STRING).optional().description("견적 산출 방식: FIXED, CONSULTATION, PROJECT_BASED (clear 미지원)"),
+                fieldWithPath("brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러 (커스텀 불가 등급은 무시, 빈 문자열 = 비우기)")
+        };
+    }
+
+    // 컬렉션 전체 교체(PUT) 요청이 원시 배열 본문일 때(태그·소재·설비 이름 목록, 링크 마스터 ID 목록)의 루트 배열 디스크립터.
+    // 빈 배열([])을 보내면 해당 컬렉션을 전부 비운다. 표시 순서는 서버가 배열 인덱스로 재부여한다.
+    public static FieldDescriptor[] replaceListRequestFields(String description) {
+        return new FieldDescriptor[]{
+                fieldWithPath("[]").description(description)
+        };
+    }
+
     // 목록/검색 쿼리 파라미터(GET /api/v1/companies). 전부 선택적.
     public static ParameterDescriptor[] companySearchQueryParameters() {
         return new ParameterDescriptor[]{
@@ -165,6 +204,9 @@ public class CompanyApiDocs {
                 fieldWithPath("data.content[].ownerUserId").type(JsonFieldType.NUMBER).optional().description("소유 유저 ID (미연동이면 null)"),
                 fieldWithPath("data.content[].registrationSource").type(JsonFieldType.STRING).description("등록 출처 (USER / ADMIN)"),
                 fieldWithPath("data.content[].createdAt").type(JsonFieldType.STRING).description("등록 시각"),
+                fieldWithPath("data.content[].effectiveGrade").type(JsonFieldType.STRING).optional().description("지금 유효한 구독 등급 (만료 시 FREE 로 강등). 구독 없으면 null"),
+                fieldWithPath("data.content[].status").type(JsonFieldType.STRING).optional().description("구독 상태: ACTIVE(결제), TRIAL(체험), ADMIN_EXEMPT(면제). 체험/결제 구분용. 구독 없으면 null"),
+                fieldWithPath("data.content[].expiresAt").type(JsonFieldType.STRING).optional().description("구독 만료일 (yyyy-MM-dd, null = 무기한 또는 구독 없음)"),
                 fieldWithPath("data.content[].categoryNames").type(JsonFieldType.ARRAY).description("회사가 연결한 카테고리명 목록"),
                 fieldWithPath("data.content[].tagNames").type(JsonFieldType.ARRAY).description("태그명 목록"),
                 fieldWithPath("data.content[].industryNames").type(JsonFieldType.ARRAY).description("산업군명 목록"),
@@ -172,6 +214,45 @@ public class CompanyApiDocs {
                 fieldWithPath("data.pageInfo.size").type(JsonFieldType.NUMBER).description("페이지 크기"),
                 fieldWithPath("data.pageInfo.totalElement").type(JsonFieldType.NUMBER).description("전체 건수"),
                 fieldWithPath("data.pageInfo.totalPage").type(JsonFieldType.NUMBER).description("전체 페이지 수")
+        };
+    }
+
+    // 소유자 구독 조회 응답(ApiResponse<CompanySubscriptionResponse>). 회사 데이터와 섞지 않은 구독 단독 정보.
+    public static FieldDescriptor[] companySubscriptionResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
+                fieldWithPath("data.companyId").type(JsonFieldType.NUMBER).description("구독 주체(회사) ID"),
+                fieldWithPath("data.companyName").type(JsonFieldType.STRING).description("구독 주체(회사) 이름"),
+                fieldWithPath("data.grade").type(JsonFieldType.STRING).description("계약(저장) 등급: FREE, BASIC, STANDARD, PREMIUM, ENTERPRISE"),
+                fieldWithPath("data.effectiveGrade").type(JsonFieldType.STRING).description("지금 유효한 등급 (체험/만료 반영, 정책이 실제 참조하는 값). 만료 시 FREE 로 강등됨"),
+                fieldWithPath("data.status").type(JsonFieldType.STRING).description("구독 상태: ACTIVE(정상), TRIAL(체험), ADMIN_EXEMPT(관리자 등록·한도 면제)"),
+                fieldWithPath("data.startedAt").type(JsonFieldType.STRING).description("구독 시작일 (yyyy-MM-dd)"),
+                fieldWithPath("data.expiresAt").type(JsonFieldType.STRING).optional().description("구독 만료일 (yyyy-MM-dd, null = 무기한)")
+        };
+    }
+
+    // 관리자 구독 조회 응답(ApiResponse<AdminCompanySubscriptionResponse>). 사용자용 + 감사 타임스탬프.
+    public static FieldDescriptor[] adminCompanySubscriptionResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
+                fieldWithPath("data.companyId").type(JsonFieldType.NUMBER).description("구독 주체(회사) ID"),
+                fieldWithPath("data.companyName").type(JsonFieldType.STRING).description("구독 주체(회사) 이름"),
+                fieldWithPath("data.grade").type(JsonFieldType.STRING).description("계약(저장) 등급: FREE, BASIC, STANDARD, PREMIUM, ENTERPRISE"),
+                fieldWithPath("data.effectiveGrade").type(JsonFieldType.STRING).description("지금 유효한 등급 (체험/만료 반영, 정책이 실제 참조하는 값). 만료 시 FREE 로 강등됨"),
+                fieldWithPath("data.status").type(JsonFieldType.STRING).description("구독 상태: ACTIVE(정상), TRIAL(체험), ADMIN_EXEMPT(관리자 등록·한도 면제)"),
+                fieldWithPath("data.startedAt").type(JsonFieldType.STRING).description("구독 시작일 (yyyy-MM-dd)"),
+                fieldWithPath("data.expiresAt").type(JsonFieldType.STRING).optional().description("구독 만료일 (yyyy-MM-dd, null = 무기한)"),
+                fieldWithPath("data.createdAt").type(JsonFieldType.STRING).description("구독 생성 시각 (감사용)"),
+                fieldWithPath("data.updatedAt").type(JsonFieldType.STRING).description("구독 최종 수정 시각 (감사용)")
+        };
+    }
+
+    // 관리자 구독 수정 요청(AdminSubscriptionUpdateRequest). 팝업이 세 필드를 항상 채워 보내는 full-replace.
+    public static FieldDescriptor[] adminSubscriptionUpdateRequestFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("grade").type(JsonFieldType.STRING).description("변경할 등급 (필수): FREE, BASIC, STANDARD, PREMIUM, ENTERPRISE"),
+                fieldWithPath("status").type(JsonFieldType.STRING).description("변경할 상태 (필수): ACTIVE, TRIAL, ADMIN_EXEMPT"),
+                fieldWithPath("expiresAt").type(JsonFieldType.STRING).optional().description("만료일 (yyyy-MM-dd). null = 무기한(만료 없음). startedAt 은 수정하지 않는다")
         };
     }
 
