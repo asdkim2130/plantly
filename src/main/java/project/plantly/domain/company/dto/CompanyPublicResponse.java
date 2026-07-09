@@ -49,6 +49,11 @@ public record CompanyPublicResponse(
         boolean featured,
         boolean spotlight,
 
+        // 개인화(로그인 뷰어 기준): 내가 이 회사를 좋아요/즐겨찾기 했는지. 익명·소유자/관리자 뷰에서는 false.
+        // (총 개수가 아니라 viewer 별 on/off 상태 — 총 개수는 CompanyStat 의 likeCount/favoriteCount 로 별도)
+        boolean likedByMe,
+        boolean favoritedByMe,
+
         // ===== 부속 =====
         // 연락처/레퍼런스는 초기 버전에서 대표 1건만 노출한다(없으면 null). 전체 목록은 추후 '더보기' 전용 조회로 분리.
         ContactResponse representativeContact,
@@ -64,7 +69,9 @@ public record CompanyPublicResponse(
         List<IndustryResponse> industries
 ) {
 
-    public static CompanyPublicResponse from(CompanyAggregate aggregate) {
+    // likedByMe/favoritedByMe 는 aggregate(원자료)에 없는 viewer 별 상태라 호출부(조회 서비스)가 계산해 주입한다.
+    // 개인화가 무의미한 경로(소유자/관리자 뷰, 익명)는 false 를 넘긴다.
+    public static CompanyPublicResponse from(CompanyAggregate aggregate, boolean likedByMe, boolean favoritedByMe) {
         Company c = aggregate.company();
         return new CompanyPublicResponse(
                 c.getId(),
@@ -87,6 +94,8 @@ public record CompanyPublicResponse(
                 c.isVerified(),
                 c.isFeatured(),
                 c.isSpotlight(),
+                likedByMe,
+                favoritedByMe,
                 aggregate.representativeContact() == null ? null
                         : ContactResponse.from(aggregate.representativeContact()),
                 aggregate.galleryImages().stream().map(GalleryImageResponse::from).toList(),

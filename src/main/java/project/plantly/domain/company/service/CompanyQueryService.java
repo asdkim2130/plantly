@@ -24,6 +24,8 @@ import project.plantly.domain.company.search.CompanySearchCriteria;
 import project.plantly.domain.company.search.CompanySearchRepository;
 import project.plantly.domain.company.search.dto.AdminCompanySummary;
 import project.plantly.domain.company.search.dto.CompanySummary;
+import project.plantly.domain.company.stat.CompanyFavoriteRepository;
+import project.plantly.domain.company.stat.CompanyLikeRepository;
 import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
 
@@ -46,6 +48,8 @@ public class CompanyQueryService {
     private final CompanySearchRepository companySearchRepository;
     private final OwnedCompanyCardRepository ownedCompanyCardRepository;
     private final AdminCompanyCardRepository adminCompanyCardRepository;
+    private final CompanyLikeRepository companyLikeRepository;
+    private final CompanyFavoriteRepository companyFavoriteRepository;
 
     // 공개 회사 목록/검색: 통합 키워드 + 고급 + 패싯(인증/산업군/카테고리 서브트리). 색인된·비삭제 회사만,
     // 기본 정렬(spotlight→featured→최신). 엔진 교체(PG↔ES)는 CompanySearchRepository 뒤에서만 일어난다.
@@ -68,12 +72,17 @@ public class CompanyQueryService {
     }
 
     // 공개(비소유자) 조회: 소프트 삭제된 회사는 미존재로 취급한다.
-    public CompanyPublicResponse getPublic(Long companyId) {
+    // viewerId = 로그인 유저 id (익명이면 null). 좋아요/즐겨찾기 여부(likedByMe/favoritedByMe)는 이 뷰어 기준으로 계산한다.
+    public CompanyPublicResponse getPublic(Long companyId, Long viewerId) {
         Company company = companyRepository.findById(companyId)
                 .filter(c -> !c.isDeleted())
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
 
-        return CompanyPublicResponse.from(aggregateLoader.load(company));
+        // 익명 뷰어는 개인화 상태가 없으므로 조회 없이 false. 로그인 뷰어만 존재 여부를 확인한다.
+        boolean likedByMe = viewerId != null && companyLikeRepository.existsByUserIdAndCompanyId(viewerId, companyId);
+        boolean favoritedByMe = viewerId != null && companyFavoriteRepository.existsByUserIdAndCompanyId(viewerId, companyId);
+
+        return CompanyPublicResponse.from(aggregateLoader.load(company), likedByMe, favoritedByMe);
     }
 
     // 소유자 전용 상세: 요청자가 해당 회사의 멤버여야 한다. 삭제된 회사도 소유자에게는 보인다.

@@ -70,9 +70,12 @@ public class CompanyController {
     }
 
     // 일반(공개) 상세 조회 — 누구에게나 안전한 공개 필드만 반환한다. 소프트 삭제된 회사는 404.
+    // 인증은 선택: 로그인 상태면 principal 로 좋아요/즐겨찾기 여부(likedByMe/favoritedByMe)를 채우고, 익명이면 principal=null → false.
     @GetMapping("/api/v1/companies/{id}")
-    public ApiResponse<CompanyPublicResponse> getCompany(@PathVariable Long id) {
-        return ApiResponse.success(companyQueryService.getPublic(id));
+    public ApiResponse<CompanyPublicResponse> getCompany(@AuthenticationPrincipal UserPrincipal principal,
+                                                         @PathVariable Long id) {
+        Long viewerId = (principal == null) ? null : principal.getUser().getId();
+        return ApiResponse.success(companyQueryService.getPublic(id, viewerId));
     }
 
     // 소유자 전용 상세 조회 — 요청자가 해당 회사의 멤버여야 하며, 내부·운영 메타(meta)까지 포함한다.

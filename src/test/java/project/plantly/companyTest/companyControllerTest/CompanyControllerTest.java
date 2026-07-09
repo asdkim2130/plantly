@@ -166,7 +166,7 @@ public class CompanyControllerTest {
     @Test
     @DisplayName("공개 상세 조회는 인증 없이도 공개 프로필(meta 제외)을 반환한다")
     void getCompany_public_success() throws Exception {
-        given(companyQueryService.getPublic(1L)).willReturn(CompanyResponseSamples.fullPublic());
+        given(companyQueryService.getPublic(1L, null)).willReturn(CompanyResponseSamples.fullPublic());
 
         mockMvc.perform(get("/api/v1/companies/{id}", 1L))
                 .andExpect(status().isOk())
@@ -239,7 +239,7 @@ public class CompanyControllerTest {
     @Test
     @DisplayName("공개 조회 대상 회사가 없거나 삭제됐으면 404(COMPANY_NOT_FOUND) 를 반환한다")
     void getCompany_notFound() throws Exception {
-        given(companyQueryService.getPublic(404L))
+        given(companyQueryService.getPublic(404L, null))
                 .willThrow(new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
 
         mockMvc.perform(get("/api/v1/companies/{id}", 404L))

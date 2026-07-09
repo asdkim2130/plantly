@@ -307,6 +307,8 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "verified").type(JsonFieldType.BOOLEAN).description("인증 배지 노출 여부"),
                 fieldWithPath(p + "featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
                 fieldWithPath(p + "spotlight").type(JsonFieldType.BOOLEAN).description("스포트라이트 노출 여부"),
+                fieldWithPath(p + "likedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 좋아요 했는지 (익명·소유자/관리자 뷰는 false)"),
+                fieldWithPath(p + "favoritedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 즐겨찾기 했는지 (익명·소유자/관리자 뷰는 false)"),
 
                 // 대표 연락처 1건 (없으면 null)
                 fieldWithPath(p + "representativeContact").type(JsonFieldType.OBJECT).optional().description("대표 연락처 (없으면 null)"),
