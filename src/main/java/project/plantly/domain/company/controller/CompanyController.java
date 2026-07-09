@@ -56,9 +56,12 @@ public class CompanyController {
     // 공개 회사 목록/검색 — 인증 없이 누구나. 통합 키워드 + 고급검색 + 패싯(인증/산업군/카테고리 서브트리).
     // 기본 정렬(spotlight→featured→최신)으로 페이징된 요약 카드를 반환한다.
     @GetMapping("/api/v1/companies")
-    public ApiResponse<PageResponse<CompanySummary>> searchCompanies(@ModelAttribute CompanySearchRequest request,
+    public ApiResponse<PageResponse<CompanySummary>> searchCompanies(@AuthenticationPrincipal UserPrincipal principal,
+                                                                     @ModelAttribute CompanySearchRequest request,
                                                                      @PageableDefault(size = 20) Pageable pageable) {
-        return ApiResponse.success(companyQueryService.search(request.toCriteria(), pageable));
+        // 인증은 선택: 로그인 상태면 카드마다 좋아요/즐겨찾기 여부를 채우고, 익명이면 principal=null → 전부 false.
+        Long viewerId = (principal == null) ? null : principal.getUser().getId();
+        return ApiResponse.success(companyQueryService.search(request.toCriteria(), pageable, viewerId));
     }
 
     // 내가 등록한 회사 목록 — 인증된 본인 소유(userId=본인) 미삭제 회사를 요약 카드로, 최신순 페이징(검색 없음).

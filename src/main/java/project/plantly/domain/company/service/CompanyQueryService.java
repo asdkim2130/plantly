@@ -30,7 +30,9 @@ import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 // 회사 상세 조회 전담 서비스. 등록(CompanyService)과 분리한 읽기 전용 경로.
@@ -53,9 +55,25 @@ public class CompanyQueryService {
 
     // 공개 회사 목록/검색: 통합 키워드 + 고급 + 패싯(인증/산업군/카테고리 서브트리). 색인된·비삭제 회사만,
     // 기본 정렬(spotlight→featured→최신). 엔진 교체(PG↔ES)는 CompanySearchRepository 뒤에서만 일어난다.
-    public PageResponse<CompanySummary> search(CompanySearchCriteria criteria, Pageable pageable) {
+    // viewerId = 로그인 유저 id(익명이면 null). 좋아요/즐겨찾기 여부는 검색 결과를 뷰어 기준으로 후처리(enrich)해 채운다.
+    public PageResponse<CompanySummary> search(CompanySearchCriteria criteria, Pageable pageable, Long viewerId) {
         Page<CompanySummary> page = companySearchRepository.search(criteria, pageable);
-        return PageResponse.of(page.getContent(), page.getTotalElements(), pageable);
+        List<CompanySummary> content = enrichViewerFlags(page.getContent(), viewerId);
+        return PageResponse.of(content, page.getTotalElements(), pageable);
+    }
+
+    // 검색 결과 한 페이지에 뷰어별 좋아요/즐겨찾기 상태를 덧입힌다. 검색 엔진(PG/ES) 밖의 후처리라 seam 을 오염시키지 않는다.
+    // 익명이거나 결과가 없으면 그대로 반환(추가 쿼리 없음). 로그인 뷰어면 좋아요·즐겨찾기 각각 배치 조회 1회(행마다 N+1 없음).
+    private List<CompanySummary> enrichViewerFlags(List<CompanySummary> cards, Long viewerId) {
+        if (viewerId == null || cards.isEmpty()) {
+            return cards;
+        }
+        List<Long> ids = cards.stream().map(CompanySummary::id).toList();
+        Set<Long> liked = Set.copyOf(companyLikeRepository.findLikedCompanyIds(viewerId, ids));
+        Set<Long> favorited = Set.copyOf(companyFavoriteRepository.findFavoritedCompanyIds(viewerId, ids));
+        return cards.stream()
+                .map(c -> c.withViewerFlags(liked.contains(c.id()), favorited.contains(c.id())))
+                .toList();
     }
 
     // 내 회사 목록: 로그인 유저가 소유(userId=본인)한 미삭제 회사를 요약 카드로, 최신 등록순 페이징. 검색/패싯 없음.

@@ -17,5 +17,18 @@ public record CompanySummary(
         boolean spotlight,
         List<String> categoryNames,
         List<String> tagNames,
-        List<String> industryNames
-) {}
+        List<String> industryNames,
+
+        // 개인화(로그인 뷰어 기준): 내가 이 회사를 좋아요/즐겨찾기 했는지. 검색 프로젝션은 viewer 독립이라 false 로 만들고,
+        // 조회 서비스가 뷰어별 배치 조회로 채운다(withViewerFlags). 익명 뷰어는 false 유지.
+        boolean likedByMe,
+        boolean favoritedByMe
+) {
+
+    // 검색 결과 카드에 뷰어별 개인화 상태를 덧입힌 사본을 만든다. (record 는 불변이라 교체 생성)
+    public CompanySummary withViewerFlags(boolean likedByMe, boolean favoritedByMe) {
+        return new CompanySummary(id, companyName, introTitle, logoUrl, address,
+                verified, featured, spotlight, categoryNames, tagNames, industryNames,
+                likedByMe, favoritedByMe);
+    }
+}

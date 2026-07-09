@@ -53,6 +53,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
@@ -270,9 +271,10 @@ public class CompanyControllerTest {
     void searchCompanies_public_success() throws Exception {
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
                 "https://cdn/logo.png", "서울 강남구", true, false, true,
-                List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"));
+                List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
+                true, false);   // likedByMe, favoritedByMe
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
-        given(companyQueryService.search(any(CompanySearchCriteria.class), any(Pageable.class))).willReturn(page);
+        given(companyQueryService.search(any(CompanySearchCriteria.class), any(Pageable.class), isNull())).willReturn(page);
 
         mockMvc.perform(get("/api/v1/companies?keyword=스마트팜&categoryIds=1&page=1&size=20"))
                 .andExpect(status().isOk())
@@ -280,6 +282,8 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.data.content[0].id").value(1L))
                 .andExpect(jsonPath("$.data.content[0].companyName").value("플랜틀리"))
                 .andExpect(jsonPath("$.data.content[0].spotlight").value(true))
+                .andExpect(jsonPath("$.data.content[0].likedByMe").value(true))
+                .andExpect(jsonPath("$.data.content[0].favoritedByMe").value(false))
                 .andExpect(jsonPath("$.data.content[0].categoryNames[0]").value("제조"))
                 .andExpect(jsonPath("$.data.content[0].tagNames[1]").value("IoT"))
                 .andExpect(jsonPath("$.data.content[0].industryNames[0]").value("농업기술"))
@@ -294,7 +298,8 @@ public class CompanyControllerTest {
     void getMyCompanies_success() throws Exception {
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
                 "https://cdn/logo.png", "서울 강남구", true, false, true,
-                List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"));
+                List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
+                false, false);   // 내 회사 목록은 개인화 미적용
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
         given(companyQueryService.listMyCompanies(eq(7L), any(Pageable.class))).willReturn(page);
         authenticate(7L, UserRole.MEMBER);
