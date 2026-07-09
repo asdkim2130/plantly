@@ -13,8 +13,6 @@ import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
 import project.plantly.domain.company.repository.CompanySubscriptionRepository;
 import project.plantly.domain.company.search.CompanySearchDocumentWriter;
-import project.plantly.domain.company.stat.CompanyStat;
-import project.plantly.domain.company.stat.CompanyStatRepository;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -34,9 +32,6 @@ public class CompanyService {
 
     // 회사 구독. 등록 시 회사의 초기 구독(등급)을 1건 저장한다. 정책은 이 구독의 등급을 참조한다.
     private final CompanySubscriptionRepository companySubscriptionRepository;
-
-    // 회사 집계 카운터. 등록 시 0으로 초기화된 집계 행을 회사당 1건 만든다. (좋아요/즐겨찾기 토글의 지연 생성 경합 제거)
-    private final CompanyStatRepository companyStatRepository;
 
     // 검색 동기화. 본체·자식·링크 저장 후 비정규화 검색 도큐먼트와 카테고리 closure 를 재생성한다.
     private final CompanySearchDocumentWriter searchDocumentWriter;
@@ -85,9 +80,6 @@ public class CompanyService {
         // 본체 저장으로 확보한 id 로 구독을 회사에 연결(1:1)해 저장한다.
         subscription.assignCompany(company.getId());
         companySubscriptionRepository.save(subscription);
-
-        // 집계 카운터도 같은 id 로 회사당 1건 초기화(0). 이후 좋아요/즐겨찾기 토글은 이 행을 갱신만 한다.
-        companyStatRepository.save(CompanyStat.init(company.getId()));
 
         childWriter.write(company, request);
         linkWriter.write(company, request);

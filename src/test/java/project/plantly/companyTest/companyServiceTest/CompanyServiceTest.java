@@ -21,8 +21,6 @@ import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
 import project.plantly.domain.company.repository.CompanySubscriptionRepository;
 import project.plantly.domain.company.search.CompanySearchDocumentWriter;
-import project.plantly.domain.company.stat.CompanyStat;
-import project.plantly.domain.company.stat.CompanyStatRepository;
 import project.plantly.domain.company.service.CompanyChildWriter;
 import project.plantly.domain.company.service.CompanyLinkWriter;
 import project.plantly.domain.company.service.CompanyService;
@@ -52,7 +50,6 @@ class CompanyServiceTest {
     @Mock CompanyLinkWriter linkWriter;
     @Mock CompanyMemberRepository companyMemberRepository;
     @Mock CompanySubscriptionRepository companySubscriptionRepository;
-    @Mock CompanyStatRepository companyStatRepository;
     @Mock CompanySearchDocumentWriter searchDocumentWriter;
 
     private final CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest().build();
@@ -60,7 +57,7 @@ class CompanyServiceTest {
     // 정책 리스트는 테스트마다 다르므로 생성자 직접 호출로 주입한다. (Mockito 가 List<인터페이스> mock 을 자동 주입하지 못함)
     private CompanyService service(CompanyRegistrationPolicy... policies) {
         return new CompanyService(companyRepository, childWriter, linkWriter, companyMemberRepository,
-                companySubscriptionRepository, companyStatRepository, searchDocumentWriter, List.of(policies));
+                companySubscriptionRepository, searchDocumentWriter, List.of(policies));
     }
 
     // companyRepository.save 가 INSERT 후 id 를 채우는 것을 흉내낸다. (persist 가 직후 company.getId() 를 읽음)
@@ -90,12 +87,6 @@ class CompanyServiceTest {
         ArgumentCaptor<CompanySubscription> subCaptor = ArgumentCaptor.forClass(CompanySubscription.class);
         verify(companySubscriptionRepository).save(subCaptor.capture());
         assertThat(subCaptor.getValue().getCompanyId()).isEqualTo(10L);
-
-        // 집계 카운터도 같은 회사 id 로 0 초기화되어 저장된다.
-        ArgumentCaptor<CompanyStat> statCaptor = ArgumentCaptor.forClass(CompanyStat.class);
-        verify(companyStatRepository).save(statCaptor.capture());
-        assertThat(statCaptor.getValue().getCompanyId()).isEqualTo(10L);
-        assertThat(statCaptor.getValue().getLikeCount()).isZero();
 
         ArgumentCaptor<CompanyMember> memberCaptor = ArgumentCaptor.forClass(CompanyMember.class);
         verify(companyMemberRepository).save(memberCaptor.capture());
@@ -161,7 +152,6 @@ class CompanyServiceTest {
 
         verify(companyRepository, never()).save(any());
         verify(companySubscriptionRepository, never()).save(any());
-        verify(companyStatRepository, never()).save(any());
         verify(childWriter, never()).write(any(), any());
         verify(linkWriter, never()).write(any(), any());
         verify(searchDocumentWriter, never()).write(any());
