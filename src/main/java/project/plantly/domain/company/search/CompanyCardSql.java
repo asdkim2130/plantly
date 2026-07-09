@@ -46,7 +46,10 @@ public final class CompanyCardSql {
             rs.getBoolean("spotlight"),
             toList(rs.getArray("category_names")),
             toList(rs.getArray("tag_names")),
-            toList(rs.getArray("industry_names")));
+            toList(rs.getArray("industry_names")),
+            // 개인화(likedByMe/favoritedByMe)는 viewer 독립인 카드 프로젝션 밖에서 채운다 → 여기선 false 기본값.
+            false,
+            false);
 
     // PG text[] → List<String>. 매칭 행이 없으면 array_agg 는 NULL → 빈 리스트. null 원소는 제거.
     // 관리자 카드 매퍼(AdminCompanyCardSql)도 같은 패키지에서 재사용한다.

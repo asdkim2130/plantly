@@ -36,6 +36,7 @@ public class CompanyResponseSamples {
                 TrlLevel.MASS_PRODUCTION, "https://youtu.be/demo", "2주", "유선 AS 지원",
                 PricingType.CONSULTATION, "#2E7D32",
                 true, true, false,
+                true, false,   // likedByMe, favoritedByMe
                 new ContactResponse("이담당", "영업팀장", "01022223333", "rep@plantly.test"),
                 List.of(new GalleryImageResponse("https://cdn.plantly.test/gallery/1.png", ImageType.DETAIL, 0)),
                 new ProjectReferenceResponse("스마트팩토리 구축", "불량률 30% 감소", "A제조", "2022-2023",

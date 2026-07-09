@@ -18,7 +18,8 @@ public record CompanyDetailResponse(
 
     public static CompanyDetailResponse from(CompanyAggregate aggregate) {
         return new CompanyDetailResponse(
-                CompanyPublicResponse.from(aggregate),
+                // 소유자/관리자 뷰는 관리 목적이라 개인화(좋아요/즐겨찾기 상태)를 담지 않는다.
+                CompanyPublicResponse.from(aggregate, false, false),
                 ManagementMeta.from(aggregate));
     }
 
