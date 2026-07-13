@@ -236,6 +236,33 @@ include::{snippets}/company-my/response-fields.adoc[]
 
 미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고). 본인 소유 회사만 조회하므로 접근 거부(`403`)는 발생하지 않습니다.
 
+[[company-favorites]]
+=== 내 즐겨찾기 목록 (인증)
+
+로그인한 사용자가 즐겨찾기한 회사 목록을 조회합니다. 인증이 필요하며, 응답에는 본인이 담은 *미삭제* 회사만 담깁니다.
+(즐겨찾기해 둔 회사가 나중에 삭제되면 목록에서 빠집니다. 즐겨찾기 등록/해제는 <<company-like-favorite>> 참고.)
+
+검색·패싯 없이 *즐겨찾기순* — 즉 **내가 담은 최신순** 으로, 회사 목록/검색과 동일한 요약 카드 형태로 페이징됩니다.
+회사 등록일순이 아니며, 공개 검색의 스팟라이트/추천 우선순위도 개입하지 않습니다 — 내 목록의 순서는 내가 담은 순서입니다.
+
+정의상 모든 카드의 `favoritedByMe` 는 `true` 입니다. `likedByMe` 는 카드마다 실제 좋아요 여부가 채워집니다.
+
+==== 요청
+
+include::{snippets}/company-favorites/http-request.adoc[]
+
+include::{snippets}/company-favorites/query-parameters.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-favorites/http-response.adoc[]
+
+include::{snippets}/company-favorites/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고). 본인이 담은 회사만 조회하므로 접근 거부(`403`)는 발생하지 않습니다.
+
 [[company-public-detail]]
 === 회사 상세 조회 (공개)
 
@@ -459,6 +486,62 @@ include::{snippets}/company-update-images-type-error/response-fields.adoc[]
 include::{snippets}/company-update-contacts-limit-error/http-response.adoc[]
 
 include::{snippets}/company-update-contacts-limit-error/response-fields.adoc[]
+
+[[company-like-favorite]]
+=== 회사 좋아요 / 즐겨찾기 (인증)
+
+로그인한 사용자가 회사를 좋아요/즐겨찾기 하거나 해제합니다. 변경 요청이므로 세션 쿠키와 CSRF 토큰이 필요합니다(<<overview-auth>> 참고).
+
+토글이 아니라 *등록(`PUT`)* 과 *해제(`DELETE`)* 로 동사를 분리했습니다. 덕분에 각 요청이 *멱등* 합니다 — 같은 요청을 여러 번 보내도 결과 상태가 한 방향으로만 수렴하며, 네트워크 재시도나 중복 클릭에도 안전합니다.
+
+* 이미 좋아요/즐겨찾기한 상태에서 다시 `PUT` 을 보내도 오류가 아니라 `204` 로 응답합니다(서버가 중복 등록을 무시). 이미 도달한 상태를 재확인하는 것은 충돌이 아니므로 `409` 를 반환하지 않습니다.
+* 없는 상태에서 `DELETE` 를 보내도 `204` 로 응답합니다.
+* 성공 응답은 항상 본문 없는 `204 No Content` 입니다. 현재 상태(`likedByMe`/`favoritedByMe`)는 회사 조회 API(<<company-search>>, <<company-public-detail>>)가 내려주므로 이 API 는 본문을 되돌려주지 않습니다.
+
+[cols="3,2,4"]
+|===
+| 엔드포인트 | 성공 | 설명
+
+| `PUT /api/v1/companies/{id}/like` | `204` | 좋아요 등록 (멱등)
+| `DELETE /api/v1/companies/{id}/like` | `204` | 좋아요 해제 (멱등)
+| `PUT /api/v1/companies/{id}/favorite` | `204` | 즐겨찾기 등록 (멱등)
+| `DELETE /api/v1/companies/{id}/favorite` | `204` | 즐겨찾기 해제 (멱등)
+|===
+
+아래는 좋아요 등록/해제를 대표 예시로 든 것입니다. 즐겨찾기(`/favorite`)도 경로만 다를 뿐 요청/응답 형태가 동일합니다.
+
+==== 좋아요 등록 요청
+
+include::{snippets}/company-like/http-request.adoc[]
+
+include::{snippets}/company-like/path-parameters.adoc[]
+
+==== 좋아요 등록 성공 응답 (204 No Content)
+
+include::{snippets}/company-like/http-response.adoc[]
+
+==== 좋아요 해제 요청
+
+include::{snippets}/company-unlike/http-request.adoc[]
+
+include::{snippets}/company-unlike/path-parameters.adoc[]
+
+==== 좋아요 해제 성공 응답 (204 No Content)
+
+include::{snippets}/company-unlike/http-response.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고).
+
+===== 회사 없음 / 삭제됨 (404 Not Found)
+
+없거나 소프트 삭제된 회사에 좋아요/즐겨찾기를 *등록* 하면 `404`(`COMPANY_NOT_FOUND`) 이 반환됩니다.
+(해제는 회사가 이미 삭제됐어도 내 상호작용을 정리할 수 있도록 회사 존재를 검증하지 않습니다.)
+
+include::{snippets}/company-like-not-found/http-response.adoc[]
+
+include::{snippets}/company-like-not-found/response-fields.adoc[]
 
 [[admin]]
 == 관리자 (Admin)

@@ -318,6 +318,31 @@ public class CompanyControllerTest {
                         responseFields(CompanyApiDocs.companySearchResponseFields())));
     }
 
+    @Test
+    @DisplayName("내 즐겨찾기 목록은 인증된 본인이 담은 회사를 즐겨찾기순 요약 카드로 반환한다")
+    void getMyFavorites_success() throws Exception {
+        // 즐겨찾기 목록이므로 favoritedByMe 는 정의상 true. likedByMe 는 카드마다 실제 값이 채워진다.
+        CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
+                "https://cdn/logo.png", "서울 강남구", true, false, true,
+                List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
+                true, true);
+        PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
+        given(companyQueryService.listMyFavorites(eq(7L), any(Pageable.class))).willReturn(page);
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/companies/favorites?page=1&size=20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].id").value(1L))
+                .andExpect(jsonPath("$.data.content[0].companyName").value("플랜틀리"))
+                .andExpect(jsonPath("$.data.content[0].favoritedByMe").value(true))
+                .andExpect(jsonPath("$.data.content[0].likedByMe").value(true))
+                .andExpect(jsonPath("$.data.pageInfo.totalElement").value(1))
+                .andDo(document("company-favorites",
+                        queryParameters(CompanyApiDocs.companyMyQueryParameters()),
+                        responseFields(CompanyApiDocs.companySearchResponseFields())));
+    }
+
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();

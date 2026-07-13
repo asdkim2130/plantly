@@ -18,6 +18,7 @@ import project.plantly.domain.company.repository.AdminCompanyCardRepository;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
 import project.plantly.domain.company.repository.CompanySubscriptionRepository;
+import project.plantly.domain.company.repository.FavoriteCompanyCardRepository;
 import project.plantly.domain.company.repository.OwnedCompanyCardRepository;
 import project.plantly.domain.company.search.AdminCompanySearchCriteria;
 import project.plantly.domain.company.search.CompanySearchCriteria;
@@ -49,6 +50,7 @@ public class CompanyQueryService {
     private final CompanyAggregateLoader aggregateLoader;
     private final CompanySearchRepository companySearchRepository;
     private final OwnedCompanyCardRepository ownedCompanyCardRepository;
+    private final FavoriteCompanyCardRepository favoriteCompanyCardRepository;
     private final AdminCompanyCardRepository adminCompanyCardRepository;
     private final CompanyLikeRepository companyLikeRepository;
     private final CompanyFavoriteRepository companyFavoriteRepository;
@@ -80,6 +82,16 @@ public class CompanyQueryService {
     public PageResponse<CompanySummary> listMyCompanies(Long ownerUserId, Pageable pageable) {
         Page<CompanySummary> page = ownedCompanyCardRepository.findOwnedBy(ownerUserId, pageable);
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageable);
+    }
+
+    // 내 즐겨찾기 목록: 로그인 유저가 즐겨찾기한 미삭제 회사를 요약 카드로, 즐겨찾기순(담은 최신순) 페이징. 검색/패싯 없음.
+    // 카드 프로젝션은 viewer 독립이라 플래그가 false 로 깔려 나오므로 검색과 동일하게 enrich 를 태운다 —
+    // 안 태우면 즐겨찾기 목록인데 하트가 전부 빈 채로 내려간다. favoritedByMe 는 이 목록에선 정의상 전부 true 지만,
+    // 개인화 경로를 하나로 유지하려고 특수 처리 없이 같은 배치 조회를 쓴다(페이지 id 들에 대한 색인 IN 조회 1회).
+    public PageResponse<CompanySummary> listMyFavorites(Long viewerId, Pageable pageable) {
+        Page<CompanySummary> page = favoriteCompanyCardRepository.findFavoritedBy(viewerId, pageable);
+        List<CompanySummary> content = enrichViewerFlags(page.getContent(), viewerId);
+        return PageResponse.of(content, page.getTotalElements(), pageable);
     }
 
     // 관리자 회사 목록: 기본 전체(삭제 포함), 불리언 3-상태(verified/featured/spotlight/deleted)·회사명·소유자 id 로

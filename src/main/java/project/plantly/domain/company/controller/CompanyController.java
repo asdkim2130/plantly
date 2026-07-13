@@ -72,6 +72,15 @@ public class CompanyController {
         return ApiResponse.success(companyQueryService.listMyCompanies(principal.getUser().getId(), pageable));
     }
 
+    // 내 즐겨찾기 회사 목록 — 인증된 본인이 즐겨찾기한 미삭제 회사를 요약 카드로, 즐겨찾기순(담은 최신순) 페이징.
+    // 검색/패싯 없음: 즐겨찾기는 회사 속성이 아니라 뷰어↔회사 관계라 공개 검색(GET /companies)의 조건으로 넣지 않고
+    // 별도 경로로 둔다(정렬 키 f.created_at 도 검색 쿼리엔 없다). 'my' 와 같은 단일 세그먼트라 /{id} 보다 먼저 매칭된다.
+    @GetMapping("/api/v1/companies/favorites")
+    public ApiResponse<PageResponse<CompanySummary>> getMyFavorites(@AuthenticationPrincipal UserPrincipal principal,
+                                                                    @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.success(companyQueryService.listMyFavorites(principal.getUser().getId(), pageable));
+    }
+
     // 일반(공개) 상세 조회 — 누구에게나 안전한 공개 필드만 반환한다. 소프트 삭제된 회사는 404.
     // 인증은 선택: 로그인 상태면 principal 로 좋아요/즐겨찾기 여부(likedByMe/favoritedByMe)를 채우고, 익명이면 principal=null → false.
     @GetMapping("/api/v1/companies/{id}")

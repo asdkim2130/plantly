@@ -143,7 +143,8 @@ public class CompanyApiDocs {
         };
     }
 
-    // 내 회사 목록 쿼리 파라미터(GET /api/v1/companies/my). 페이징만 — 검색/패싯 없음.
+    // 페이징만 있는 목록의 쿼리 파라미터. 내 회사 목록(GET /api/v1/companies/my)과
+    // 내 즐겨찾기 목록(GET /api/v1/companies/favorites)이 공유한다 — 둘 다 검색/패싯이 없다.
     public static ParameterDescriptor[] companyMyQueryParameters() {
         return new ParameterDescriptor[]{
                 parameterWithName("page").optional().description("페이지 번호 (1-base 입력)"),
@@ -152,7 +153,7 @@ public class CompanyApiDocs {
     }
 
     // 목록/검색 응답(ApiResponse<PageResponse<CompanySummary>>). content[] = 요약 카드, pageInfo = 페이지 메타.
-    // 내 회사 목록(GET /api/v1/companies/my)도 동일한 요약 카드 페이지 구조라 이 디스크립터를 공유한다.
+    // 내 회사 목록(/my)·내 즐겨찾기 목록(/favorites)도 동일한 요약 카드 페이지 구조라 이 디스크립터를 공유한다.
     public static FieldDescriptor[] companySearchResponseFields() {
         return new FieldDescriptor[]{
                 fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
@@ -165,7 +166,7 @@ public class CompanyApiDocs {
                 fieldWithPath("data.content[].featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
                 fieldWithPath("data.content[].spotlight").type(JsonFieldType.BOOLEAN).description("스팟라이트 노출 여부"),
                 fieldWithPath("data.content[].likedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 좋아요 했는지 (익명·내 회사 목록은 false)"),
-                fieldWithPath("data.content[].favoritedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 즐겨찾기 했는지 (익명·내 회사 목록은 false)"),
+                fieldWithPath("data.content[].favoritedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 즐겨찾기 했는지 (익명·내 회사 목록은 false / 즐겨찾기 목록은 정의상 항상 true)"),
                 fieldWithPath("data.content[].categoryNames").type(JsonFieldType.ARRAY).description("회사가 연결한 카테고리명 목록"),
                 fieldWithPath("data.content[].tagNames").type(JsonFieldType.ARRAY).description("태그명 목록"),
                 fieldWithPath("data.content[].industryNames").type(JsonFieldType.ARRAY).description("산업군명 목록"),
