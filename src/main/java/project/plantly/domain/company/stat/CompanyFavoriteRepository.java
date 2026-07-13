@@ -1,7 +1,5 @@
 package project.plantly.domain.company.stat;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -26,8 +24,8 @@ public interface CompanyFavoriteRepository extends JpaRepository<CompanyFavorite
     // 즐겨찾기 해제(hard delete). 없는 행을 지워도 0을 반환할 뿐 예외가 없으므로 DELETE 엔드포인트가 그대로 멱등하다.
     long deleteByUserIdAndCompanyId(Long userId, Long companyId);
 
-    // 내 즐겨찾기 목록(최신순 페이징). 즐겨찾기는 좋아요와 달리 유저가 목록으로 관리한다.
-    Page<CompanyFavorite> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+    // 내 즐겨찾기 목록(카드)은 FavoriteCompanyCardRepository 가 회사 본체와 JOIN 해 한 쿼리로 가져간다.
+    // (원천 행만 페이징하면 카드마다 회사를 다시 조회해야 해서 N+1 이 된다.)
 
     // 목록 개인화용 배치 조회. 한 페이지의 회사 id 들 중 이 유저가 즐겨찾기한 것만 id 로 돌려준다(한 쿼리).
     @Query("select f.companyId from CompanyFavorite f where f.userId = :userId and f.companyId in :companyIds")

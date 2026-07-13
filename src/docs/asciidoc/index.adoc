@@ -236,6 +236,33 @@ include::{snippets}/company-my/response-fields.adoc[]
 
 미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고). 본인 소유 회사만 조회하므로 접근 거부(`403`)는 발생하지 않습니다.
 
+[[company-favorites]]
+=== 내 즐겨찾기 목록 (인증)
+
+로그인한 사용자가 즐겨찾기한 회사 목록을 조회합니다. 인증이 필요하며, 응답에는 본인이 담은 *미삭제* 회사만 담깁니다.
+(즐겨찾기해 둔 회사가 나중에 삭제되면 목록에서 빠집니다. 즐겨찾기 등록/해제는 <<company-like-favorite>> 참고.)
+
+검색·패싯 없이 *즐겨찾기순* — 즉 **내가 담은 최신순** 으로, 회사 목록/검색과 동일한 요약 카드 형태로 페이징됩니다.
+회사 등록일순이 아니며, 공개 검색의 스팟라이트/추천 우선순위도 개입하지 않습니다 — 내 목록의 순서는 내가 담은 순서입니다.
+
+정의상 모든 카드의 `favoritedByMe` 는 `true` 입니다. `likedByMe` 는 카드마다 실제 좋아요 여부가 채워집니다.
+
+==== 요청
+
+include::{snippets}/company-favorites/http-request.adoc[]
+
+include::{snippets}/company-favorites/query-parameters.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-favorites/http-response.adoc[]
+
+include::{snippets}/company-favorites/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401` 이 반환됩니다(공통 규약, <<overview-auth>> 참고). 본인이 담은 회사만 조회하므로 접근 거부(`403`)는 발생하지 않습니다.
+
 [[company-public-detail]]
 === 회사 상세 조회 (공개)
 

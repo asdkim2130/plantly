@@ -440,6 +440,25 @@ class CompanyQueryAcceptanceTest extends AcceptanceTest {
         }
     }
 
+    @Nested
+    @DisplayName("내 즐겨찾기 목록 GET /api/v1/companies/favorites")
+    class MyFavorites {
+
+        // 'my' 와 같은 이유 — 공개 상세(/{id} permitAll)가 단일 세그먼트 'favorites' 도 잡으므로,
+        // 그보다 앞선 인증 규칙이 실제 필터 체인에서 먹는지 검증한다. 여기서 401 이 아니라 404/500 이 나오면
+        // 요청이 /{id} 로 샜다는 뜻이다(principal=null → NPE).
+        // (즐겨찾기 필터·정렬·집계는 Postgres 전용 SQL 이라 FavoriteCompanyCardRepositoryTest 가 담당한다.)
+        @Test
+        @DisplayName("미인증 상태로 호출하면 401 (공개 상세 /{id} 로 새지 않는다)")
+        void unauthenticated_isUnauthorized() {
+            given() // 세션 없음 = 익명
+                    .when()
+                    .get("/api/v1/companies/favorites")
+                    .then()
+                    .statusCode(401);
+        }
+    }
+
     // ---- helpers ----
 
     // 회원가입 + 로그인까지 마친 멤버 세션을 cookies 에 채우고, 그 유저의 id 를 반환한다.
