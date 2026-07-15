@@ -3,6 +3,7 @@ package project.plantly.domain.company.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import project.plantly.domain.company.dto.AdminCompanyFlagsRequest;
 import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
@@ -210,6 +211,23 @@ public class CompanyUpdateService {
 
     public void replaceRegionsByAdmin(Long companyId, List<Long> domesticRegionIds) {
         mutateAsAdmin(companyId, company -> linkWriter.replaceRegions(company, domesticRegionIds));
+    }
+
+    // ===== 관리자 운영 플래그 조정 (인증/추천/스팟라이트) =====
+    // sparse: null 필드는 미변경, 값이 오면 그 상태로 설정(멱등). 소유 무관(권한은 컨트롤러 @PreAuthorize).
+    // 검색 도큐먼트엔 이 셋이 없고 정렬은 company 원본을 실시간 참조하므로 재동기화(write) 를 부르지 않는다 —
+    // 컬렉션 교체 경로(mutateAsAdmin)와 달리 검색 색인을 건드릴 이유가 없다.
+    public void changeFlagsByAdmin(Long companyId, AdminCompanyFlagsRequest request) {
+        Company company = loadCompany(companyId);
+        if (request.verified() != null) {
+            company.changeVerified(request.verified());
+        }
+        if (request.featured() != null) {
+            company.changeFeatured(request.featured());
+        }
+        if (request.spotlight() != null) {
+            company.changeSpotlight(request.spotlight());
+        }
     }
 
     // ===== 관리자 구독 수정 (raw full-replace) =====

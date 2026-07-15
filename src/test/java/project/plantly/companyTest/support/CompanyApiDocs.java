@@ -123,6 +123,15 @@ public class CompanyApiDocs {
         };
     }
 
+    // 관리자 운영 플래그 조정(PATCH .../{id}/flags) 요청 본문. sparse: 보낸 필드만 목표값으로 설정(멱등).
+    public static FieldDescriptor[] adminCompanyFlagsRequestFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("verified").type(JsonFieldType.BOOLEAN).optional().description("관리자 인증 노출 여부 (생략 시 미변경)"),
+                fieldWithPath("featured").type(JsonFieldType.BOOLEAN).optional().description("추천 노출 여부 (생략 시 미변경)"),
+                fieldWithPath("spotlight").type(JsonFieldType.BOOLEAN).optional().description("스팟라이트 노출 여부 (생략 시 미변경)")
+        };
+    }
+
     // 공개/비공개 전환(PATCH .../{id}/visibility) 요청 본문. 목표 상태를 그대로 지정한다(멱등).
     public static FieldDescriptor[] companyVisibilityUpdateRequestFields() {
         return new FieldDescriptor[]{

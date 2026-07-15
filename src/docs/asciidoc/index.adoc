@@ -759,6 +759,23 @@ include::{snippets}/admin-company-update-visibility/http-response.adoc[]
 
 include::{snippets}/admin-company-update-visibility/response-fields.adoc[]
 
+[[admin-company-flags]]
+==== 운영 플래그 조정 (관리자)
+
+관리자가 회사의 운영 플래그 — 인증(`verified`)·추천(`featured`)·스팟라이트(`spotlight`) — 를 조정합니다. `ADMIN` 권한이 필요하며 소유 여부와 무관합니다.
+
+셋 다 등록 시 `false` 로 시작하며, 요청은 *sparse* 입니다 — 보낸 필드만 목표값(`true`/`false`)으로 설정하고 생략한 필드는 그대로 둡니다. 목표 상태를 지정하는 *멱등* 요청이라 같은 값으로 여러 번 보내도 안전합니다. (이 플래그들은 검색 도큐먼트가 아니라 회사 원본에서 정렬에 쓰이므로 재색인이 필요 없습니다.)
+
+include::{snippets}/admin-company-flags/http-request.adoc[]
+
+include::{snippets}/admin-company-flags/path-parameters.adoc[]
+
+include::{snippets}/admin-company-flags/request-fields.adoc[]
+
+include::{snippets}/admin-company-flags/http-response.adoc[]
+
+include::{snippets}/admin-company-flags/response-fields.adoc[]
+
 [[admin-company-delete]]
 ==== 회사 삭제 (관리자)
 

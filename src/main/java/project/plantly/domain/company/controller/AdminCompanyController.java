@@ -21,6 +21,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
+import project.plantly.domain.company.dto.AdminCompanyFlagsRequest;
 import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
 import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
@@ -108,6 +109,16 @@ public class AdminCompanyController {
     public ApiResponse<Void> changeVisibilityByAdmin(@PathVariable Long id,
                                                      @Valid @RequestBody CompanyVisibilityUpdateRequest request) {
         companyUpdateService.changeVisibilityByAdmin(id, request.visibility());
+        return ApiResponse.ok();
+    }
+
+    // 관리자 운영 플래그 조정 — 인증/추천/스팟라이트를 목표값으로 설정한다(sparse: null=미변경, 멱등). 소유 무관.
+    // 응답은 본문 없이 성공만. (수정 값은 이미 화면에 반영되므로)
+    @PatchMapping("/api/v1/admin/companies/{id}/flags")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> changeFlagsByAdmin(@PathVariable Long id,
+                                                @RequestBody AdminCompanyFlagsRequest request) {
+        companyUpdateService.changeFlagsByAdmin(id, request);
         return ApiResponse.ok();
     }
 

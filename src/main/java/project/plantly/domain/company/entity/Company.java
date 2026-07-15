@@ -237,6 +237,22 @@ public class Company {
         this.brandColor = brandColor;
     }
 
+    // ===== 관리자 운영 플래그 직접 지정 (set-to-state) =====
+    // 등록 시 전부 false 로 시작하며, 관리자가 목표값(true/false)을 그대로 지정한다 — 토글 아님, 멱등.
+    // verify()/feature()/activateSpotlight() 등 방향별 행위 메서드와 달리 불리언을 받아 켜고 끄는 통합 전환이다.
+    // (spotlight 는 노출 순서 spotlightOrder 와 별개로 on/off 만 다룬다 — 순서 큐레이션은 별도 경로)
+    public void changeVerified(boolean verified) {
+        this.verified = verified;
+    }
+
+    public void changeFeatured(boolean featured) {
+        this.featured = featured;
+    }
+
+    public void changeSpotlight(boolean spotlight) {
+        this.spotlight = spotlight;
+    }
+
     // 소프트 삭제 / 복구
     public void delete() {
         this.deleted = true;

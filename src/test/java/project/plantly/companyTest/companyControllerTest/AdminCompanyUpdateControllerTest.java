@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import project.plantly.companyTest.support.CompanyApiDocs;
 import project.plantly.domain.company.controller.AdminCompanyController;
+import project.plantly.domain.company.dto.AdminCompanyFlagsRequest;
 import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
 import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
@@ -162,6 +163,37 @@ public class AdminCompanyUpdateControllerTest {
         mockMvc.perform(patch("/api/v1/admin/companies/{id}/visibility", 5L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"visibility\":\"PRIVATE\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @DisplayName("관리자가 운영 플래그(인증/추천/스팟라이트)를 조정하면 200 ok 를 반환하고 서비스에 위임한다")
+    void changeFlagsByAdmin_success() throws Exception {
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(patch("/api/v1/admin/companies/{id}/flags", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"verified\":true,\"featured\":true,\"spotlight\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andDo(document("admin-company-flags",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        requestFields(CompanyApiDocs.adminCompanyFlagsRequestFields()),
+                        responseFields(CompanyApiDocs.okResponseFields())));
+
+        verify(companyUpdateService).changeFlagsByAdmin(eq(5L), any(AdminCompanyFlagsRequest.class));
+    }
+
+    @Test
+    @DisplayName("관리자가 아닌 유저가 운영 플래그 조정을 호출하면 @PreAuthorize 가 막아 403 을 반환한다")
+    void changeFlagsByAdmin_forbidden_forNonAdmin() throws Exception {
+        authenticate(2L, UserRole.MEMBER);
+
+        mockMvc.perform(patch("/api/v1/admin/companies/{id}/flags", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"verified\":true}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false));
     }
