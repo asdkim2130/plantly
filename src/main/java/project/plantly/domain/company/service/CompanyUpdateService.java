@@ -68,6 +68,32 @@ public class CompanyUpdateService {
         mutateAsAdmin(companyId, company -> company.changeVisibility(visibility));
     }
 
+    // ===== 소프트 삭제 / 복구 =====
+    // 삭제는 소유자(자가삭제)·관리자 모두 가능하고, 복구는 관리자 전용이다 — 삭제된 회사는 소유자 목록/공개 경로에서
+    // 사라지므로(관리자에게만 보임) 되살리는 건 모더레이션 성격이라 관리자 경로로만 노출한다.
+    // 삭제/복구 모두 명시적 방향(토글 아님)이라 멱등하다: 이미 삭제된 걸 또 삭제해도, 이미 활성인 걸 또 복구해도 같은 상태로 수렴.
+
+    public void deleteByUser(Long companyId, Long userId) {
+        mutateOwned(companyId, userId, Company::delete);
+    }
+
+    public void deleteByAdmin(Long companyId) {
+        mutateAsAdmin(companyId, Company::delete);
+    }
+
+    // 복구는 활성 상태로 되돌리므로 사업자번호 활성 유니크(부분 인덱스)를 다시 지켜야 한다.
+    // 삭제된 사이 같은 번호로 새 회사가 등록됐다면 복구 시 활성 2건이 되어 인덱스 위반 → 미리 친화적 에러로 막는다.
+    // (복구 대상은 아직 deleted=true 라 exists...DeletedFalse 조회에 자기 자신은 안 걸린다.)
+    public void restoreByAdmin(Long companyId) {
+        Company company = loadCompany(companyId);
+        if (company.getBusinessNumber() != null
+                && companyRepository.existsByBusinessNumberAndDeletedFalse(company.getBusinessNumber())) {
+            throw new BusinessException(CompanyErrorCode.BUSINESS_NUMBER_TAKEN);
+        }
+        company.restore();
+        searchDocumentWriter.write(companyId);
+    }
+
     // ===== 컬렉션 전체 교체 =====
     // 각 메서드는 해당 컬렉션만 통째로 새 리스트로 교체한다(빈 리스트 = 전부 비우기).
 

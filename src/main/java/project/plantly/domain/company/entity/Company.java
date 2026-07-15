@@ -36,8 +36,10 @@ public class Company {
     // 등록 행위자 식별자. 유저 자가등록이면 본인 userId, 관리자 등록이면 admin id. (raw id로 참조)
     private Long registeredBy;
 
-    // 사업자번호. 초안 단계 회사는 미입력 가능하므로 nullable. (Postgres는 UNIQUE 컬럼에 다중 NULL 허용)
-    @Column(unique = true)
+    // 사업자번호. 초안 단계 회사는 미입력 가능하므로 nullable.
+    // UNIQUE 는 컬럼 제약(삭제 행 포함 전체)이 아니라 활성(deleted=false) 행끼리만 강제하는 부분 유니크 인덱스로 건다.
+    // (soft delete 된 회사의 사업자번호는 재사용 가능해야 하므로 전체 UNIQUE 를 걸지 않는다 — CompanyBusinessNumberIndexInitializer)
+    @Column
     private String businessNumber;
 
     @NotNull

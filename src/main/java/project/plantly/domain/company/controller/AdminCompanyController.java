@@ -7,6 +7,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -107,6 +108,23 @@ public class AdminCompanyController {
     public ApiResponse<Void> changeVisibilityByAdmin(@PathVariable Long id,
                                                      @Valid @RequestBody CompanyVisibilityUpdateRequest request) {
         companyUpdateService.changeVisibilityByAdmin(id, request.visibility());
+        return ApiResponse.ok();
+    }
+
+    // 관리자 삭제(소프트) — 소유 무관, 모든 회사 대상. 멱등.
+    @DeleteMapping("/api/v1/admin/companies/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> deleteCompanyByAdmin(@PathVariable Long id) {
+        companyUpdateService.deleteByAdmin(id);
+        return ApiResponse.ok();
+    }
+
+    // 관리자 복구 — 삭제된 회사를 다시 활성화한다(관리자 전용). 삭제된 사이 같은 사업자번호가 활성으로 재등록됐다면
+    // 409(BUSINESS_NUMBER_TAKEN). 멱등(이미 활성이어도 성공).
+    @PostMapping("/api/v1/admin/companies/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> restoreCompanyByAdmin(@PathVariable Long id) {
+        companyUpdateService.restoreByAdmin(id);
         return ApiResponse.ok();
     }
 

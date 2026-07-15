@@ -32,6 +32,8 @@ import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.enums.SubscriptionStatus;
+import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.global.exception.BusinessException;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
 import project.plantly.domain.company.service.CompanyUpdateService;
@@ -46,11 +48,14 @@ import java.time.LocalDateTime;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.patch;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.put;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
@@ -157,6 +162,63 @@ public class AdminCompanyUpdateControllerTest {
         mockMvc.perform(patch("/api/v1/admin/companies/{id}/visibility", 5L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"visibility\":\"PRIVATE\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @DisplayName("관리자가 회사를 삭제하면 200 ok 를 반환하고 관리자 삭제 서비스에 위임한다")
+    void deleteCompanyByAdmin_success() throws Exception {
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(delete("/api/v1/admin/companies/{id}", 5L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andDo(document("admin-company-delete",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        responseFields(CompanyApiDocs.okResponseFields())));
+
+        verify(companyUpdateService).deleteByAdmin(eq(5L));
+    }
+
+    @Test
+    @DisplayName("관리자가 삭제된 회사를 복구하면 200 ok 를 반환하고 복구 서비스에 위임한다")
+    void restoreCompanyByAdmin_success() throws Exception {
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(post("/api/v1/admin/companies/{id}/restore", 5L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andDo(document("admin-company-restore",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        responseFields(CompanyApiDocs.okResponseFields())));
+
+        verify(companyUpdateService).restoreByAdmin(eq(5L));
+    }
+
+    @Test
+    @DisplayName("복구 대상 번호가 이미 활성으로 재사용 중이면 409(BUSINESS_NUMBER_TAKEN) 를 반환한다")
+    void restoreCompanyByAdmin_businessNumberTaken_conflict() throws Exception {
+        authenticate(1L, UserRole.ADMIN);
+        willThrow(new BusinessException(CompanyErrorCode.BUSINESS_NUMBER_TAKEN))
+                .given(companyUpdateService).restoreByAdmin(eq(5L));
+
+        mockMvc.perform(post("/api/v1/admin/companies/{id}/restore", 5L))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("이미 사용 중인 사업자번호입니다."))
+                .andDo(document("admin-company-restore-conflict",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    @Test
+    @DisplayName("관리자가 아닌 유저가 복구를 호출하면 @PreAuthorize 가 막아 403 을 반환한다")
+    void restoreCompanyByAdmin_forbidden_forNonAdmin() throws Exception {
+        authenticate(2L, UserRole.MEMBER);
+
+        mockMvc.perform(post("/api/v1/admin/companies/{id}/restore", 5L))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false));
     }
