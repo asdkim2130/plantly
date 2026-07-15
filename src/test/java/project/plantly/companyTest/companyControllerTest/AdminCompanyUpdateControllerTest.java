@@ -29,6 +29,7 @@ import project.plantly.domain.company.controller.AdminCompanyController;
 import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
 import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.service.CompanyQueryService;
@@ -127,6 +128,37 @@ public class AdminCompanyUpdateControllerTest {
                 .andExpect(jsonPath("$.error").value("접근 권한이 없습니다."))
                 .andDo(document("admin-company-update-forbidden",
                         responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    @Test
+    @DisplayName("관리자가 공개/비공개를 전환하면 200 ok 를 반환하고 관리자 경로 서비스에 위임한다")
+    void changeVisibilityByAdmin_success() throws Exception {
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(patch("/api/v1/admin/companies/{id}/visibility", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"visibility\":\"PUBLIC\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andDo(document("admin-company-update-visibility",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        requestFields(CompanyApiDocs.companyVisibilityUpdateRequestFields()),
+                        responseFields(CompanyApiDocs.okResponseFields())));
+
+        verify(companyUpdateService).changeVisibilityByAdmin(eq(5L), eq(CompanyVisibility.PUBLIC));
+    }
+
+    @Test
+    @DisplayName("관리자가 아닌 유저가 공개/비공개 전환을 호출하면 @PreAuthorize 가 막아 403 을 반환한다")
+    void changeVisibilityByAdmin_forbidden_forNonAdmin() throws Exception {
+        authenticate(2L, UserRole.MEMBER);
+
+        mockMvc.perform(patch("/api/v1/admin/companies/{id}/visibility", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"visibility\":\"PRIVATE\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test

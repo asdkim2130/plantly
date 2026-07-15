@@ -8,6 +8,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.policy.CompanyMutationPolicy;
 import project.plantly.domain.company.policy.CompanyPolicyView;
@@ -52,6 +53,19 @@ public class CompanyUpdateService {
                         request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
                         request.pricingType(), request.brandColor()),
                 (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl(), request.brandColor() != null));
+    }
+
+    // ===== 공개/비공개 전환 =====
+    // 소유자 경로는 멤버 검증 후, 관리자 경로는 소유 무관으로 목표 상태를 지정한다(멱등). 둘 다 공통 실행 골격을
+    // 재사용한다 — visibility 는 검색 도큐먼트에 없어 재색인이 불필요하지만(공개 필터는 company.visibility 를 실시간 참조),
+    // 경로를 하나로 유지하려고 mutateOwned/mutateAsAdmin 을 그대로 태운다(도큐먼트 재생성은 멱등).
+
+    public void changeVisibilityByUser(Long companyId, Long userId, CompanyVisibility visibility) {
+        mutateOwned(companyId, userId, company -> company.changeVisibility(visibility));
+    }
+
+    public void changeVisibilityByAdmin(Long companyId, CompanyVisibility visibility) {
+        mutateAsAdmin(companyId, company -> company.changeVisibility(visibility));
     }
 
     // ===== 컬렉션 전체 교체 =====

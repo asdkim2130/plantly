@@ -3,6 +3,7 @@ package project.plantly.domain.company.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.ImageType;
 import project.plantly.domain.company.enums.PricingType;
 import project.plantly.domain.company.enums.TrlLevel;
@@ -40,6 +41,7 @@ public record CompanyCreateRequest(
         String asInfo,  //유지보수
         PricingType pricingType,  //견적 산출방식
         String brandColor,  //브랜드 컬러
+        CompanyVisibility visibility,  //공개 범위(null = 공개 기본)
 
         // ===== 자식(소유) 엔티티 =====
         // 연락처/레퍼런스는 하위 필드를 가진 컬렉션이라, 초기 버전은 대표 1건만 받는다.

@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.PricingType;
 import project.plantly.domain.company.enums.RegistrationSource;
 import project.plantly.domain.company.enums.TrlLevel;
@@ -101,6 +102,13 @@ public class Company {
     @Column(nullable = false)
     private boolean deleted = false;
 
+    // 공개 범위(PUBLIC/PRIVATE). 기본 공개로 시작하고, 전환은 changeVisibility 로만 한다.
+    // 등록 시 유저/관리자가 고른 값도 시스템 플래그와 동일하게 등록 서비스가 changeVisibility 로 반영한다.
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CompanyVisibility visibility = CompanyVisibility.PUBLIC;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -109,8 +117,8 @@ public class Company {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    // 비즈니스 필드만 받는다. 시스템 관리 플래그(verified/featured/spotlight/spotlightOrder/deleted)는
-    // 생성 시 기본값(false/0)으로 시작하고, 상태 전환은 도메인 행위 메서드로만 수행한다.
+    // 비즈니스 필드만 받는다. 시스템 관리 플래그(verified/featured/spotlight/spotlightOrder/deleted/visibility)는
+    // 생성 시 기본값(false/0/PUBLIC)으로 시작하고, 상태 전환은 도메인 행위 메서드로만 수행한다.
     private Company(RegistrationSource registrationSource, Long registeredBy, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
         this.registrationSource = registrationSource;
         this.registeredBy = registeredBy;
@@ -234,5 +242,10 @@ public class Company {
 
     public void restore() {
         this.deleted = false;
+    }
+
+    // 공개 / 비공개 전환. 등록 시점 선택값 반영과 이후 토글에 모두 쓰인다(목표 상태를 그대로 지정).
+    public void changeVisibility(CompanyVisibility visibility) {
+        this.visibility = visibility;
     }
 }

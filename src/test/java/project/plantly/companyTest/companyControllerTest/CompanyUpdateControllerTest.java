@@ -27,6 +27,7 @@ import org.springframework.web.context.WebApplicationContext;
 import project.plantly.companyTest.support.CompanyApiDocs;
 import project.plantly.domain.company.controller.CompanyController;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
@@ -158,6 +159,38 @@ public class CompanyUpdateControllerTest {
                 .andExpect(jsonPath("$.error").value("존재하지 않는 회사입니다."))
                 .andDo(document("company-update-not-found",
                         responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    @Test
+    @DisplayName("소유자가 공개/비공개를 전환하면 200 ok 를 반환하고 서비스에 위임한다")
+    void changeVisibility_success() throws Exception {
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(patch("/api/v1/companies/{id}/visibility", 9L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"visibility\":\"PRIVATE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andDo(document("company-update-visibility",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        requestFields(CompanyApiDocs.companyVisibilityUpdateRequestFields()),
+                        responseFields(CompanyApiDocs.okResponseFields())));
+
+        verify(companyUpdateService).changeVisibilityByUser(eq(9L), eq(7L), eq(CompanyVisibility.PRIVATE));
+    }
+
+    @Test
+    @DisplayName("visibility 가 없으면 400(@NotNull 위반) 을 반환한다")
+    void changeVisibility_missingValue_validationError() throws Exception {
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(patch("/api/v1/companies/{id}/visibility", 9L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").exists());
     }
 
     @Test

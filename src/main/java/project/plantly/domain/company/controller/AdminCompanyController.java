@@ -24,6 +24,7 @@ import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
 import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
+import project.plantly.domain.company.dto.CompanyVisibilityUpdateRequest;
 import project.plantly.domain.company.search.dto.AdminCompanySearchRequest;
 import project.plantly.domain.company.search.dto.AdminCompanySummary;
 import project.plantly.domain.company.service.CompanyQueryService;
@@ -97,6 +98,15 @@ public class AdminCompanyController {
     public ApiResponse<Void> updateCompanyByAdmin(@PathVariable Long id,
                                                   @Valid @RequestBody CompanyUpdateRequest request) {
         companyUpdateService.updateBasicInfoByAdmin(id, request);
+        return ApiResponse.ok();
+    }
+
+    // 공개/비공개 전환 — 관리자, 소유 무관. 목표 상태(PUBLIC/PRIVATE)를 지정한다(멱등).
+    @PatchMapping("/api/v1/admin/companies/{id}/visibility")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> changeVisibilityByAdmin(@PathVariable Long id,
+                                                     @Valid @RequestBody CompanyVisibilityUpdateRequest request) {
+        companyUpdateService.changeVisibilityByAdmin(id, request.visibility());
         return ApiResponse.ok();
     }
 

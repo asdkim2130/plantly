@@ -12,6 +12,7 @@ import project.plantly.domain.company.dto.CompanySubscriptionResponse;
 import project.plantly.domain.company.dto.OwnerSubscriptionSummary;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.MemberRole;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.repository.AdminCompanyCardRepository;
@@ -101,11 +102,12 @@ public class CompanyQueryService {
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageable);
     }
 
-    // 공개(비소유자) 조회: 소프트 삭제된 회사는 미존재로 취급한다.
+    // 공개(비소유자) 조회: 소프트 삭제되거나 비공개(PRIVATE)인 회사는 미존재로 취급한다(존재 노출 방지 → 404).
     // viewerId = 로그인 유저 id (익명이면 null). 좋아요/즐겨찾기 여부(likedByMe/favoritedByMe)는 이 뷰어 기준으로 계산한다.
     public CompanyPublicResponse getPublic(Long companyId, Long viewerId) {
         Company company = companyRepository.findById(companyId)
                 .filter(c -> !c.isDeleted())
+                .filter(c -> c.getVisibility() == CompanyVisibility.PUBLIC)
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
 
         // 익명 뷰어는 개인화 상태가 없으므로 조회 없이 false. 로그인 뷰어만 존재 여부를 확인한다.

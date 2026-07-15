@@ -487,6 +487,30 @@ include::{snippets}/company-update-contacts-limit-error/http-response.adoc[]
 
 include::{snippets}/company-update-contacts-limit-error/response-fields.adoc[]
 
+[[company-visibility]]
+=== 회사 공개/비공개 전환 (소유자)
+
+소유자가 회사의 공개 범위를 전환합니다. 변경 요청이므로 세션 쿠키와 CSRF 토큰이 필요합니다(<<overview-auth>> 참고).
+
+* *공개(`PUBLIC`)*: 일반 목록/검색(<<company-search>>)·즐겨찾기 목록·공개 상세(<<company-public-detail>>)에 노출됩니다.
+* *비공개(`PRIVATE`)*: 위 공개 경로에서 모두 숨겨집니다(공개 상세는 `404`). 단 *내 회사 목록*(<<company-my>>)과 *관리자 목록*(<<admin-company-list>>)에서는 계속 보입니다.
+
+토글이 아니라 목표 상태를 그대로 지정하는 *멱등* 요청입니다 — 같은 상태로 여러 번 전환해도 결과가 한 방향으로 수렴합니다. 비공개로 숨겨진 회사를 다시 공개로 전환하면 즐겨찾기 등 원천 관계가 그대로 유지된 채 다시 노출됩니다.
+
+.요청
+include::{snippets}/company-update-visibility/http-request.adoc[]
+
+include::{snippets}/company-update-visibility/path-parameters.adoc[]
+
+include::{snippets}/company-update-visibility/request-fields.adoc[]
+
+.응답
+include::{snippets}/company-update-visibility/http-response.adoc[]
+
+include::{snippets}/company-update-visibility/response-fields.adoc[]
+
+미인증 `401`, 소유자 아님 `403`(`COMPANY_ACCESS_DENIED`), 회사 없음 `404`(`COMPANY_NOT_FOUND`)는 <<company-update>> 와 동일합니다. `visibility` 를 빠뜨리면 `400` 이 반환됩니다.
+
 [[company-like-favorite]]
 === 회사 좋아요 / 즐겨찾기 (인증)
 
@@ -698,6 +722,21 @@ include::{snippets}/admin-company-update/response-fields.adoc[]
 include::{snippets}/admin-company-update-forbidden/http-response.adoc[]
 
 include::{snippets}/admin-company-update-forbidden/response-fields.adoc[]
+
+[[admin-company-visibility]]
+==== 공개/비공개 전환 (관리자)
+
+관리자가 임의 회사의 공개 범위를 전환합니다. 소유 여부와 무관하며 `ADMIN` 권한이 필요합니다. 요청/응답 형태와 멱등 규약은 소유자 전환(<<company-visibility>>)과 동일합니다.
+
+include::{snippets}/admin-company-update-visibility/http-request.adoc[]
+
+include::{snippets}/admin-company-update-visibility/path-parameters.adoc[]
+
+include::{snippets}/admin-company-update-visibility/request-fields.adoc[]
+
+include::{snippets}/admin-company-update-visibility/http-response.adoc[]
+
+include::{snippets}/admin-company-update-visibility/response-fields.adoc[]
 
 [[admin-company-subscription]]
 === 회사 구독 조회/수정 (관리자)

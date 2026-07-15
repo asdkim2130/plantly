@@ -32,6 +32,7 @@ public class CompanyApiDocs {
                 fieldWithPath("asInfo").type(JsonFieldType.STRING).optional().description("유지보수/AS 정보"),
                 fieldWithPath("pricingType").type(JsonFieldType.STRING).optional().description("견적 산출 방식: FIXED, CONSULTATION, PROJECT_BASED"),
                 fieldWithPath("brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러 (커스텀 불가 등급은 기본값으로 고정)"),
+                fieldWithPath("visibility").type(JsonFieldType.STRING).optional().description("공개 범위: PUBLIC(공개), PRIVATE(비공개). 생략 시 PUBLIC"),
 
                 // ===== 자식(소유) 엔티티 =====
                 fieldWithPath("contacts").type(JsonFieldType.ARRAY).optional().description("담당자 연락처 목록"),
@@ -122,6 +123,13 @@ public class CompanyApiDocs {
         };
     }
 
+    // 공개/비공개 전환(PATCH .../{id}/visibility) 요청 본문. 목표 상태를 그대로 지정한다(멱등).
+    public static FieldDescriptor[] companyVisibilityUpdateRequestFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("visibility").type(JsonFieldType.STRING).description("전환할 공개 범위: PUBLIC(공개) / PRIVATE(비공개)")
+        };
+    }
+
     // 목록/검색 쿼리 파라미터(GET /api/v1/companies). 전부 선택적.
     public static ParameterDescriptor[] companySearchQueryParameters() {
         return new ParameterDescriptor[]{
@@ -204,6 +212,7 @@ public class CompanyApiDocs {
                 fieldWithPath("data.content[].featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
                 fieldWithPath("data.content[].spotlight").type(JsonFieldType.BOOLEAN).description("스팟라이트 노출 여부"),
                 fieldWithPath("data.content[].deleted").type(JsonFieldType.BOOLEAN).description("소프트 삭제 여부"),
+                fieldWithPath("data.content[].visibility").type(JsonFieldType.STRING).description("공개 범위 (PUBLIC / PRIVATE). 비공개도 관리자 목록엔 노출"),
                 fieldWithPath("data.content[].ownerUserId").type(JsonFieldType.NUMBER).optional().description("소유 유저 ID (미연동이면 null)"),
                 fieldWithPath("data.content[].registrationSource").type(JsonFieldType.STRING).description("등록 출처 (USER / ADMIN)"),
                 fieldWithPath("data.content[].createdAt").type(JsonFieldType.STRING).description("등록 시각"),
@@ -384,6 +393,7 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "featured").type(JsonFieldType.BOOLEAN).description("추천 여부"),
                 fieldWithPath(p + "spotlight").type(JsonFieldType.BOOLEAN).description("스포트라이트 여부"),
                 fieldWithPath(p + "deleted").type(JsonFieldType.BOOLEAN).description("소프트 삭제 여부"),
+                fieldWithPath(p + "visibility").type(JsonFieldType.STRING).description("공개 범위 (PUBLIC / PRIVATE)"),
                 fieldWithPath(p + "createdAt").type(JsonFieldType.STRING).description("생성 시각"),
                 fieldWithPath(p + "updatedAt").type(JsonFieldType.STRING).description("수정 시각")
         };
