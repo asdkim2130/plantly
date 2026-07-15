@@ -7,6 +7,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,10 +21,12 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
+import project.plantly.domain.company.dto.AdminCompanyFlagsRequest;
 import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
 import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
+import project.plantly.domain.company.dto.CompanyVisibilityUpdateRequest;
 import project.plantly.domain.company.search.dto.AdminCompanySearchRequest;
 import project.plantly.domain.company.search.dto.AdminCompanySummary;
 import project.plantly.domain.company.service.CompanyQueryService;
@@ -97,6 +100,42 @@ public class AdminCompanyController {
     public ApiResponse<Void> updateCompanyByAdmin(@PathVariable Long id,
                                                   @Valid @RequestBody CompanyUpdateRequest request) {
         companyUpdateService.updateBasicInfoByAdmin(id, request);
+        return ApiResponse.ok();
+    }
+
+    // 공개/비공개 전환 — 관리자, 소유 무관. 목표 상태(PUBLIC/PRIVATE)를 지정한다(멱등).
+    @PatchMapping("/api/v1/admin/companies/{id}/visibility")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> changeVisibilityByAdmin(@PathVariable Long id,
+                                                     @Valid @RequestBody CompanyVisibilityUpdateRequest request) {
+        companyUpdateService.changeVisibilityByAdmin(id, request.visibility());
+        return ApiResponse.ok();
+    }
+
+    // 관리자 운영 플래그 조정 — 인증/추천/스팟라이트를 목표값으로 설정한다(sparse: null=미변경, 멱등). 소유 무관.
+    // 응답은 본문 없이 성공만. (수정 값은 이미 화면에 반영되므로)
+    @PatchMapping("/api/v1/admin/companies/{id}/flags")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> changeFlagsByAdmin(@PathVariable Long id,
+                                                @RequestBody AdminCompanyFlagsRequest request) {
+        companyUpdateService.changeFlagsByAdmin(id, request);
+        return ApiResponse.ok();
+    }
+
+    // 관리자 삭제(소프트) — 소유 무관, 모든 회사 대상. 멱등.
+    @DeleteMapping("/api/v1/admin/companies/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> deleteCompanyByAdmin(@PathVariable Long id) {
+        companyUpdateService.deleteByAdmin(id);
+        return ApiResponse.ok();
+    }
+
+    // 관리자 복구 — 삭제된 회사를 다시 활성화한다(관리자 전용). 삭제된 사이 같은 사업자번호가 활성으로 재등록됐다면
+    // 409(BUSINESS_NUMBER_TAKEN). 멱등(이미 활성이어도 성공).
+    @PostMapping("/api/v1/admin/companies/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> restoreCompanyByAdmin(@PathVariable Long id) {
+        companyUpdateService.restoreByAdmin(id);
         return ApiResponse.ok();
     }
 

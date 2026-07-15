@@ -30,6 +30,7 @@ import project.plantly.companyTest.support.CompanyResponseSamples;
 import project.plantly.domain.company.controller.AdminCompanyController;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.RegistrationSource;
 import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.search.AdminCompanySearchCriteria;
@@ -161,7 +162,7 @@ public class AdminCompanyControllerTest {
     void listCompaniesByAdmin_success() throws Exception {
         AdminCompanySummary item = new AdminCompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
                 "https://cdn/logo.png", "서울 강남구", true, true, false,
-                true, 7L, RegistrationSource.USER, LocalDateTime.of(2024, 1, 2, 3, 4, 5),
+                true, CompanyVisibility.PUBLIC, 7L, RegistrationSource.USER, LocalDateTime.of(2024, 1, 2, 3, 4, 5),
                 CompanyGrade.PREMIUM, SubscriptionStatus.TRIAL, LocalDate.of(2026, 12, 31),
                 List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"));
         PageResponse<AdminCompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));

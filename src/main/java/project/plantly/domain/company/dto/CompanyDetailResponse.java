@@ -1,6 +1,7 @@
 package project.plantly.domain.company.dto;
 
 import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.RegistrationSource;
 
 import java.time.LocalDateTime;
@@ -35,6 +36,7 @@ public record CompanyDetailResponse(
             boolean featured,
             boolean spotlight,
             boolean deleted,
+            CompanyVisibility visibility,   // 공개 범위(PUBLIC/PRIVATE). 소유자/관리자만 보는 운영 메타.
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {
@@ -52,6 +54,7 @@ public record CompanyDetailResponse(
                     c.isFeatured(),
                     c.isSpotlight(),
                     c.isDeleted(),
+                    c.getVisibility(),
                     c.getCreatedAt(),
                     c.getUpdatedAt());
         }

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -23,6 +24,7 @@ import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
+import project.plantly.domain.company.dto.CompanyVisibilityUpdateRequest;
 import project.plantly.domain.company.search.dto.CompanySearchRequest;
 import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.domain.company.service.CompanyQueryService;
@@ -110,6 +112,24 @@ public class CompanyController {
                                              @PathVariable Long id,
                                              @Valid @RequestBody CompanyUpdateRequest request) {
         companyUpdateService.updateBasicInfoByUser(id, principal.getUser().getId(), request);
+        return ApiResponse.ok();
+    }
+
+    // 공개/비공개 전환 — 소유자만. 목표 상태(PUBLIC/PRIVATE)를 지정한다(멱등). 응답은 본문 없이 성공만.
+    @PatchMapping("/api/v1/companies/{id}/visibility")
+    public ApiResponse<Void> changeVisibility(@AuthenticationPrincipal UserPrincipal principal,
+                                              @PathVariable Long id,
+                                              @Valid @RequestBody CompanyVisibilityUpdateRequest request) {
+        companyUpdateService.changeVisibilityByUser(id, principal.getUser().getId(), request.visibility());
+        return ApiResponse.ok();
+    }
+
+    // 소유자 자가 삭제(소프트) — 본인 소유 회사를 숨김 처리한다. 멱등(이미 삭제여도 성공). 삭제 후에는 소유자 목록·공개
+    // 경로에서 사라지고 관리자에게만 보이므로, 되살리기는 관리자 복구 경로에서만 한다(<<admin-company-restore>>).
+    @DeleteMapping("/api/v1/companies/{id}")
+    public ApiResponse<Void> deleteMyCompany(@AuthenticationPrincipal UserPrincipal principal,
+                                             @PathVariable Long id) {
+        companyUpdateService.deleteByUser(id, principal.getUser().getId());
         return ApiResponse.ok();
     }
 

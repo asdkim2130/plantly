@@ -13,6 +13,7 @@ import project.plantly.domain.company.dto.CompanyPublicResponse.GalleryImageResp
 import project.plantly.domain.company.dto.CompanyPublicResponse.IndustryResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse.ProjectReferenceResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse.RegionResponse;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.ImageType;
 import project.plantly.domain.company.enums.PricingType;
 import project.plantly.domain.company.enums.RegistrationSource;
@@ -59,6 +60,7 @@ public class CompanyResponseSamples {
                 new ManagementMeta(
                         "1234567890", RegistrationSource.USER, 7L, 7L,
                         true, 0, true, true, false, false,
+                        CompanyVisibility.PUBLIC,
                         LocalDateTime.of(2024, 1, 2, 3, 4, 5),
                         LocalDateTime.of(2024, 1, 2, 3, 4, 5)));
     }

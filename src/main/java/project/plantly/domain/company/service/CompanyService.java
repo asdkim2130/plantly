@@ -7,6 +7,8 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.entity.link.CompanyMember;
+import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.global.exception.BusinessException;
 import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
@@ -73,6 +75,16 @@ public class CompanyService {
     // 공통 코어: 등록 정책 일괄 검증 후, 본체 INSERT(=id 확보) → 구독·부속(자식/링크)을 같은 트랜잭션으로 저장한다.
     // 정책은 아직 저장 전인 company 와 subscription(등급 출처)을 받아 검증/변형한다. throw 시 아무것도 영속화되지 않는다.
     private Long persist(Company company, CompanyCreateRequest request, CompanySubscription subscription) {
+        // 등록 시 선택한 공개 범위 반영(미지정이면 엔티티 기본값 PUBLIC 유지). 시스템 플래그와 동일하게 도메인 행위로만 설정.
+        if (request.visibility() != null) {
+            company.changeVisibility(request.visibility());
+        }
+        // 활성 회사 중 동일 사업자번호 사전 검증. DB 부분 유니크 인덱스가 최종 방어선이지만, 여기서 먼저 걸러
+        // raw DataIntegrityViolation 대신 친화적 에러를 준다(soft delete 된 번호는 활성이 아니라 통과 → 재사용 허용).
+        if (company.getBusinessNumber() != null
+                && companyRepository.existsByBusinessNumberAndDeletedFalse(company.getBusinessNumber())) {
+            throw new BusinessException(CompanyErrorCode.BUSINESS_NUMBER_TAKEN);
+        }
         CompanyPolicyView view = CompanyPolicyView.forCreate(company, request, subscription);
         registrationPolicies.forEach(policy -> policy.apply(view));
 

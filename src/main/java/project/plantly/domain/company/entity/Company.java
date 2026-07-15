@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.PricingType;
 import project.plantly.domain.company.enums.RegistrationSource;
 import project.plantly.domain.company.enums.TrlLevel;
@@ -35,8 +36,10 @@ public class Company {
     // 등록 행위자 식별자. 유저 자가등록이면 본인 userId, 관리자 등록이면 admin id. (raw id로 참조)
     private Long registeredBy;
 
-    // 사업자번호. 초안 단계 회사는 미입력 가능하므로 nullable. (Postgres는 UNIQUE 컬럼에 다중 NULL 허용)
-    @Column(unique = true)
+    // 사업자번호. 초안 단계 회사는 미입력 가능하므로 nullable.
+    // UNIQUE 는 컬럼 제약(삭제 행 포함 전체)이 아니라 활성(deleted=false) 행끼리만 강제하는 부분 유니크 인덱스로 건다.
+    // (soft delete 된 회사의 사업자번호는 재사용 가능해야 하므로 전체 UNIQUE 를 걸지 않는다 — CompanyBusinessNumberIndexInitializer)
+    @Column
     private String businessNumber;
 
     @NotNull
@@ -101,6 +104,13 @@ public class Company {
     @Column(nullable = false)
     private boolean deleted = false;
 
+    // 공개 범위(PUBLIC/PRIVATE). 기본 공개로 시작하고, 전환은 changeVisibility 로만 한다.
+    // 등록 시 유저/관리자가 고른 값도 시스템 플래그와 동일하게 등록 서비스가 changeVisibility 로 반영한다.
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CompanyVisibility visibility = CompanyVisibility.PUBLIC;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -109,8 +119,8 @@ public class Company {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    // 비즈니스 필드만 받는다. 시스템 관리 플래그(verified/featured/spotlight/spotlightOrder/deleted)는
-    // 생성 시 기본값(false/0)으로 시작하고, 상태 전환은 도메인 행위 메서드로만 수행한다.
+    // 비즈니스 필드만 받는다. 시스템 관리 플래그(verified/featured/spotlight/spotlightOrder/deleted/visibility)는
+    // 생성 시 기본값(false/0/PUBLIC)으로 시작하고, 상태 전환은 도메인 행위 메서드로만 수행한다.
     private Company(RegistrationSource registrationSource, Long registeredBy, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, String postalCode, String address, String detailAddress, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
         this.registrationSource = registrationSource;
         this.registeredBy = registeredBy;
@@ -227,6 +237,22 @@ public class Company {
         this.brandColor = brandColor;
     }
 
+    // ===== 관리자 운영 플래그 직접 지정 (set-to-state) =====
+    // 등록 시 전부 false 로 시작하며, 관리자가 목표값(true/false)을 그대로 지정한다 — 토글 아님, 멱등.
+    // verify()/feature()/activateSpotlight() 등 방향별 행위 메서드와 달리 불리언을 받아 켜고 끄는 통합 전환이다.
+    // (spotlight 는 노출 순서 spotlightOrder 와 별개로 on/off 만 다룬다 — 순서 큐레이션은 별도 경로)
+    public void changeVerified(boolean verified) {
+        this.verified = verified;
+    }
+
+    public void changeFeatured(boolean featured) {
+        this.featured = featured;
+    }
+
+    public void changeSpotlight(boolean spotlight) {
+        this.spotlight = spotlight;
+    }
+
     // 소프트 삭제 / 복구
     public void delete() {
         this.deleted = true;
@@ -234,5 +260,10 @@ public class Company {
 
     public void restore() {
         this.deleted = false;
+    }
+
+    // 공개 / 비공개 전환. 등록 시점 선택값 반영과 이후 토글에 모두 쓰인다(목표 상태를 그대로 지정).
+    public void changeVisibility(CompanyVisibility visibility) {
+        this.visibility = visibility;
     }
 }

@@ -1,6 +1,7 @@
 package project.plantly.domain.company.search.dto;
 
 import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.RegistrationSource;
 import project.plantly.domain.company.enums.SubscriptionStatus;
 
@@ -29,6 +30,7 @@ public record AdminCompanySummary(
         boolean spotlight,
         // ----- 운영 필드 (관리자 전용) -----
         boolean deleted,
+        CompanyVisibility visibility,      // 공개 범위(PUBLIC/PRIVATE). 비공개도 관리자 목록엔 노출된다.
         Long ownerUserId,                  // 소유자 미연동(관리자 등록 등)이면 null
         RegistrationSource registrationSource,
         LocalDateTime createdAt,

@@ -4,6 +4,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.ImageType;
 import project.plantly.domain.company.enums.PricingType;
 import project.plantly.domain.company.enums.TrlLevel;
@@ -34,6 +35,7 @@ public class CompanyCreateRequestSamples {
                 "납품 후 1년 무상 A/S",
                 PricingType.CONSULTATION,
                 "#2E7D32",
+                CompanyVisibility.PUBLIC,
                 List.of(new ContactRequest("이담당", "팀장", "010-1234-5678", "contact@plantly.example.com")),
                 List.of(new ImageRequest("https://img.example.com/detail1.png", ImageType.DETAIL)),
                 List.of(new ReferenceRequest("스마트팜 구축", "수율 30% 향상", "A사", "2023", List.of("https://img.example.com/ref1.png"))),

@@ -42,7 +42,11 @@ public enum CompanyErrorCode implements ErrorCode {
     COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 회사입니다."),
 
     // 본인 회사 상세(소유자 전용 뷰)를 소유자가 아닌 사용자가 요청한 경우
-    COMPANY_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 회사에 대한 접근 권한이 없습니다.");
+    COMPANY_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 회사에 대한 접근 권한이 없습니다."),
+
+    // 등록/복구 시, 활성(미삭제) 회사 중 이미 같은 사업자번호가 존재하는 경우.
+    // (soft delete 된 번호는 재사용 가능하지만, 활성 회사끼리는 유일해야 한다 — 부분 유니크 인덱스)
+    BUSINESS_NUMBER_TAKEN(HttpStatus.CONFLICT, "이미 사용 중인 사업자번호입니다.");
 
     private final HttpStatus status;
     private final String message;

@@ -165,6 +165,23 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
         assertThat(card.industryNames()).containsExactly("농업기술");
     }
 
+    @Test
+    @DisplayName("공개 범위: 비공개(PRIVATE) 회사는 공개 검색에서 제외되고, 다시 공개로 전환하면 노출된다")
+    void privateExcludedFromPublicSearch() {
+        Company pub = index(persistCompany("공개회사", "스마트팜"));
+        Company priv = persistCompany("비공개회사", "스마트팜");
+        priv.changeVisibility(project.plantly.domain.company.enums.CompanyVisibility.PRIVATE);
+        index(priv);
+
+        // 같은 키워드로 잡히지만 비공개는 빠진다.
+        assertThat(ids(search(kw("스마트팜")))).containsExactly(pub.getId());
+
+        // 다시 공개로 전환하면 노출된다(원천 행 유지 → 재색인 불필요, 필터는 company.visibility 실시간 참조).
+        priv.changeVisibility(project.plantly.domain.company.enums.CompanyVisibility.PUBLIC);
+        em.flush();
+        assertThat(ids(search(kw("스마트팜")))).containsExactlyInAnyOrder(pub.getId(), priv.getId());
+    }
+
     // ===== helpers =====
 
     private Company persistCompany(String name, String content) {

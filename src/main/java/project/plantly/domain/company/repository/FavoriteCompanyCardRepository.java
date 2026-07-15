@@ -34,8 +34,10 @@ public class FavoriteCompanyCardRepository {
              JOIN company_favorite f ON f.company_id = c.id
             """;
 
-    // 내 즐겨찾기 + 미삭제. 즐겨찾기해 둔 회사가 소프트 삭제되면 목록에서 빠진다(내 회사 목록·공개 조회와 동일 정책).
-    private static final String WHERE = " WHERE f.user_id = :userId AND c.deleted = false ";
+    // 내 즐겨찾기 + 미삭제 + 공개. 즐겨찾기해 둔 회사가 소프트 삭제되거나 비공개로 전환되면 목록에서 빠지고,
+    // 다시 공개되면 돌아온다(공개 조회와 동일 정책). 즐겨찾기 원천 행은 유지되므로 재공개 시 그대로 노출된다.
+    private static final String WHERE =
+            " WHERE f.user_id = :userId AND c.deleted = false AND c.visibility = 'PUBLIC' ";
 
     // 즐겨찾기순(내가 담은 최신 순). 회사 생성일이 아니라 즐겨찾기 시각 기준이며,
     // 검색의 spotlight/featured 우선순위는 개입하지 않는다 — 내 목록의 순서는 내가 담은 순서다.

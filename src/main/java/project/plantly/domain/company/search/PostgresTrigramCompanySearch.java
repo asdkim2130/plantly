@@ -47,6 +47,7 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
         MapSqlParameterSource params = new MapSqlParameterSource();
 
         conditions.add("c.deleted = false");
+        conditions.add("c.visibility = 'PUBLIC'");   // 비공개 회사는 공개 목록/검색에서 제외
         appendKeyword(criteria.keyword(), conditions, params);
         appendAdvanced(criteria.advanced(), conditions, params);
         appendFacet(conditions, params, "certIds", criteria.certificationIds(), "company_certification", "certification_id");

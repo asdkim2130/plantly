@@ -3,11 +3,13 @@ package project.plantly.domain.company.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import project.plantly.domain.company.dto.AdminCompanyFlagsRequest;
 import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.policy.CompanyMutationPolicy;
 import project.plantly.domain.company.policy.CompanyPolicyView;
@@ -52,6 +54,45 @@ public class CompanyUpdateService {
                         request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
                         request.pricingType(), request.brandColor()),
                 (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl(), request.brandColor() != null));
+    }
+
+    // ===== 공개/비공개 전환 =====
+    // 소유자 경로는 멤버 검증 후, 관리자 경로는 소유 무관으로 목표 상태를 지정한다(멱등). 둘 다 공통 실행 골격을
+    // 재사용한다 — visibility 는 검색 도큐먼트에 없어 재색인이 불필요하지만(공개 필터는 company.visibility 를 실시간 참조),
+    // 경로를 하나로 유지하려고 mutateOwned/mutateAsAdmin 을 그대로 태운다(도큐먼트 재생성은 멱등).
+
+    public void changeVisibilityByUser(Long companyId, Long userId, CompanyVisibility visibility) {
+        mutateOwned(companyId, userId, company -> company.changeVisibility(visibility));
+    }
+
+    public void changeVisibilityByAdmin(Long companyId, CompanyVisibility visibility) {
+        mutateAsAdmin(companyId, company -> company.changeVisibility(visibility));
+    }
+
+    // ===== 소프트 삭제 / 복구 =====
+    // 삭제는 소유자(자가삭제)·관리자 모두 가능하고, 복구는 관리자 전용이다 — 삭제된 회사는 소유자 목록/공개 경로에서
+    // 사라지므로(관리자에게만 보임) 되살리는 건 모더레이션 성격이라 관리자 경로로만 노출한다.
+    // 삭제/복구 모두 명시적 방향(토글 아님)이라 멱등하다: 이미 삭제된 걸 또 삭제해도, 이미 활성인 걸 또 복구해도 같은 상태로 수렴.
+
+    public void deleteByUser(Long companyId, Long userId) {
+        mutateOwned(companyId, userId, Company::delete);
+    }
+
+    public void deleteByAdmin(Long companyId) {
+        mutateAsAdmin(companyId, Company::delete);
+    }
+
+    // 복구는 활성 상태로 되돌리므로 사업자번호 활성 유니크(부분 인덱스)를 다시 지켜야 한다.
+    // 삭제된 사이 같은 번호로 새 회사가 등록됐다면 복구 시 활성 2건이 되어 인덱스 위반 → 미리 친화적 에러로 막는다.
+    // (복구 대상은 아직 deleted=true 라 exists...DeletedFalse 조회에 자기 자신은 안 걸린다.)
+    public void restoreByAdmin(Long companyId) {
+        Company company = loadCompany(companyId);
+        if (company.getBusinessNumber() != null
+                && companyRepository.existsByBusinessNumberAndDeletedFalse(company.getBusinessNumber())) {
+            throw new BusinessException(CompanyErrorCode.BUSINESS_NUMBER_TAKEN);
+        }
+        company.restore();
+        searchDocumentWriter.write(companyId);
     }
 
     // ===== 컬렉션 전체 교체 =====
@@ -170,6 +211,23 @@ public class CompanyUpdateService {
 
     public void replaceRegionsByAdmin(Long companyId, List<Long> domesticRegionIds) {
         mutateAsAdmin(companyId, company -> linkWriter.replaceRegions(company, domesticRegionIds));
+    }
+
+    // ===== 관리자 운영 플래그 조정 (인증/추천/스팟라이트) =====
+    // sparse: null 필드는 미변경, 값이 오면 그 상태로 설정(멱등). 소유 무관(권한은 컨트롤러 @PreAuthorize).
+    // 검색 도큐먼트엔 이 셋이 없고 정렬은 company 원본을 실시간 참조하므로 재동기화(write) 를 부르지 않는다 —
+    // 컬렉션 교체 경로(mutateAsAdmin)와 달리 검색 색인을 건드릴 이유가 없다.
+    public void changeFlagsByAdmin(Long companyId, AdminCompanyFlagsRequest request) {
+        Company company = loadCompany(companyId);
+        if (request.verified() != null) {
+            company.changeVerified(request.verified());
+        }
+        if (request.featured() != null) {
+            company.changeFeatured(request.featured());
+        }
+        if (request.spotlight() != null) {
+            company.changeSpotlight(request.spotlight());
+        }
     }
 
     // ===== 관리자 구독 수정 (raw full-replace) =====

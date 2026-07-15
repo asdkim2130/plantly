@@ -84,6 +84,7 @@ public class CompanyCreateRequestBuilder {
                 null,            // asInfo
                 null,            // pricingType
                 brandColor,
+                null,            // visibility (null = 공개 기본)
                 null,            // contacts
                 images,
                 references,

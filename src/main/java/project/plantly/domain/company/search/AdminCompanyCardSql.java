@@ -2,6 +2,7 @@ package project.plantly.domain.company.search;
 
 import org.springframework.jdbc.core.RowMapper;
 import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.RegistrationSource;
 import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.search.dto.AdminCompanySummary;
@@ -27,7 +28,7 @@ public final class AdminCompanyCardSql {
     }
 
     public static final String COLUMNS = CompanyCardSql.CARD_COLUMNS
-            + ", c.deleted"
+            + ", c.deleted, c.visibility"
             + ", (SELECT cm.user_id FROM company_member cm WHERE cm.company_id = c.id AND cm.role = 'OWNER' LIMIT 1) AS owner_user_id"
             + ", c.registration_source, c.created_at"
             // 구독 요약: effective_grade 는 엔티티 effectiveGrade() 규칙을 그대로 옮긴 CASE. status/만료일은 원본 그대로.
@@ -46,6 +47,7 @@ public final class AdminCompanyCardSql {
             rs.getBoolean("featured"),
             rs.getBoolean("spotlight"),
             rs.getBoolean("deleted"),
+            CompanyVisibility.valueOf(rs.getString("visibility")),
             rs.getObject("owner_user_id", Long.class),           // 미연동이면 null (getLong 은 0 으로 뭉갬)
             RegistrationSource.valueOf(rs.getString("registration_source")),
             rs.getObject("created_at", LocalDateTime.class),
