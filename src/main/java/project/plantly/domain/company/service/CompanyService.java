@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.entity.link.CompanyMember;
@@ -48,7 +49,8 @@ public class CompanyService {
         Company company = Company.createByUser(
                 userId,
                 request.businessNumber(), request.companyName(), request.ceoName(), request.establishmentDate(),
-                request.postalCode(), request.address(), request.detailAddress(), request.website(), request.logoUrl(),
+                Address.of(request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress()),
+                request.website(), request.logoUrl(),
                 request.introTitle(), request.content(), request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(), request.pricingType(), request.brandColor());
 
         Long companyId = persist(company, request, CompanySubscription.freeForUser(LocalDate.now()));
@@ -66,7 +68,8 @@ public class CompanyService {
         Company company = Company.createByAdmin(
                 adminId,
                 request.businessNumber(), request.companyName(), request.ceoName(), request.establishmentDate(),
-                request.postalCode(), request.address(), request.detailAddress(), request.website(), request.logoUrl(),
+                Address.of(request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress()),
+                request.website(), request.logoUrl(),
                 request.introTitle(), request.content(), request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(), request.pricingType(), request.brandColor());
 
         return persist(company, request, CompanySubscription.adminExempt(LocalDate.now()));

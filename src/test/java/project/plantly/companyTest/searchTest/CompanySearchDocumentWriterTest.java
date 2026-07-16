@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.companyTest.support.PostgresContainerTest;
 import project.plantly.domain.company.category.Category;
+import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanyEquipment;
 import project.plantly.domain.company.entity.CompanyMaterial;
@@ -36,7 +37,7 @@ class CompanySearchDocumentWriterTest extends PostgresContainerTest {
 
         // 회사 + 자식(레퍼런스/설비/소재) + 카테고리 링크(중분류에 연결)
         Company company = Company.createByUser(1L, "1112233444", "플랜틀리", "홍길동", null,
-                "06236", "서울 강남구", "테헤란로 1", null, "http://logo",
+                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "http://logo",
                 "스마트팜 솔루션", "자동 관수 시스템 제공", null, null, null, null, null, null);
         em.persist(company);
         em.persist(new CompanyProjectReference(company, "수직농장 구축", "생산성 30% 향상", "OO대학", "2024", 0));

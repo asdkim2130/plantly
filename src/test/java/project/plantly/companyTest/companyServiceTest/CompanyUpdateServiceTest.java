@@ -90,7 +90,7 @@ class CompanyUpdateServiceTest {
 
     // 기본정보 PATCH 요청 — videoUrl / brandColor 만 관심.
     private CompanyUpdateRequest basicInfo(String videoUrl, String brandColor) {
-        return new CompanyUpdateRequest(null, null, null, null, null, null, null, null, null, null, null,
+        return new CompanyUpdateRequest(null, null, null, null, null, null, null, null, null, null, null, null,
                 videoUrl, null, null, null, brandColor);
     }
 

@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import project.plantly.companyTest.support.PostgresContainerTest;
 import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.certification.Certification;
+import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanyTag;
 import project.plantly.domain.company.entity.link.CompanyCategory;
@@ -186,7 +187,7 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
 
     private Company persistCompany(String name, String content) {
         Company c = Company.createByUser(1L, null, name, "대표자", null,
-                "06236", "서울 강남구", "테헤란로 1", null, "logo-" + name,
+                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo-" + name,
                 name + " 요약", content, null, null, null, null, null, null);
         em.persist(c);
         return c;

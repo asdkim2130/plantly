@@ -1,5 +1,6 @@
 package project.plantly.companyTest.support;
 
+import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 
 // 변형 정책(BrandColorPolicy / SpotlightPolicy) 테스트는 mutate 대상 Company 인스턴스가 필요하다.
@@ -16,7 +17,9 @@ public class CompanyFixture {
                 null,            // businessNumber
                 "테스트회사",      // companyName
                 "홍길동",          // ceoName
-                null, null, null, null, null, null, null, null, null,  // ~ trlLevel
+                null,            // establishmentDate
+                Address.of(null, null, null, null),  // 주소(정책 테스트라 무해)
+                null, null, null, null, null,  // website ~ trlLevel
                 null,            // videoUrl
                 null, null, null,// leadTime, asInfo, pricingType
                 brandColor);

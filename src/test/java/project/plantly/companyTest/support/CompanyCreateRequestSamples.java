@@ -24,6 +24,7 @@ public class CompanyCreateRequestSamples {
                 LocalDate.of(2020, 1, 15),
                 "06236",
                 "서울시 강남구 테헤란로 1",
+                "서울시 강남구 역삼동 736-1",
                 "10층",
                 "https://plantly.example.com",
                 "https://img.example.com/logo.png",

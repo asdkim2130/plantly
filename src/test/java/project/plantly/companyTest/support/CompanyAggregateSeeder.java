@@ -10,6 +10,7 @@ import project.plantly.domain.company.country.Continent;
 import project.plantly.domain.company.country.Country;
 import project.plantly.domain.company.domesticRegion.DomesticRegion;
 import project.plantly.domain.company.domesticRegion.RegionLevel;
+import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.entity.CompanyContact;
@@ -75,7 +76,7 @@ public class CompanyAggregateSeeder {
     public Long seedPublishedCompany(Long ownerUserId) {
         Company company = Company.createByUser(
                 ownerUserId, BUSINESS_NUMBER, COMPANY_NAME, CEO_NAME,
-                ESTABLISHMENT_DATE, "06236", "서울 강남구 테헤란로 1", "10층",
+                ESTABLISHMENT_DATE, Address.of("06236", "서울 강남구 테헤란로 1", null, "10층"),
                 "https://plantly.test", "https://cdn.plantly.test/logo.png",
                 "정밀 부품 전문", "정밀 가공 20년 경력의 부품 제조사입니다.",
                 TrlLevel.MASS_PRODUCTION, "https://youtu.be/demo", "2주", "유선 AS 지원",
@@ -96,7 +97,7 @@ public class CompanyAggregateSeeder {
     public Long seedDeletedCompany(Long ownerUserId) {
         Company company = Company.createByUser(
                 ownerUserId, "9998887776", "삭제된회사", "박대표",
-                ESTABLISHMENT_DATE, "06236", "서울 강남구 봉은사로 2", "5층",
+                ESTABLISHMENT_DATE, Address.of("06236", "서울 강남구 봉은사로 2", null, "5층"),
                 null, "https://cdn.plantly.test/logo2.png",
                 null, null, null, null, null, null, null, null);
         company.delete();
@@ -110,7 +111,7 @@ public class CompanyAggregateSeeder {
     public Long seedAdminRegisteredCompany(Long adminId) {
         Company company = Company.createByAdmin(
                 adminId, "5554443332", "관리자등록회사", "최대표",
-                ESTABLISHMENT_DATE, "06236", "서울 강남구 도산대로 3", "3층",
+                ESTABLISHMENT_DATE, Address.of("06236", "서울 강남구 도산대로 3", null, "3층"),
                 null, "https://cdn.plantly.test/logo3.png",
                 null, null, null, null, null, null, null, null);
         em.persist(company);

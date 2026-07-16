@@ -2,6 +2,7 @@ package project.plantly.domain.company.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.ImageType;
@@ -28,8 +29,11 @@ public record CompanyCreateRequest(
         @NotBlank
         String ceoName,  //대표자
         LocalDate establishmentDate,  //설립일
+        // 우편번호: 값이 오면 5자리 숫자(국가기초구역번호) 강제. null 은 통과 → 임시저장(DRAFT) 호환.
+        @Pattern(regexp = "\\d{5}", message = "우편번호는 5자리 숫자여야 합니다.")
         String postalCode,  //우편번호
-        String address,  //주소
+        String roadAddress,  //도로명 주소
+        String jibunAddress,  //지번 주소(도로명만 있는 신주소는 비어있을 수 있음)
         String detailAddress,  //상세주소
         String website,  //기업홈페이지
         String logoUrl,  //로고 이미지

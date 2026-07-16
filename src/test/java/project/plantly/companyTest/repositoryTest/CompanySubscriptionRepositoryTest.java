@@ -7,6 +7,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 import project.plantly.domain.company.dto.OwnerSubscriptionRow;
+import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.entity.link.CompanyMember;
@@ -57,7 +58,7 @@ class CompanySubscriptionRepositoryTest {
     // 회사 + OWNER 멤버 + 활성 구독을 저장하고 회사 id 를 반환한다.
     private long seedOwnedCompanyWithSubscription(Long ownerId, CompanyGrade grade) {
         Company company = Company.createByUser(ownerId, null, "회사-" + ownerId, "대표", null,
-                "06236", "서울", "1층", null, "logo", null, null, null, null, null, null, null, null);
+                Address.of("06236", "서울", null, "1층"), null, "logo", null, null, null, null, null, null, null, null);
         em.persist(company);
         em.persist(CompanyMember.owner(company.getId(), ownerId));
         CompanySubscription subscription = CompanySubscription.active(grade, LocalDate.now(), null);

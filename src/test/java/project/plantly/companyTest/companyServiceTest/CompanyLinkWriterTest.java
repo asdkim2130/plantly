@@ -10,6 +10,7 @@ import org.springframework.test.context.ActiveProfiles;
 import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.repository.CompanyCategoryRepository;
 import project.plantly.domain.company.service.CompanyLinkWriter;
@@ -39,7 +40,7 @@ class CompanyLinkWriterTest {
         Category c3 = persistRoot("C", "CAT-C");
 
         Company company = Company.createByUser(1L, null, "회사", "대표", null,
-                "06236", "서울 강남구", "테헤란로 1", null, "logo",
+                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo",
                 null, null, null, null, null, null, null, null);
         em.persist(company);
 

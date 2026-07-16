@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.companyTest.support.PostgresContainerTest;
+import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -60,7 +61,7 @@ class CompanyBusinessNumberUniquenessTest extends PostgresContainerTest {
 
     private Company company(String businessNumber) {
         return Company.createByUser(1L, businessNumber, "회사", "대표", null,
-                "06236", "서울 강남구", "테헤란로 1", null, "logo",
+                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo",
                 "요약", "본문", null, null, null, null, null, null);
     }
 }
