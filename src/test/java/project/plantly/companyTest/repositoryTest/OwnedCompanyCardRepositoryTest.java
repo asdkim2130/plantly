@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.companyTest.support.PostgresContainerTest;
 import project.plantly.domain.company.category.Category;
+import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanyTag;
 import project.plantly.domain.company.entity.link.CompanyCategory;
@@ -93,7 +94,7 @@ class OwnedCompanyCardRepositoryTest extends PostgresContainerTest {
     // 회사 + OWNER 멤버를 함께 저장한다. 소유는 company_member(role=OWNER) 로만 표현된다.
     private Company persistCompany(Long ownerId, String name) {
         Company c = Company.createByUser(ownerId, null, name, "대표자", null,
-                "06236", "서울 강남구", "1층", null, "logo-" + name,
+                Address.of("06236", "서울 강남구", null, "1층"), null, "logo-" + name,
                 null, null, null, null, null, null, null, null);
         em.persist(c);
         em.persist(CompanyMember.owner(c.getId(), ownerId)); // IDENTITY 라 persist 직후 id 확정

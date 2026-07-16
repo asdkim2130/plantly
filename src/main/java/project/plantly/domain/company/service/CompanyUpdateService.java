@@ -49,7 +49,7 @@ public class CompanyUpdateService {
         mutateOwnedGraded(companyId, userId,
                 company -> company.updateBasicInfo(
                         request.companyName(), request.ceoName(), request.establishmentDate(),
-                        request.postalCode(), request.address(), request.detailAddress(),
+                        request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress(),
                         request.website(), request.logoUrl(), request.introTitle(), request.content(),
                         request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
                         request.pricingType(), request.brandColor()),
@@ -156,7 +156,7 @@ public class CompanyUpdateService {
         mutateAsAdminGraded(companyId,
                 company -> company.updateBasicInfo(
                         request.companyName(), request.ceoName(), request.establishmentDate(),
-                        request.postalCode(), request.address(), request.detailAddress(),
+                        request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress(),
                         request.website(), request.logoUrl(), request.introTitle(), request.content(),
                         request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
                         request.pricingType(), request.brandColor()),

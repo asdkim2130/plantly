@@ -23,7 +23,7 @@ public final class CompanyCardSql {
     }
 
     public static final String CARD_COLUMNS = """
-            c.id, c.company_name, c.intro_title, c.logo_url, c.address,
+            c.id, c.company_name, c.intro_title, c.logo_url, c.road_address AS address,
             c.verified, c.featured, c.spotlight,
             (SELECT array_agg(cat.category_name ORDER BY cc.display_order)
                FROM company_category cc JOIN category cat ON cat.id = cc.category_id

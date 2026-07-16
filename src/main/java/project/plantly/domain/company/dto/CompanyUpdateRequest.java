@@ -1,5 +1,6 @@
 package project.plantly.domain.company.dto;
 
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import project.plantly.domain.company.enums.PricingType;
 import project.plantly.domain.company.enums.TrlLevel;
@@ -20,10 +21,13 @@ public record CompanyUpdateRequest(
         @Size(min = 1, message = "대표자명은 빈 값으로 변경할 수 없습니다.")
         String ceoName,
         LocalDate establishmentDate,
-        @Size(min = 1, message = "우편번호는 빈 값으로 변경할 수 없습니다.")
+        // null = 미변경. 값이 오면 5자리 숫자 강제 — blank("") 도 불일치라 거절(= 빈 값으로 못 비움, 기존 @Size(min=1) 포섭).
+        @Pattern(regexp = "\\d{5}", message = "우편번호는 5자리 숫자여야 합니다.")
         String postalCode,
-        @Size(min = 1, message = "주소는 빈 값으로 변경할 수 없습니다.")
-        String address,
+        @Size(min = 1, message = "도로명 주소는 빈 값으로 변경할 수 없습니다.")
+        String roadAddress,
+        // 지번은 선택 필드라 blank("") 로 비울 수 있다(null = 미변경). 그래서 @Size(min=1) 를 걸지 않는다.
+        String jibunAddress,
         @Size(min = 1, message = "상세주소는 빈 값으로 변경할 수 없습니다.")
         String detailAddress,
         String website,

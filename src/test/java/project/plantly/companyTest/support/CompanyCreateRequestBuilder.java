@@ -72,7 +72,8 @@ public class CompanyCreateRequestBuilder {
                 ceoName,
                 null,            // establishmentDate
                 null,            // postalCode
-                null,            // address
+                null,            // roadAddress
+                null,            // jibunAddress
                 null,            // detailAddress
                 null,            // website
                 null,            // logoUrl
