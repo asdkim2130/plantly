@@ -11,6 +11,9 @@ on:
 # (ubuntu-latest 에 Docker 내장) 더 이상 워크플로의 PG 서비스/주입이 필요 없다.
 env:
   SPRING_PROFILES_ACTIVE: test
+  # 국세청 API 서비스 키(GitHub Actions secret). 현재 테스트는 H2 라 외부 호출이 없어 미사용이지만,
+  # NTS 연동 통합 테스트/빌드가 app.nts.service-key 를 읽을 때를 대비해 미리 주입해 둔다.
+  NTS_SERVICE_KEY: ${{ secrets.NTS_SERVICE_KEY }}
 
 jobs:
   test:
