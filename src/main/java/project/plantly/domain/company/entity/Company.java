@@ -83,8 +83,19 @@ public class Company {
 
     private String brandColor;
 
+    // 관리자 큐레이션 배지("에디터 선정"). 아래 businessVerified(국세청 확인)와는 별개의 축이다 —
+    // 운영 주체도 의미도 다르므로 하나로 합치지 않는다. 합치면 관리자가 추천 배지를 켜다가
+    // 사업자 인증 자격까지 부여하는 사고가 난다.
     @Column(nullable = false)
     private boolean verified = false;
+
+    // 국세청 진위확인·상태조회를 통과한 사업자인지. 권위 있는 상태는 CompanyVerification 이 갖고,
+    // 이 필드는 목록·검색·카드 등 읽기 경로가 매번 조인하지 않도록 둔 비정규화 사본이다.
+    // (deleted/visibility 와 같은 취급 — 상태 전이는 도메인 행위 메서드로만 한다)
+    @Column(nullable = false)
+    private boolean businessVerified = false;
+
+    private LocalDateTime businessVerifiedAt;
 
     @Column(nullable = false)
     private boolean featured = false;
@@ -183,6 +194,21 @@ public class Company {
     }
 
     // ===== 상태 변경 (도메인 행위) =====
+
+    // ===== 국세청 사업자 인증 =====
+    // 자가등록은 선행 인증(CompanyVerification)을 소비하면서 등록되므로, 등록 직후 이 메서드로 표시한다.
+    // 관리자 등록 회사는 인증을 거치지 않아 false 로 남는다.
+    public void markBusinessVerified(LocalDateTime verifiedAt) {
+        this.businessVerified = true;
+        this.businessVerifiedAt = verifiedAt;
+    }
+
+    // 관리자 인증 회수(사칭 신고 등). 사업자번호는 지우지 않는다 — 활성 유니크로 같은 번호의 재등록을
+    // 계속 막아야 하고, 어떤 번호로 인증받았었는지가 분쟁 기록으로 남아야 한다.
+    public void revokeBusinessVerification() {
+        this.businessVerified = false;
+        this.businessVerifiedAt = null;
+    }
 
     // 관리자 인증 처리 / 해제
     public void verify() {

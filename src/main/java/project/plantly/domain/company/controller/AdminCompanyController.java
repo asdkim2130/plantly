@@ -24,6 +24,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
 import project.plantly.domain.company.dto.AdminCompanyFlagsRequest;
 import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
 import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
+import project.plantly.domain.company.dto.AdminVerificationRevokeRequest;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.dto.CompanyVisibilityUpdateRequest;
@@ -119,6 +120,18 @@ public class AdminCompanyController {
     public ApiResponse<Void> changeFlagsByAdmin(@PathVariable Long id,
                                                 @RequestBody AdminCompanyFlagsRequest request) {
         companyUpdateService.changeFlagsByAdmin(id, request);
+        return ApiResponse.ok();
+    }
+
+    // 사업자 인증 회수 — 사칭 신고 등으로 국세청 인증 상태를 되돌린다. 사유 필수(분쟁 대응 근거).
+    // 관리자 운영 플래그(/flags 의 verified = 에디터 선정 배지)와는 다른 축이라 별도 경로로 둔다 —
+    // 하나로 합치면 추천 배지를 켜다가 사업자 인증 자격까지 부여하는 사고가 난다.
+    // 회수된 인증은 REVOKED 로 남아 같은 번호의 재인증을 막는 근거가 된다(미인증 상태로 되돌아가지 않는다).
+    @PatchMapping("/api/v1/admin/companies/{id}/verification")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> revokeBusinessVerificationByAdmin(@PathVariable Long id,
+                                                               @Valid @RequestBody AdminVerificationRevokeRequest request) {
+        companyUpdateService.revokeBusinessVerificationByAdmin(id, request.reason());
         return ApiResponse.ok();
     }
 

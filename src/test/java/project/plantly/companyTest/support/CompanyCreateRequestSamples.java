@@ -4,6 +4,8 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
+import project.plantly.domain.company.dto.CompanyVerificationRequest;
+import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.ImageType;
 import project.plantly.domain.company.enums.PricingType;
@@ -49,5 +51,45 @@ public class CompanyCreateRequestSamples {
                 List.of(4L),
                 List.of(5L)
         );
+    }
+
+    // 자가등록 요청 표본. 신원 3종(사업자번호/대표자명/개업일자) 자리가 없고 verificationId 만 있다는 점이
+    // 관리자 등록 요청과의 유일한 구조적 차이다 — 그 값들은 선행 인증에서만 온다.
+    public static MyCompanyCreateRequest myFull() {
+        return new MyCompanyCreateRequest(
+                99L,
+                "플랜틀리",
+                "06236",
+                "서울시 강남구 테헤란로 1",
+                "서울시 강남구 역삼동 736-1",
+                "10층",
+                "https://plantly.example.com",
+                "https://img.example.com/logo.png",
+                "친환경 소재 전문 기업",
+                "회사 상세 소개 내용입니다.",
+                TrlLevel.MASS_PRODUCTION,
+                "https://youtu.be/abcdefg",
+                "2주",
+                "납품 후 1년 무상 A/S",
+                PricingType.CONSULTATION,
+                "#2E7D32",
+                CompanyVisibility.PUBLIC,
+                List.of(new ContactRequest("이담당", "팀장", "010-1234-5678", "contact@plantly.example.com")),
+                List.of(new ImageRequest("https://img.example.com/detail1.png", ImageType.DETAIL)),
+                List.of(new ReferenceRequest("스마트팜 구축", "수율 30% 향상", "A사", "2023", List.of("https://img.example.com/ref1.png"))),
+                List.of("재생 플라스틱"),
+                List.of("사출 성형기"),
+                List.of("친환경", "B2B"),
+                List.of(1L),
+                List.of(2L),
+                List.of(3L),
+                List.of(4L),
+                List.of(5L)
+        );
+    }
+
+    // 사업자 인증 요청 표본. 사업자번호는 하이픈 포함으로 둔다 — 서버 정규화가 문서에서도 드러나도록.
+    public static CompanyVerificationRequest verificationRequest() {
+        return new CompanyVerificationRequest("123-45-67890", "김대표", LocalDate.of(2020, 1, 15));
     }
 }

@@ -1,12 +1,15 @@
 package project.plantly.domain.company.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.entity.CompanyVerification;
 import project.plantly.domain.company.entity.link.CompanyMember;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.global.exception.BusinessException;
@@ -15,9 +18,11 @@ import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
 import project.plantly.domain.company.repository.CompanySubscriptionRepository;
+import project.plantly.domain.company.repository.CompanyVerificationRepository;
 import project.plantly.domain.company.search.CompanySearchDocumentWriter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -33,6 +38,9 @@ public class CompanyService {
     // 회사-유저 멤버십. 자가등록 시 등록자를 OWNER 로 1건 기록한다.
     private final CompanyMemberRepository companyMemberRepository;
 
+    // 선행 인증 레코드. 자가등록이 소비해 신원 3종(사업자번호/대표자명/개업일자)의 출처가 된다.
+    private final CompanyVerificationRepository verificationRepository;
+
     // 회사 구독. 등록 시 회사의 초기 구독(등급)을 1건 저장한다. 정책은 이 구독의 등급을 참조한다.
     private final CompanySubscriptionRepository companySubscriptionRepository;
 
@@ -43,22 +51,55 @@ public class CompanyService {
     // 새 정책은 CompanyRegistrationPolicy 구현 @Component 추가만으로 자동 합류한다.
     private final List<CompanyRegistrationPolicy> registrationPolicies;
 
-    // 유저 자가등록: 등록 즉시 소유자 = 본인. 회사는 FREE 구독으로 시작하며 그 한도로 정책이 적용된다.
+    // 유저 자가등록: 선행 인증을 소비해 신원 3종을 채우고, 등록 즉시 소유자 = 본인 + 사업자 인증 완료 상태가 된다.
+    // 회사는 FREE 구독으로 시작하며 그 한도로 정책이 적용된다.
+    //
+    // 관리자 등록과 달리 이 경로만 인증을 요구하는 이유: 자가등록은 사용자가 레코드를 직접 작성하므로
+    // 사업자번호와 회사명이 어긋날 수 없다. 반면 관리자가 대신 등록한 회사는 대조할 앵커가 없어
+    // 국세청 통과만으로는 소유권을 증명하지 못한다(그 경로 = 클레임은 아직 열지 않았다).
     @Transactional
-    public Long createByUser(Long userId, CompanyCreateRequest request) {
+    public Long createByUser(Long userId, MyCompanyCreateRequest myRequest) {
+        CompanyVerification verification = loadUsableVerification(userId, myRequest.verificationId());
+        CompanyCreateRequest request = myRequest.toCreateRequest(verification);
+
         Company company = Company.createByUser(
                 userId,
                 request.businessNumber(), request.companyName(), request.ceoName(), request.establishmentDate(),
                 Address.of(request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress()),
                 request.website(), request.logoUrl(),
                 request.introTitle(), request.content(), request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(), request.pricingType(), request.brandColor());
+        company.markBusinessVerified(verification.getVerifiedAt());
 
         Long companyId = persist(company, request, CompanySubscription.freeForUser(LocalDate.now()));
+
+        // 인증을 소비 처리해 재사용을 막는다. 같은 인증으로 여러 회사를 만들 수 없다.
+        verification.consume(companyId);
 
         // 자가등록자 = OWNER. 관리자 등록(createByAdmin)은 소유자 미연동이라 멤버를 만들지 않는다.
         // 소유의 단일 진실원(SSOT) — Company 는 소유자를 직접 참조하지 않고 이 멤버십으로만 표현한다.
         companyMemberRepository.save(CompanyMember.owner(companyId, userId));
         return companyId;
+    }
+
+    // 본인이 받은, 아직 쓰지 않은, 만료되지 않은 인증만 통과시킨다.
+    // userId 를 조회 조건에 넣어 남의 인증 식별자를 주워 쓰는 경로를 막는다.
+    private CompanyVerification loadUsableVerification(Long userId, Long verificationId) {
+        CompanyVerification verification = verificationRepository.findByIdAndUserId(verificationId, userId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.VERIFICATION_NOT_FOUND));
+
+        if (verification.isExpired(LocalDateTime.now())) {
+            // 만료를 읽는 시점에 확정 기록해 둔다. 이후 조회에서 상태만 보고 판단할 수 있다.
+            verification.markExpired();
+            throw new BusinessException(CompanyErrorCode.VERIFICATION_EXPIRED);
+        }
+        if (!verification.isUsable()) {
+            throw new BusinessException(switch (verification.getStatus()) {
+                case CONSUMED -> CompanyErrorCode.VERIFICATION_ALREADY_USED;
+                case EXPIRED -> CompanyErrorCode.VERIFICATION_EXPIRED;
+                default -> CompanyErrorCode.VERIFICATION_NOT_FOUND;
+            });
+        }
+        return verification;
     }
 
     // 관리자 등록: 소유자 미연동(userId=null) 상태로 시작. registeredBy = 등록한 admin id.
@@ -91,7 +132,16 @@ public class CompanyService {
         CompanyPolicyView view = CompanyPolicyView.forCreate(company, request, subscription);
         registrationPolicies.forEach(policy -> policy.apply(view));
 
-        companyRepository.save(company);
+        // flush 로 INSERT 를 지금 터뜨려 활성 부분 유니크 인덱스 위반을 여기서 잡는다.
+        // 위 사전 검사만으로는 동시성을 못 막는다 — 선행 인증 시점엔 아직 회사가 없어서 두 사용자가 같은
+        // 사업자번호로 동시에 인증을 통과할 수 있고, 등록도 나란히 사전 검사를 통과한다. 인덱스가 최종
+        // 방어선인데, 그대로 두면 커밋 시점에 raw DataIntegrityViolation 이 터져 500 이 된다.
+        try {
+            companyRepository.save(company);
+            companyRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(CompanyErrorCode.BUSINESS_NUMBER_TAKEN);
+        }
         // 본체 저장으로 확보한 id 로 구독을 회사에 연결(1:1)해 저장한다.
         subscription.assignCompany(company.getId());
         companySubscriptionRepository.save(subscription);

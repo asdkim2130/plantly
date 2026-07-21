@@ -23,6 +23,13 @@ import project.plantly.domain.company.policy.rule.VideoUrlPolicy;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
 import project.plantly.domain.company.repository.CompanySubscriptionRepository;
+import project.plantly.domain.company.repository.CompanyVerificationRepository;
+import project.plantly.companyTest.support.CompanyVerificationFixture;
+import project.plantly.domain.company.entity.CompanyVerification;
+import project.plantly.domain.company.enums.VerificationStatus;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import project.plantly.domain.company.search.CompanySearchDocumentWriter;
 import project.plantly.domain.company.service.CompanyChildWriter;
 import project.plantly.domain.company.service.CompanyLinkWriter;
@@ -55,6 +62,7 @@ class CompanyUpdateServiceTest {
     @Mock CompanyChildWriter childWriter;
     @Mock CompanyLinkWriter linkWriter;
     @Mock CompanySearchDocumentWriter searchDocumentWriter;
+    @Mock CompanyVerificationRepository verificationRepository;
 
     private static final long COMPANY_ID = 1L;
     private static final long OWNER_ID = 7L;
@@ -72,7 +80,7 @@ class CompanyUpdateServiceTest {
                 new VideoUrlPolicy(registry),
                 new BrandColorPolicy(registry));
         service = new CompanyUpdateService(companyRepository, companyMemberRepository, companySubscriptionRepository,
-                childWriter, linkWriter, searchDocumentWriter, mutationPolicies);
+                verificationRepository, childWriter, linkWriter, searchDocumentWriter, mutationPolicies);
     }
 
     // 소유자 경로: 회사 로드 + 멤버(소유) 확인 + 회사 구독을 스텁하고, 대상 Company 를 돌려준다.
@@ -92,6 +100,101 @@ class CompanyUpdateServiceTest {
     private CompanyUpdateRequest basicInfo(String videoUrl, String brandColor) {
         return new CompanyUpdateRequest(null, null, null, null, null, null, null, null, null, null, null, null,
                 videoUrl, null, null, null, brandColor);
+    }
+
+    // 신원 필드(대표자명/개업일자)만 건드리는 수정 요청.
+    private CompanyUpdateRequest identityInfo(String ceoName, LocalDate establishmentDate) {
+        return new CompanyUpdateRequest(null, ceoName, establishmentDate, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null);
+    }
+
+    @Nested
+    @DisplayName("국세청 인증 회사의 신원 필드 보호")
+    class VerifiedIdentityGuard {
+
+        @Test
+        @DisplayName("인증받은 회사의 대표자명 변경은 막는다 — 통과 후 값만 바꿔 배지를 유지하는 우회 차단")
+        void verifiedCompany_cannotChangeCeoName() {
+            Company company = givenOwnedCompany(FREE);
+            company.markBusinessVerified(LocalDateTime.now());
+
+            assertThatThrownBy(() -> service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID, identityInfo("다른대표", null)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(CompanyErrorCode.VERIFIED_FIELD_NOT_EDITABLE);
+
+            verify(searchDocumentWriter, never()).write(any());
+        }
+
+        @Test
+        @DisplayName("인증받은 회사의 개업일자 변경도 막는다 — 업력 뻥튀기 차단")
+        void verifiedCompany_cannotChangeEstablishmentDate() {
+            Company company = givenOwnedCompany(FREE);
+            company.markBusinessVerified(LocalDateTime.now());
+
+            assertThatThrownBy(() -> service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID,
+                    identityInfo(null, LocalDate.of(1990, 1, 1))))
+                    .extracting("errorCode")
+                    .isEqualTo(CompanyErrorCode.VERIFIED_FIELD_NOT_EDITABLE);
+        }
+
+        @Test
+        @DisplayName("같은 값을 다시 보내는 건 변경이 아니므로 통과시킨다 (전체 폼 재전송 대응)")
+        void verifiedCompany_sameValueIsNotAChange() {
+            Company company = givenOwnedCompany(FREE);
+            company.markBusinessVerified(LocalDateTime.now());
+
+            assertThatCode(() -> service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID,
+                    identityInfo(company.getCeoName(), company.getEstablishmentDate())))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("미인증 회사(관리자 등록 등)는 대표자명을 자유롭게 수정할 수 있다")
+        void unverifiedCompany_canChangeCeoName() {
+            Company company = givenOwnedCompany(FREE);
+
+            service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID, identityInfo("새대표", null));
+
+            assertThat(company.getCeoName()).isEqualTo("새대표");
+        }
+    }
+
+    @Nested
+    @DisplayName("사업자 인증 회수 (관리자)")
+    class RevokeBusinessVerification {
+
+        @Test
+        @DisplayName("회사 플래그를 내리고 인증 레코드를 사유와 함께 REVOKED 로 남긴다")
+        void revoke_clearsFlagAndRecordsReason() {
+            Company company = CompanyFixture.userCompany();
+            company.markBusinessVerified(LocalDateTime.now());
+            given(companyRepository.findById(COMPANY_ID)).willReturn(Optional.of(company));
+            CompanyVerification verification = CompanyVerificationFixture.consumed(9L, OWNER_ID, COMPANY_ID);
+            given(verificationRepository.findByCompanyId(COMPANY_ID)).willReturn(Optional.of(verification));
+
+            service.revokeBusinessVerificationByAdmin(COMPANY_ID, "사칭 신고");
+
+            assertThat(company.isBusinessVerified()).isFalse();
+            assertThat(company.getBusinessVerifiedAt()).isNull();
+            // 미인증으로 되돌리지 않고 REVOKED 로 남긴다 — 같은 번호의 즉시 재인증을 막는 근거가 된다.
+            assertThat(verification.getStatus()).isEqualTo(VerificationStatus.REVOKED);
+            assertThat(verification.getRevokedReason()).isEqualTo("사칭 신고");
+        }
+
+        @Test
+        @DisplayName("사업자번호는 지우지 않는다 — 활성 유니크로 재등록을 계속 막고 분쟁 기록도 남겨야 한다")
+        void revoke_keepsBusinessNumber() {
+            Company company = CompanyFixture.userCompany();
+            company.markBusinessVerified(LocalDateTime.now());
+            String before = company.getBusinessNumber();
+            given(companyRepository.findById(COMPANY_ID)).willReturn(Optional.of(company));
+            given(verificationRepository.findByCompanyId(COMPANY_ID)).willReturn(Optional.empty());
+
+            service.revokeBusinessVerificationByAdmin(COMPANY_ID, "사유");
+
+            assertThat(company.getBusinessNumber()).isEqualTo(before);
+        }
     }
 
     @Nested

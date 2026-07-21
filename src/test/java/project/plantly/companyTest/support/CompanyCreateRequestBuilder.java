@@ -3,6 +3,7 @@ package project.plantly.companyTest.support;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
+import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.enums.ImageType;
 
 import java.util.List;
@@ -71,6 +72,42 @@ public class CompanyCreateRequestBuilder {
                 companyName,
                 ceoName,
                 null,            // establishmentDate
+                null,            // postalCode
+                null,            // roadAddress
+                null,            // jibunAddress
+                null,            // detailAddress
+                null,            // website
+                null,            // logoUrl
+                null,            // introTitle
+                null,            // content
+                null,            // trlLevel
+                videoUrl,
+                null,            // leadTime
+                null,            // asInfo
+                null,            // pricingType
+                brandColor,
+                null,            // visibility (null = 공개 기본)
+                null,            // contacts
+                images,
+                references,
+                null,            // materialNames
+                null,            // equipmentNames
+                null,            // tagNames
+                categoryIds,
+                null,            // certificationIds
+                null,            // countryIds
+                null,            // domesticRegionIds
+                null             // industryIds
+        );
+    }
+
+    // 자가등록 요청(MyCompanyCreateRequest). 신원 3종(사업자번호/대표자명/개업일자)은 이 DTO 에 없고,
+    // 선행 인증 레코드에서 서버가 채운다 — 그래서 verificationId 만 받는다.
+    // 같은 기본값을 공유하려고 별도 빌더를 만들지 않고 이 빌더의 다른 출구로 둔다.
+    public MyCompanyCreateRequest buildMy(Long verificationId) {
+        return new MyCompanyCreateRequest(
+                verificationId,
+                companyName,
                 null,            // postalCode
                 null,            // roadAddress
                 null,            // jibunAddress

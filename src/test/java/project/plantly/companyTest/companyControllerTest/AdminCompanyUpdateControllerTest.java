@@ -199,6 +199,48 @@ public class AdminCompanyUpdateControllerTest {
     }
 
     @Test
+    @DisplayName("관리자가 사업자 인증을 회수하면 200 ok 를 반환하고 사유와 함께 서비스에 위임한다")
+    void revokeBusinessVerificationByAdmin_success() throws Exception {
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(patch("/api/v1/admin/companies/{id}/verification", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"사칭 신고 접수 — 실제 사업자와 무관함이 확인됨\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andDo(document("admin-company-verification-revoke",
+                        pathParameters(parameterWithName("id").description("회사 ID")),
+                        requestFields(CompanyApiDocs.adminVerificationRevokeRequestFields()),
+                        responseFields(CompanyApiDocs.okResponseFields())));
+
+        verify(companyUpdateService).revokeBusinessVerificationByAdmin(5L, "사칭 신고 접수 — 실제 사업자와 무관함이 확인됨");
+    }
+
+    @Test
+    @DisplayName("회수 사유가 비어 있으면 400 을 반환한다 — 분쟁 대응 근거 없이 회수할 수 없다")
+    void revokeBusinessVerificationByAdmin_requiresReason() throws Exception {
+        authenticate(1L, UserRole.ADMIN);
+
+        mockMvc.perform(patch("/api/v1/admin/companies/{id}/verification", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @DisplayName("관리자가 아닌 유저가 인증 회수를 호출하면 @PreAuthorize 가 막아 403 을 반환한다")
+    void revokeBusinessVerificationByAdmin_forbidden_forNonAdmin() throws Exception {
+        authenticate(2L, UserRole.MEMBER);
+
+        mockMvc.perform(patch("/api/v1/admin/companies/{id}/verification", 5L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"사유\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
     @DisplayName("관리자가 회사를 삭제하면 200 ok 를 반환하고 관리자 삭제 서비스에 위임한다")
     void deleteCompanyByAdmin_success() throws Exception {
         authenticate(1L, UserRole.ADMIN);

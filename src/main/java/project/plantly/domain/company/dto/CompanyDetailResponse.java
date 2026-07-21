@@ -33,6 +33,8 @@ public record CompanyDetailResponse(
             boolean claimed,        // 소유자 연동 여부 (관리자 등록 후 미연동이면 false)
             int spotlightOrder,
             boolean verified,
+            boolean businessVerified,
+            LocalDateTime businessVerifiedAt,   // 인증 시각. 추후 주기적 재인증(1~2년) 도입 시 만료 판단 기준이 된다.
             boolean featured,
             boolean spotlight,
             boolean deleted,
@@ -51,6 +53,8 @@ public record CompanyDetailResponse(
                     ownerUserId != null,          // claimed = 소유자 연동 여부
                     c.getSpotlightOrder(),
                     c.isVerified(),
+                    c.isBusinessVerified(),
+                    c.getBusinessVerifiedAt(),
                     c.isFeatured(),
                     c.isSpotlight(),
                     c.isDeleted(),

@@ -46,7 +46,10 @@ public record CompanyPublicResponse(
         String brandColor,
 
         // 공개 노출용 배지성 플래그 (노출 순서값 spotlightOrder 는 내부 정보라 제외)
+        // verified 와 businessVerified 는 다른 축이다 — 전자는 에디터 선정 큐레이션, 후자는 국세청 사업자 확인.
+        // 프론트에서도 서로 다른 배지로 표시해야 한다. 사업자번호 자체는 여전히 비공개(meta 전용)다.
         boolean verified,
+        boolean businessVerified,
         boolean featured,
         boolean spotlight,
 
@@ -94,6 +97,7 @@ public record CompanyPublicResponse(
                 c.getPricingType(),
                 c.getBrandColor(),
                 c.isVerified(),
+                c.isBusinessVerified(),
                 c.isFeatured(),
                 c.isSpotlight(),
                 likedByMe,

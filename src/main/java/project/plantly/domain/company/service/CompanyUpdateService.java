@@ -16,9 +16,11 @@ import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
 import project.plantly.domain.company.repository.CompanySubscriptionRepository;
+import project.plantly.domain.company.repository.CompanyVerificationRepository;
 import project.plantly.domain.company.search.CompanySearchDocumentWriter;
 import project.plantly.global.exception.BusinessException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -35,6 +37,7 @@ public class CompanyUpdateService {
     private final CompanyRepository companyRepository;
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanySubscriptionRepository companySubscriptionRepository;
+    private final CompanyVerificationRepository verificationRepository;
     private final CompanyChildWriter childWriter;
     private final CompanyLinkWriter linkWriter;
     private final CompanySearchDocumentWriter searchDocumentWriter;
@@ -47,13 +50,31 @@ public class CompanyUpdateService {
 
     public void updateBasicInfoByUser(Long companyId, Long userId, CompanyUpdateRequest request) {
         mutateOwnedGraded(companyId, userId,
-                company -> company.updateBasicInfo(
-                        request.companyName(), request.ceoName(), request.establishmentDate(),
-                        request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress(),
-                        request.website(), request.logoUrl(), request.introTitle(), request.content(),
-                        request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
-                        request.pricingType(), request.brandColor()),
+                company -> {
+                    assertVerifiedIdentityUnchanged(company, request);
+                    company.updateBasicInfo(
+                            request.companyName(), request.ceoName(), request.establishmentDate(),
+                            request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress(),
+                            request.website(), request.logoUrl(), request.introTitle(), request.content(),
+                            request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
+                            request.pricingType(), request.brandColor());
+                },
                 (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl(), request.brandColor() != null));
+    }
+
+    // 국세청 검증을 통과한 회사는 대표자명·개업일자를 바꿀 수 없다.
+    // 이걸 열어두면 인증을 통과한 뒤 두 값을 아무렇게나 바꿔놓고 "국세청 확인" 배지를 유지할 수 있다.
+    // (사업자번호는 애초에 updateBasicInfo 경로에 없다 — 등록 시점 인증본이 유일한 출처)
+    private void assertVerifiedIdentityUnchanged(Company company, CompanyUpdateRequest request) {
+        if (!company.isBusinessVerified()) {
+            return;
+        }
+        boolean touchesCeoName = request.ceoName() != null && !request.ceoName().equals(company.getCeoName());
+        boolean touchesStartDate = request.establishmentDate() != null
+                && !request.establishmentDate().equals(company.getEstablishmentDate());
+        if (touchesCeoName || touchesStartDate) {
+            throw new BusinessException(CompanyErrorCode.VERIFIED_FIELD_NOT_EDITABLE);
+        }
     }
 
     // ===== 공개/비공개 전환 =====
@@ -152,15 +173,32 @@ public class CompanyUpdateService {
     // 소유(멤버) 검증 없이 대상 회사를 로드한다(삭제/미연동 포함). 권한(ADMIN)은 컨트롤러 @PreAuthorize 가 담당한다.
     // 변경 로직·구조 불변식은 유저 경로와 완전히 동일하게 재사용한다.
 
+    // 관리자에게도 같은 가드를 적용한다. 관리자가 값을 고쳐야 한다면 인증을 먼저 회수하고 고치면 된다 —
+    // 그래야 "businessVerified=true 인 회사의 대표자명·개업일자는 국세청 검증본"이라는 불변식이 예외 없이 유지된다.
     public void updateBasicInfoByAdmin(Long companyId, CompanyUpdateRequest request) {
         mutateAsAdminGraded(companyId,
-                company -> company.updateBasicInfo(
-                        request.companyName(), request.ceoName(), request.establishmentDate(),
-                        request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress(),
-                        request.website(), request.logoUrl(), request.introTitle(), request.content(),
-                        request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
-                        request.pricingType(), request.brandColor()),
+                company -> {
+                    assertVerifiedIdentityUnchanged(company, request);
+                    company.updateBasicInfo(
+                            request.companyName(), request.ceoName(), request.establishmentDate(),
+                            request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress(),
+                            request.website(), request.logoUrl(), request.introTitle(), request.content(),
+                            request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
+                            request.pricingType(), request.brandColor());
+                },
                 (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl(), request.brandColor() != null));
+    }
+
+    // ===== 사업자 인증 회수 (관리자) =====
+    // 사칭 신고 등으로 인증을 되돌린다. 인증 레코드는 REVOKED 로 남겨 회수 사실과 사유를 보존하고,
+    // 회사의 비정규화 플래그도 함께 내린다. 사업자번호는 지우지 않는다 — 활성 유니크로 같은 번호의
+    // 재등록을 계속 막아야 하고, 어떤 번호로 인증받았었는지가 분쟁 기록으로 남아야 한다.
+    // 검색 도큐먼트에 businessVerified 가 없어 재색인은 부르지 않는다(플래그 조정 경로와 같은 이유).
+    public void revokeBusinessVerificationByAdmin(Long companyId, String reason) {
+        Company company = loadCompany(companyId);
+        company.revokeBusinessVerification();
+        verificationRepository.findByCompanyId(companyId)
+                .ifPresent(verification -> verification.revoke(reason, LocalDateTime.now()));
     }
 
     public void replaceTagsByAdmin(Long companyId, List<String> tagNames) {
