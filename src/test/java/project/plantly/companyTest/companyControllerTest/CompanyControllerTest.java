@@ -28,8 +28,12 @@ import project.plantly.companyTest.support.CompanyApiDocs;
 import project.plantly.companyTest.support.CompanyCreateRequestSamples;
 import project.plantly.companyTest.support.CompanyResponseSamples;
 import project.plantly.domain.company.controller.CompanyController;
-import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
+import project.plantly.domain.company.dto.CompanyReverificationRequest;
+import project.plantly.domain.company.dto.CompanyReverificationResponse;
+import project.plantly.domain.company.dto.CompanyVerificationRequest;
+import project.plantly.domain.company.dto.CompanyVerificationResponse;
+import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
@@ -38,12 +42,14 @@ import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
 import project.plantly.domain.company.service.CompanyUpdateService;
+import project.plantly.domain.company.service.CompanyVerificationService;
 import project.plantly.global.PageInfo;
 import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.enums.UserRole;
@@ -96,6 +102,9 @@ public class CompanyControllerTest {
     @MockitoBean
     private CompanyUpdateService companyUpdateService;
 
+    @MockitoBean
+    private CompanyVerificationService companyVerificationService;
+
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -109,10 +118,112 @@ public class CompanyControllerTest {
     }
 
     @Test
+    @DisplayName("사업자 인증에 성공하면 verificationId 와 검증된 값들을 반환한다")
+    void verifyBusiness_success() throws Exception {
+        CompanyVerificationRequest request = CompanyCreateRequestSamples.verificationRequest();
+        given(companyVerificationService.verify(eq(7L), any(CompanyVerificationRequest.class)))
+                .willReturn(new CompanyVerificationResponse(99L, "1234567890", "김대표",
+                        LocalDate.of(2020, 1, 15), LocalDateTime.of(2026, 7, 19, 12, 30)));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(post("/api/v1/companies/verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.verificationId").value(99L))
+                // 하이픈을 넣어 보내도 정규화된 값으로 돌아온다.
+                .andExpect(jsonPath("$.data.businessNumber").value("1234567890"))
+                .andDo(document("company-verification",
+                        requestFields(CompanyApiDocs.verificationRequestFields()),
+                        responseFields(CompanyApiDocs.verificationResponseFields())));
+    }
+
+    @Test
+    @DisplayName("국세청 정보와 일치하지 않으면 400(VERIFICATION_MISMATCH) 을 반환한다")
+    void verifyBusiness_mismatch() throws Exception {
+        given(companyVerificationService.verify(eq(7L), any(CompanyVerificationRequest.class)))
+                .willThrow(new BusinessException(CompanyErrorCode.VERIFICATION_MISMATCH));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(post("/api/v1/companies/verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.verificationRequest())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andDo(document("company-verification-mismatch",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    @Test
+    @DisplayName("국세청 장애 시 503 으로 안내한다 — 입력 오류와 구분되어야 한다")
+    void verifyBusiness_ntsUnavailable() throws Exception {
+        given(companyVerificationService.verify(eq(7L), any(CompanyVerificationRequest.class)))
+                .willThrow(new BusinessException(CompanyErrorCode.VERIFICATION_UNAVAILABLE));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(post("/api/v1/companies/verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.verificationRequest())))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @DisplayName("일일 인증 시도 한도를 넘기면 429 를 반환한다")
+    void verifyBusiness_limitExceeded() throws Exception {
+        given(companyVerificationService.verify(eq(7L), any(CompanyVerificationRequest.class)))
+                .willThrow(new BusinessException(CompanyErrorCode.VERIFICATION_LIMIT_EXCEEDED));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(post("/api/v1/companies/verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.verificationRequest())))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    @DisplayName("사업자 재인증에 성공하면 갱신된 검증값과 재인증 시각을 반환한다")
+    void reverifyBusiness_success() throws Exception {
+        CompanyReverificationRequest request = CompanyCreateRequestSamples.reverificationRequest();
+        given(companyVerificationService.reverify(eq(7L), eq(42L), any(CompanyReverificationRequest.class)))
+                .willReturn(new CompanyReverificationResponse("1234567890", "김신임",
+                        LocalDate.of(2021, 3, 4), LocalDateTime.of(2026, 7, 21, 10, 0)));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(post("/api/v1/companies/{id}/verification", 42L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                // 사업자번호는 요청 본문에 없지만, 저장값으로 재인증되어 응답에 그대로 실린다.
+                .andExpect(jsonPath("$.data.businessNumber").value("1234567890"))
+                .andExpect(jsonPath("$.data.ceoName").value("김신임"))
+                .andDo(document("company-reverification",
+                        pathParameters(parameterWithName("id").description("재인증할 회사 id")),
+                        requestFields(CompanyApiDocs.reverificationRequestFields()),
+                        responseFields(CompanyApiDocs.reverificationResponseFields())));
+    }
+
+    @Test
+    @DisplayName("국세청 인증을 받지 않은 회사를 재인증하면 400(COMPANY_NOT_BUSINESS_VERIFIED) 을 반환한다")
+    void reverifyBusiness_notVerified() throws Exception {
+        given(companyVerificationService.reverify(eq(7L), eq(42L), any(CompanyReverificationRequest.class)))
+                .willThrow(new BusinessException(CompanyErrorCode.COMPANY_NOT_BUSINESS_VERIFIED));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(post("/api/v1/companies/{id}/verification", 42L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.reverificationRequest())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
     @DisplayName("인증된 유저가 회사를 등록하면 201 Created 와 생성된 회사 id 를 반환한다")
     void createMyCompany_success() throws Exception {
-        CompanyCreateRequest request = CompanyCreateRequestSamples.full();
-        given(companyService.createByUser(eq(7L), any(CompanyCreateRequest.class))).willReturn(100L);
+        MyCompanyCreateRequest request = CompanyCreateRequestSamples.myFull();
+        given(companyService.createByUser(eq(7L), any(MyCompanyCreateRequest.class))).willReturn(100L);
         authenticate(7L, UserRole.MEMBER);
 
         mockMvc.perform(post("/api/v1/companies")
@@ -123,7 +234,7 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.message").value("회사 등록이 완료되었습니다."))
                 .andExpect(jsonPath("$.data.id").value(100L))
                 .andDo(document("company-create",
-                        requestFields(CompanyApiDocs.companyCreateRequestFields()),
+                        requestFields(CompanyApiDocs.myCompanyCreateRequestFields()),
                         responseFields(CompanyApiDocs.idResponseFields())));
     }
 
@@ -150,13 +261,13 @@ public class CompanyControllerTest {
     @DisplayName("등록 정책(등급 한도/마스터 유효성 등)에 걸리면 400(정책 위반 메시지) 를 반환한다")
     void createMyCompany_policyViolation() throws Exception {
         // 정책 위반은 서비스가 BusinessException(400)으로 던진다. 대표로 카테고리 한도 초과를 사용한다.
-        given(companyService.createByUser(eq(7L), any(CompanyCreateRequest.class)))
+        given(companyService.createByUser(eq(7L), any(MyCompanyCreateRequest.class)))
                 .willThrow(new BusinessException(CompanyErrorCode.CATEGORY_LIMIT_EXCEEDED));
         authenticate(7L, UserRole.MEMBER);
 
         mockMvc.perform(post("/api/v1/companies")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.full())))
+                        .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.myFull())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error").value("현재 등급에서 선택 가능한 카테고리 개수를 초과했습니다."))

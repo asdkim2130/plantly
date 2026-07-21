@@ -36,7 +36,7 @@ public class CompanyResponseSamples {
                 "정밀 부품 전문", "정밀 가공 20년 경력의 부품 제조사입니다.",
                 TrlLevel.MASS_PRODUCTION, "https://youtu.be/demo", "2주", "유선 AS 지원",
                 PricingType.CONSULTATION, "#2E7D32",
-                true, true, false,
+                true, true, true, false,   // verified(에디터 선정), businessVerified(국세청 확인), featured, spotlight
                 true, false,   // likedByMe, favoritedByMe
                 new ContactResponse("이담당", "영업팀장", "01022223333", "rep@plantly.test"),
                 List.of(new GalleryImageResponse("https://cdn.plantly.test/gallery/1.png", ImageType.DETAIL, 0)),
@@ -59,7 +59,10 @@ public class CompanyResponseSamples {
                 fullPublic(),
                 new ManagementMeta(
                         "1234567890", RegistrationSource.USER, 7L, 7L,
-                        true, 0, true, true, false, false,
+                        true, 0,
+                        true,                                          // verified (에디터 선정)
+                        true, LocalDateTime.of(2024, 1, 2, 3, 4, 5),   // businessVerified, businessVerifiedAt
+                        true, false, false,                            // featured, spotlight, deleted
                         CompanyVisibility.PUBLIC,
                         LocalDateTime.of(2024, 1, 2, 3, 4, 5),
                         LocalDateTime.of(2024, 1, 2, 3, 4, 5)));

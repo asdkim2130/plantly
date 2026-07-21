@@ -16,20 +16,25 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
+import project.plantly.domain.company.dto.CompanyReverificationRequest;
+import project.plantly.domain.company.dto.CompanyReverificationResponse;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
+import project.plantly.domain.company.dto.CompanyVerificationRequest;
+import project.plantly.domain.company.dto.CompanyVerificationResponse;
 import project.plantly.domain.company.dto.CompanyVisibilityUpdateRequest;
+import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.search.dto.CompanySearchRequest;
 import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
 import project.plantly.domain.company.service.CompanyUpdateService;
+import project.plantly.domain.company.service.CompanyVerificationService;
 import project.plantly.global.PageResponse;
 import project.plantly.global.response.ApiResponse;
 import project.plantly.global.response.IdResponse;
@@ -44,12 +49,38 @@ public class CompanyController {
     private final CompanyService companyService;
     private final CompanyQueryService companyQueryService;
     private final CompanyUpdateService companyUpdateService;
+    private final CompanyVerificationService companyVerificationService;
 
-    // 유저 자가등록 — 인증된 본인이 소유자가 된다.
+    // 사업자 인증 — 회사 등록 폼 앞단에서 아이디 중복 확인처럼 먼저 수행한다.
+    // 국세청 진위확인(사업자번호+대표자명+개업일자) + 상태조회(계속사업자 여부) + 중복 검사를 한 번에 통과해야
+    // verificationId 를 발급한다. 이 식별자를 등록 요청에 실어 보내면 서버가 검증된 값을 채운다.
+    // 등록보다 먼저 두는 이유: 회사 정보를 20여 개 채운 뒤 마지막에 사업자번호 중복으로 튕기지 않게 하기 위해.
+    @PostMapping("/api/v1/companies/verification")
+    public ApiResponse<CompanyVerificationResponse> verifyBusiness(@AuthenticationPrincipal UserPrincipal principal,
+                                                                    @Valid @RequestBody CompanyVerificationRequest request) {
+        CompanyVerificationResponse response = companyVerificationService.verify(principal.getUser().getId(), request);
+        return ApiResponse.success("사업자 인증이 완료되었습니다.", response);
+    }
+
+    // 사업자 재인증 — 소유자만. 사업자번호는 요청으로 받지 않고(DB 저장값 사용) 새 대표자명·개업일자만 국세청에
+    // 재확인한다. 통과하면 두 값을 검증값으로 덮어쓰고 인증 시각을 새로 찍는다. 국세청 인증을 받은 회사는 일반
+    // 수정(PATCH /{id})으로 대표자명·개업일자를 바꿀 수 없으므로, 국세청 정보가 바뀌었을 때 이 경로로만 갱신한다.
+    // (최초 인증 후 1년 경과 시 재인증을 유도하는 이벤트의 실행 창구가 될 자리 — 이벤트 발행 자체는 추후.)
+    @PostMapping("/api/v1/companies/{id}/verification")
+    public ApiResponse<CompanyReverificationResponse> reverifyBusiness(@AuthenticationPrincipal UserPrincipal principal,
+                                                                       @PathVariable Long id,
+                                                                       @Valid @RequestBody CompanyReverificationRequest request) {
+        CompanyReverificationResponse response =
+                companyVerificationService.reverify(principal.getUser().getId(), id, request);
+        return ApiResponse.success("사업자 재인증이 완료되었습니다.", response);
+    }
+
+    // 유저 자가등록 — 인증된 본인이 소유자가 되고, 선행 인증을 소비해 사업자 인증 완료 상태로 생성된다.
+    // 요청 본문에 사업자번호·대표자명·개업일자 자리가 없다(MyCompanyCreateRequest) — 서버가 인증본에서만 채운다.
     @PostMapping("/api/v1/companies")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<IdResponse> createMyCompany(@AuthenticationPrincipal UserPrincipal principal,
-                                                   @Valid @RequestBody CompanyCreateRequest request) {
+                                                   @Valid @RequestBody MyCompanyCreateRequest request) {
 
         Long id = companyService.createByUser(principal.getUser().getId(), request);
         return ApiResponse.success("회사 등록이 완료되었습니다.", new IdResponse(id));

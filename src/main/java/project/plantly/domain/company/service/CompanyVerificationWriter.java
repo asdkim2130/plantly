@@ -1,0 +1,137 @@
+package project.plantly.domain.company.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.entity.CompanyVerification;
+import project.plantly.domain.company.entity.CompanyVerificationAttempt;
+import project.plantly.domain.company.enums.VerificationOutcome;
+import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.repository.CompanyMemberRepository;
+import project.plantly.domain.company.repository.CompanyRepository;
+import project.plantly.domain.company.repository.CompanyVerificationAttemptRepository;
+import project.plantly.domain.company.repository.CompanyVerificationRepository;
+import project.plantly.domain.company.search.CompanySearchDocumentWriter;
+import project.plantly.global.exception.BusinessException;
+
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+/**
+ * 인증 흐름의 DB 접근만 담당한다.
+ *
+ * <p>{@link CompanyVerificationService} 에서 분리한 이유는 트랜잭션 경계 때문이다. 국세청 호출은
+ * 수백 ms~수 초가 걸리는데, 그걸 트랜잭션 안에서 하면 응답을 기다리는 내내 DB 커넥션을 붙잡는다.
+ * 국세청이 느려지는 순간 커넥션 풀이 말라 서비스 전체가 멈춘다. 그래서 오케스트레이션(서비스)은
+ * 트랜잭션 없이 두고, 짧은 DB 작업만 이 컴포넌트의 메서드 단위 트랜잭션으로 감싼다.
+ *
+ * <p>(같은 클래스 안에 두고 @Transactional 을 붙이면 자기 호출이라 프록시를 타지 않아 트랜잭션이
+ * 아예 걸리지 않는다 — 별도 빈으로 나와야 하는 실질적인 이유이기도 하다.)
+ */
+@Component
+@RequiredArgsConstructor
+public class CompanyVerificationWriter {
+
+    private final CompanyVerificationRepository verificationRepository;
+    private final CompanyVerificationAttemptRepository attemptRepository;
+    private final CompanyRepository companyRepository;
+
+    // 재인증은 회사 본체(대표자명·개업일자)까지 갱신하므로 소유 검증과 검색 재색인이 필요하다.
+    // 이 컴포넌트가 인증 흐름의 DB 접근을 전담하는 자리라 여기서 함께 다룬다.
+    private final CompanyMemberRepository companyMemberRepository;
+    private final CompanySearchDocumentWriter searchDocumentWriter;
+
+    /** 오늘 소진한 시도 횟수. 국세청 장애로 판정을 못 받은 건은 제외된다. */
+    @Transactional(readOnly = true)
+    public long countTodayAttempts(Long userId, LocalDateTime startOfDay) {
+        return attemptRepository.countByUserIdAndCreatedAtAfterAndOutcomeNot(
+                userId, startOfDay, VerificationOutcome.UNAVAILABLE);
+    }
+
+    /** 시도 1건을 감사 로그에 남긴다. 실패도 반드시 남긴다 — 재시도 제한 집계와 분쟁 근거가 여기서 나온다. */
+    @Transactional
+    public void recordAttempt(Long userId, String businessNumber, String ceoName, LocalDate businessStartDate,
+                              VerificationOutcome outcome, String rawResponse) {
+        attemptRepository.save(CompanyVerificationAttempt.of(
+                userId, businessNumber, ceoName, businessStartDate, outcome, rawResponse));
+    }
+
+    /**
+     * 중복 검사 후 인증 레코드를 발급한다.
+     *
+     * <p>중복 검사와 저장을 한 트랜잭션에 묶지만, 이것만으로 동시성이 완전히 막히지는 않는다. 인증 시점엔
+     * 아직 회사가 없어서 두 사용자가 같은 번호로 동시에 인증하면 둘 다 통과할 수 있다. 최종 방어선은
+     * 회사 등록 시점의 활성 부분 유니크 인덱스다({@code CompanyBusinessNumberIndexInitializer}).
+     */
+    @Transactional
+    public CompanyVerification issue(Long userId, String businessNumber, String ceoName,
+                                     LocalDate businessStartDate, String rawResponse,
+                                     LocalDateTime now, Duration ttl) {
+        if (companyRepository.existsByBusinessNumberAndDeletedFalse(businessNumber)) {
+            attemptRepository.save(CompanyVerificationAttempt.of(
+                    userId, businessNumber, ceoName, businessStartDate,
+                    VerificationOutcome.DUPLICATE, rawResponse));
+            throw new BusinessException(CompanyErrorCode.BUSINESS_NUMBER_TAKEN);
+        }
+
+        attemptRepository.save(CompanyVerificationAttempt.of(
+                userId, businessNumber, ceoName, businessStartDate,
+                VerificationOutcome.VALID, rawResponse));
+
+        return verificationRepository.save(
+                CompanyVerification.issue(userId, businessNumber, ceoName, businessStartDate, now, ttl));
+    }
+
+    /**
+     * 재인증 대상 회사의 사업자번호를 돌려준다(국세청 재질의에 쓸 값).
+     *
+     * <p>사업자번호를 요청 본문으로 받지 않고 DB 저장값을 쓰는 것이 재인증의 핵심이다 — 번호를 새로
+     * 입력받으면 오타나 타사 번호로 인증을 갈아끼워 배지를 탈취할 수 있다. 국세청 호출 전에 필요한 값이라
+     * 짧은 읽기 트랜잭션으로 먼저 뽑아오면서, 소유(멤버) 검증과 선행 조건(businessVerified)도 함께 확인한다.
+     */
+    @Transactional(readOnly = true)
+    public String loadOwnedVerifiedBusinessNumber(Long companyId, Long userId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+        if (!companyMemberRepository.existsByCompanyIdAndUserId(companyId, userId)) {
+            throw new BusinessException(CompanyErrorCode.COMPANY_ACCESS_DENIED);
+        }
+        // 미인증 회사는 재인증 대상이 아니다(인증이 회수됐거나 관리자 대신등록 등). businessVerified=true 는
+        // 등록 시 인증본을 소비했다는 뜻이라 businessNumber 가 반드시 채워져 있다.
+        if (!company.isBusinessVerified()) {
+            throw new BusinessException(CompanyErrorCode.COMPANY_NOT_BUSINESS_VERIFIED);
+        }
+        return company.getBusinessNumber();
+    }
+
+    /**
+     * 국세청 재인증 통과분을 반영한다.
+     *
+     * <p>회사의 대표자명·개업일자를 검증값으로 덮어쓰고 인증 시각을 갱신하며, 연결된 인증 레코드도 같은
+     * 값으로 맞추고, 성공 시도를 감사 로그에 남긴다. 대표자명(ceo_name)이 검색 도큐먼트에 색인되므로
+     * 재색인한다. 국세청 호출이 끝난 뒤에만 부르므로 이 트랜잭션은 짧게 유지된다.
+     *
+     * @return 갱신된 인증 시각(= now). 응답에 그대로 실어 최초 인증 후 1년 재인증 주기의 기준점을 알린다.
+     */
+    @Transactional
+    public LocalDateTime applyReverification(Long userId, Long companyId, String businessNumber,
+                                             String ceoName, LocalDate businessStartDate,
+                                             String rawResponse, LocalDateTime now) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+        company.applyBusinessReverification(ceoName, businessStartDate, now);
+
+        // 권위 있는 인증 레코드도 새 검증값으로 맞춘다. 소비된 인증이 존재하는 게 정상이지만, 없더라도
+        // 회사 플래그가 비정규화 진실이므로 갱신은 계속 진행한다(revoke 경로와 같은 방어적 처리).
+        verificationRepository.findByCompanyId(companyId)
+                .ifPresent(verification -> verification.reverify(ceoName, businessStartDate, now));
+
+        attemptRepository.save(CompanyVerificationAttempt.of(
+                userId, businessNumber, ceoName, businessStartDate, VerificationOutcome.VALID, rawResponse));
+
+        searchDocumentWriter.write(companyId);
+        return now;
+    }
+}

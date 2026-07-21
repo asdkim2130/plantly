@@ -8,8 +8,80 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWit
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 
 // 회사 등록 API 의 요청/응답 필드 문서 디스크립터.
-// 유저 등록(CompanyController)과 관리자 등록(AdminCompanyController)이 동일한 요청/응답 형태라 두 슬라이스 테스트가 공유한다.
+// 관리자 등록(AdminCompanyController)은 companyCreateRequestFields 를, 유저 자가등록(CompanyController)은
+// 신원 3종을 뺀 myCompanyCreateRequestFields 를 쓴다 — 두 경로의 요청 형태가 갈라진 지점이다.
 public class CompanyApiDocs {
+
+    // 자가등록 요청은 사업자번호·대표자명·개업일자를 받지 않는다(선행 인증에서만 온다). 대신 verificationId 를 받는다.
+    // 공통 필드를 복제하지 않고 관리자용에서 신원 3종만 걷어내 파생시킨다 — 필드가 추가돼도 한 곳만 고치면 된다.
+    public static FieldDescriptor[] myCompanyCreateRequestFields() {
+        java.util.Set<String> identityFields = java.util.Set.of("businessNumber", "ceoName", "establishmentDate");
+        java.util.List<FieldDescriptor> fields = new java.util.ArrayList<>();
+        fields.add(fieldWithPath("verificationId").type(JsonFieldType.NUMBER)
+                .description("선행 사업자 인증 식별자 (필수). POST /api/v1/companies/verification 응답의 verificationId"));
+        for (FieldDescriptor descriptor : companyCreateRequestFields()) {
+            if (!identityFields.contains(descriptor.getPath())) {
+                fields.add(descriptor);
+            }
+        }
+        return fields.toArray(new FieldDescriptor[0]);
+    }
+
+    // 사업자 인증 요청/응답.
+    public static FieldDescriptor[] verificationRequestFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("businessNumber").type(JsonFieldType.STRING)
+                        .description("사업자등록번호 (필수). 하이픈 유무 무관 — 서버가 숫자 10자리로 정규화한다"),
+                fieldWithPath("ceoName").type(JsonFieldType.STRING).description("대표자 성명 (필수)"),
+                fieldWithPath("businessStartDate").type(JsonFieldType.STRING)
+                        .description("개업일자 yyyy-MM-dd (필수). 사업자등록증 기준이며 법인 등기 설립일과 다를 수 있다")
+        };
+    }
+
+    public static FieldDescriptor[] verificationResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+                fieldWithPath("message").type(JsonFieldType.STRING).description("결과 메시지"),
+                fieldWithPath("data.verificationId").type(JsonFieldType.NUMBER)
+                        .description("발급된 인증 식별자. 회사 등록 요청에 그대로 실어 보낸다"),
+                fieldWithPath("data.businessNumber").type(JsonFieldType.STRING).description("정규화된 사업자등록번호"),
+                fieldWithPath("data.ceoName").type(JsonFieldType.STRING).description("국세청 검증을 통과한 대표자 성명"),
+                fieldWithPath("data.businessStartDate").type(JsonFieldType.STRING).description("국세청 검증을 통과한 개업일자"),
+                fieldWithPath("data.expiresAt").type(JsonFieldType.STRING)
+                        .description("인증 만료 시각. 이 시각을 넘기면 재인증이 필요하다"),
+                fieldWithPath("error").type(JsonFieldType.STRING).optional().description("오류 메시지 (성공 시 null)")
+        };
+    }
+
+    // 사업자 재인증 요청/응답. 요청에 businessNumber 자리가 없다 — 저장된 번호로만 국세청에 재질의한다(탈취 방지).
+    public static FieldDescriptor[] reverificationRequestFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("ceoName").type(JsonFieldType.STRING).description("새 대표자 성명 (필수). 국세청 재확인 대상"),
+                fieldWithPath("businessStartDate").type(JsonFieldType.STRING)
+                        .description("새 개업일자 yyyy-MM-dd (필수). 국세청 정보가 바뀌었을 수 있어 이전 값과 비교하지 않는다")
+        };
+    }
+
+    public static FieldDescriptor[] reverificationResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+                fieldWithPath("message").type(JsonFieldType.STRING).description("결과 메시지"),
+                fieldWithPath("data.businessNumber").type(JsonFieldType.STRING)
+                        .description("재인증에 사용된 사업자등록번호. 요청으로 받지 않고 저장값을 쓰므로 바뀌지 않는다"),
+                fieldWithPath("data.ceoName").type(JsonFieldType.STRING).description("재인증을 통과해 갱신된 대표자 성명"),
+                fieldWithPath("data.businessStartDate").type(JsonFieldType.STRING).description("재인증을 통과해 갱신된 개업일자"),
+                fieldWithPath("data.verifiedAt").type(JsonFieldType.STRING)
+                        .description("이번 재인증 시각. 최초 인증 후 1년 재인증 주기의 기준점이 이 값으로 갱신된다"),
+                fieldWithPath("error").type(JsonFieldType.STRING).optional().description("오류 메시지 (성공 시 null)")
+        };
+    }
+
+    public static FieldDescriptor[] adminVerificationRevokeRequestFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("reason").type(JsonFieldType.STRING)
+                        .description("회수 사유 (필수). 인증은 향후 혜택 자격 조건이라 되돌린 근거를 반드시 남긴다")
+        };
+    }
 
     // CompanyCreateRequest 전체 필드. 발행(publish) 전 임시저장 호환을 위해 companyName/ceoName 외에는 모두 optional.
     public static FieldDescriptor[] companyCreateRequestFields() {
@@ -328,7 +400,8 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "asInfo").type(JsonFieldType.STRING).optional().description("유지보수/AS 정보"),
                 fieldWithPath(p + "pricingType").type(JsonFieldType.STRING).optional().description("견적 산출 방식"),
                 fieldWithPath(p + "brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러"),
-                fieldWithPath(p + "verified").type(JsonFieldType.BOOLEAN).description("인증 배지 노출 여부"),
+                fieldWithPath(p + "verified").type(JsonFieldType.BOOLEAN).description("에디터 선정 배지 노출 여부 (관리자 큐레이션)"),
+                fieldWithPath(p + "businessVerified").type(JsonFieldType.BOOLEAN).description("국세청 사업자 확인 여부 (자가등록 시 선행 인증 통과)"),
                 fieldWithPath(p + "featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
                 fieldWithPath(p + "spotlight").type(JsonFieldType.BOOLEAN).description("스포트라이트 노출 여부"),
                 fieldWithPath(p + "likedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 좋아요 했는지 (익명·소유자/관리자 뷰는 false)"),
@@ -401,7 +474,9 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "ownerUserId").type(JsonFieldType.NUMBER).optional().description("소유 유저 ID (미연동이면 null)"),
                 fieldWithPath(p + "claimed").type(JsonFieldType.BOOLEAN).description("소유자 연동 여부"),
                 fieldWithPath(p + "spotlightOrder").type(JsonFieldType.NUMBER).description("스포트라이트 노출 순서값"),
-                fieldWithPath(p + "verified").type(JsonFieldType.BOOLEAN).description("인증 여부"),
+                fieldWithPath(p + "verified").type(JsonFieldType.BOOLEAN).description("에디터 선정 여부 (관리자 큐레이션)"),
+                fieldWithPath(p + "businessVerified").type(JsonFieldType.BOOLEAN).description("국세청 사업자 확인 여부"),
+                fieldWithPath(p + "businessVerifiedAt").type(JsonFieldType.STRING).optional().description("사업자 인증 시각 (미인증이면 null)"),
                 fieldWithPath(p + "featured").type(JsonFieldType.BOOLEAN).description("추천 여부"),
                 fieldWithPath(p + "spotlight").type(JsonFieldType.BOOLEAN).description("스포트라이트 여부"),
                 fieldWithPath(p + "deleted").type(JsonFieldType.BOOLEAN).description("소프트 삭제 여부"),
