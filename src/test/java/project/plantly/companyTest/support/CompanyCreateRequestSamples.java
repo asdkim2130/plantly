@@ -4,6 +4,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
+import project.plantly.domain.company.dto.CompanyReverificationRequest;
 import project.plantly.domain.company.dto.CompanyVerificationRequest;
 import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.enums.CompanyVisibility;
@@ -91,5 +92,10 @@ public class CompanyCreateRequestSamples {
     // 사업자 인증 요청 표본. 사업자번호는 하이픈 포함으로 둔다 — 서버 정규화가 문서에서도 드러나도록.
     public static CompanyVerificationRequest verificationRequest() {
         return new CompanyVerificationRequest("123-45-67890", "김대표", LocalDate.of(2020, 1, 15));
+    }
+
+    // 사업자 재인증 요청 표본. 사업자번호 자리가 없다 — 저장된 번호로만 국세청에 재질의한다(탈취 방지).
+    public static CompanyReverificationRequest reverificationRequest() {
+        return new CompanyReverificationRequest("김신임", LocalDate.of(2021, 3, 4));
     }
 }

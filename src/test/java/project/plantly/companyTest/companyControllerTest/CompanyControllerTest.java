@@ -29,6 +29,8 @@ import project.plantly.companyTest.support.CompanyCreateRequestSamples;
 import project.plantly.companyTest.support.CompanyResponseSamples;
 import project.plantly.domain.company.controller.CompanyController;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
+import project.plantly.domain.company.dto.CompanyReverificationRequest;
+import project.plantly.domain.company.dto.CompanyReverificationResponse;
 import project.plantly.domain.company.dto.CompanyVerificationRequest;
 import project.plantly.domain.company.dto.CompanyVerificationResponse;
 import project.plantly.domain.company.dto.MyCompanyCreateRequest;
@@ -178,6 +180,43 @@ public class CompanyControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.verificationRequest())))
                 .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    @DisplayName("사업자 재인증에 성공하면 갱신된 검증값과 재인증 시각을 반환한다")
+    void reverifyBusiness_success() throws Exception {
+        CompanyReverificationRequest request = CompanyCreateRequestSamples.reverificationRequest();
+        given(companyVerificationService.reverify(eq(7L), eq(42L), any(CompanyReverificationRequest.class)))
+                .willReturn(new CompanyReverificationResponse("1234567890", "김신임",
+                        LocalDate.of(2021, 3, 4), LocalDateTime.of(2026, 7, 21, 10, 0)));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(post("/api/v1/companies/{id}/verification", 42L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                // 사업자번호는 요청 본문에 없지만, 저장값으로 재인증되어 응답에 그대로 실린다.
+                .andExpect(jsonPath("$.data.businessNumber").value("1234567890"))
+                .andExpect(jsonPath("$.data.ceoName").value("김신임"))
+                .andDo(document("company-reverification",
+                        pathParameters(parameterWithName("id").description("재인증할 회사 id")),
+                        requestFields(CompanyApiDocs.reverificationRequestFields()),
+                        responseFields(CompanyApiDocs.reverificationResponseFields())));
+    }
+
+    @Test
+    @DisplayName("국세청 인증을 받지 않은 회사를 재인증하면 400(COMPANY_NOT_BUSINESS_VERIFIED) 을 반환한다")
+    void reverifyBusiness_notVerified() throws Exception {
+        given(companyVerificationService.reverify(eq(7L), eq(42L), any(CompanyReverificationRequest.class)))
+                .willThrow(new BusinessException(CompanyErrorCode.COMPANY_NOT_BUSINESS_VERIFIED));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(post("/api/v1/companies/{id}/verification", 42L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.reverificationRequest())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test

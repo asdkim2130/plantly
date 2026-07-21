@@ -203,6 +203,59 @@ include::{snippets}/company-verification-mismatch/response-fields.adoc[]
 
 IMPORTANT: `503` 은 사용자 입력 문제가 아닙니다. 입력값을 고치라는 안내 대신 재시도를 안내해야 합니다.
 
+[[company-reverification]]
+=== 사업자 재인증
+
+이미 등록·인증된 회사의 *대표자명·개업일자* 를 국세청에 다시 확인해 갱신합니다. 소유자(멤버)만 호출할 수 있습니다.
+
+선행 인증(<<company-verification>>)과 결정적으로 다른 점은 *사업자번호를 요청으로 받지 않는다* 는 것입니다.
+사업자번호는 DB 에 저장된 값(최초 인증본에서 온 불변값)을 그대로 국세청에 질의합니다 — 재인증 때 번호를 새로
+입력받으면 오타나 타사 번호로 인증을 갈아끼워 "국세청 확인" 배지를 탈취할 수 있기 때문입니다. 국세청 연동은 그
+회사의 존재·상태만 알려줄 뿐 소유권을 증명하지 않으므로, 번호는 절대 바뀌지 않게 고정합니다.
+
+국세청 등록 정보가 바뀌었을 수 있으므로 서버는 이전 값과 비교하지 않습니다. 새로 입력한 대표자명·개업일자가
+재확인을 통과하면 그대로 회사 정보를 덮어쓰고 인증 시각(`verifiedAt`)을 새로 찍습니다.
+
+이 경로의 쓰임은 두 가지입니다.
+
+. 국세청 정보(대표자명·개업일자)가 변경됐을 때의 갱신 창구. 국세청 인증을 받은 회사는 일반 수정(<<company-update-basic>>)으로
+  이 두 값을 바꿀 수 없으므로(`400` 국세청 인증을 받은 회사는 대표자명·개업일자를 수정할 수 없습니다), 재인증을 통해서만 갱신합니다.
+. 최초 인증 후 *1년* 이 지나면 재인증을 유도합니다(주기 갱신). 1년 경과를 감지해 재인증을 요청하는 이벤트 발행은 추후 과제이며,
+  이 API 자체는 언제든 호출할 수 있습니다.
+
+일일 시도 한도(사용자당 하루 5회)와 감사 로그는 선행 인증과 같은 집계를 공유합니다.
+
+==== 요청
+
+include::{snippets}/company-reverification/http-request.adoc[]
+
+include::{snippets}/company-reverification/path-parameters.adoc[]
+
+include::{snippets}/company-reverification/request-fields.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-reverification/http-response.adoc[]
+
+include::{snippets}/company-reverification/response-fields.adoc[]
+
+==== 예외 응답
+
+진위 불일치·미등록·휴폐업·국세청 장애·일일 한도 응답은 <<company-verification>> 과 동일합니다. 재인증에만 있는 사유는 다음과 같습니다.
+
+[cols="2,1,4"]
+|===
+| 사유 | 상태 | `error` 메시지
+
+| 국세청 인증을 받지 않은 회사 (미인증·인증 회수·관리자 대신등록 등)
+| `400`
+| 국세청 인증을 받은 회사만 재인증할 수 있습니다.
+
+| 소유(멤버) 아님
+| `403`
+| 해당 회사에 대한 접근 권한이 없습니다.
+|===
+
 [[company-create]]
 === 회사 등록 (유저 자가등록)
 

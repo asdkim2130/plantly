@@ -98,6 +98,19 @@ public class CompanyVerification {
         this.companyId = companyId;
     }
 
+    /**
+     * 재인증. 이미 회사에 소비된(CONSUMED) 인증의 검증값을 국세청 재확인 결과로 갱신한다.
+     *
+     * <p>국세청 등록정보가 바뀌었을 수 있으므로 이전 값과 비교하지 않고 새 값으로 덮어쓰고, 인증 시각을
+     * 갱신한다. status·companyId 는 그대로 둔다 — 여전히 이 회사에 연결된 유효한 인증이다.
+     * (사업자번호는 바꾸지 않는다: 재인증은 저장된 번호로만 질의하는 것이 규칙이다.)
+     */
+    public void reverify(String ceoName, LocalDate businessStartDate, LocalDateTime verifiedAt) {
+        this.ceoName = ceoName;
+        this.businessStartDate = businessStartDate;
+        this.verifiedAt = verifiedAt;
+    }
+
     /** 관리자 인증 회수. 사유를 남겨 분쟁 대응 근거로 쓴다. */
     public void revoke(String reason, LocalDateTime now) {
         this.status = VerificationStatus.REVOKED;

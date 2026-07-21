@@ -53,6 +53,29 @@ public class CompanyApiDocs {
         };
     }
 
+    // 사업자 재인증 요청/응답. 요청에 businessNumber 자리가 없다 — 저장된 번호로만 국세청에 재질의한다(탈취 방지).
+    public static FieldDescriptor[] reverificationRequestFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("ceoName").type(JsonFieldType.STRING).description("새 대표자 성명 (필수). 국세청 재확인 대상"),
+                fieldWithPath("businessStartDate").type(JsonFieldType.STRING)
+                        .description("새 개업일자 yyyy-MM-dd (필수). 국세청 정보가 바뀌었을 수 있어 이전 값과 비교하지 않는다")
+        };
+    }
+
+    public static FieldDescriptor[] reverificationResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("성공 여부"),
+                fieldWithPath("message").type(JsonFieldType.STRING).description("결과 메시지"),
+                fieldWithPath("data.businessNumber").type(JsonFieldType.STRING)
+                        .description("재인증에 사용된 사업자등록번호. 요청으로 받지 않고 저장값을 쓰므로 바뀌지 않는다"),
+                fieldWithPath("data.ceoName").type(JsonFieldType.STRING).description("재인증을 통과해 갱신된 대표자 성명"),
+                fieldWithPath("data.businessStartDate").type(JsonFieldType.STRING).description("재인증을 통과해 갱신된 개업일자"),
+                fieldWithPath("data.verifiedAt").type(JsonFieldType.STRING)
+                        .description("이번 재인증 시각. 최초 인증 후 1년 재인증 주기의 기준점이 이 값으로 갱신된다"),
+                fieldWithPath("error").type(JsonFieldType.STRING).optional().description("오류 메시지 (성공 시 null)")
+        };
+    }
+
     public static FieldDescriptor[] adminVerificationRevokeRequestFields() {
         return new FieldDescriptor[]{
                 fieldWithPath("reason").type(JsonFieldType.STRING)

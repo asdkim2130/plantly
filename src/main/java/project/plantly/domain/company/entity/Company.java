@@ -203,6 +203,18 @@ public class Company {
         this.businessVerifiedAt = verifiedAt;
     }
 
+    // 국세청 재인증 반영. 최초 인증 후 국세청 등록정보(대표자명·개업일자)가 바뀌었거나 인증 주기(1년)가 지난 경우,
+    // 소유자가 국세청 재확인을 통과한 값으로 두 필드를 덮어쓰고 인증 시각을 새로 찍는다.
+    // 사업자번호는 건드리지 않는다 — 재인증은 저장된 번호로만 질의하고, 그 번호는 최초 인증본에서 온 불변값이다.
+    // updateBasicInfo 가 인증 회사에 대해 막는 대표자명·개업일자 변경을, '방금 국세청을 통과했다'는 근거로만
+    // 바꾸는 유일한 통로다(검증값과 배지의 정합성이 이 경로 밖에서는 깨지지 않는다).
+    public void applyBusinessReverification(String ceoName, LocalDate businessStartDate, LocalDateTime verifiedAt) {
+        this.ceoName = ceoName;
+        this.establishmentDate = businessStartDate;
+        this.businessVerified = true;
+        this.businessVerifiedAt = verifiedAt;
+    }
+
     // 관리자 인증 회수(사칭 신고 등). 사업자번호는 지우지 않는다 — 활성 유니크로 같은 번호의 재등록을
     // 계속 막아야 하고, 어떤 번호로 인증받았었는지가 분쟁 기록으로 남아야 한다.
     public void revokeBusinessVerification() {

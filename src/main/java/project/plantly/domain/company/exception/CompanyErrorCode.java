@@ -72,7 +72,12 @@ public enum CompanyErrorCode implements ErrorCode {
 
     // 국세청 검증을 거친 값(대표자명/개업일자)을 임의 수정하려는 경우.
     // 수정을 허용하면 인증 통과 후 아무 값으로 바꿔놓고 배지를 유지할 수 있다.
-    VERIFIED_FIELD_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "국세청 인증을 받은 회사는 대표자명·개업일자를 수정할 수 없습니다.");
+    // (인증 회사는 대신 재인증 경로로만 이 두 값을 바꿀 수 있다 — POST /api/v1/companies/{id}/verification)
+    VERIFIED_FIELD_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "국세청 인증을 받은 회사는 대표자명·개업일자를 수정할 수 없습니다. 재인증을 통해 변경해주세요."),
+
+    // 재인증은 국세청 인증을 이미 받은 회사에서만 가능하다. 인증이 회수됐거나 애초에 미인증인(관리자 대신등록 등)
+    // 회사는 이 경로로 배지를 (재)획득할 수 없다 — 그건 관리자 모더레이션 영역이다.
+    COMPANY_NOT_BUSINESS_VERIFIED(HttpStatus.BAD_REQUEST, "국세청 인증을 받은 회사만 재인증할 수 있습니다.");
 
     private final HttpStatus status;
     private final String message;
