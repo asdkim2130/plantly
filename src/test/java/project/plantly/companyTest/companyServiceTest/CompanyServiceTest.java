@@ -22,6 +22,7 @@ import project.plantly.domain.company.enums.VerificationStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
+import project.plantly.domain.company.repository.CompanyDraftRepository;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
 import project.plantly.domain.company.repository.CompanySubscriptionRepository;
@@ -59,6 +60,7 @@ class CompanyServiceTest {
     @Mock CompanySubscriptionRepository companySubscriptionRepository;
     @Mock CompanySearchDocumentWriter searchDocumentWriter;
     @Mock CompanyVerificationRepository verificationRepository;
+    @Mock CompanyDraftRepository draftRepository;
 
     private static final Long USER_ID = 7L;
     private static final Long VERIFICATION_ID = 99L;
@@ -70,7 +72,8 @@ class CompanyServiceTest {
     // 정책 리스트는 테스트마다 다르므로 생성자 직접 호출로 주입한다. (Mockito 가 List<인터페이스> mock 을 자동 주입하지 못함)
     private CompanyService service(CompanyRegistrationPolicy... policies) {
         return new CompanyService(companyRepository, childWriter, linkWriter, companyMemberRepository,
-                verificationRepository, companySubscriptionRepository, searchDocumentWriter, List.of(policies));
+                verificationRepository, draftRepository, companySubscriptionRepository, searchDocumentWriter,
+                List.of(policies));
     }
 
     // 자가등록은 선행 인증을 소비하므로, 사용 가능한 인증이 조회된다고 가정한다.
@@ -115,6 +118,18 @@ class CompanyServiceTest {
         assertThat(member.getCompanyId()).isEqualTo(10L);
         assertThat(member.getUserId()).isEqualTo(7L);
         assertThat(member.getRole()).isEqualTo(MemberRole.OWNER);
+    }
+
+    @Test
+    @DisplayName("유저 자가등록: 발행이 성공하면 소임을 다한 임시저장 초안을 verificationId 로 삭제한다")
+    void createByUser_deletesDraftOnPublish() {
+        givenSaveAssignsId(10L);
+        givenUsableVerification();
+
+        service().createByUser(USER_ID, myRequest);
+
+        // 발행 성공 후 같은 트랜잭션에서 초안을 제거한다(초안 없이 등록했다면 멱등하게 아무 일도 안 함).
+        verify(draftRepository).deleteByVerificationId(VERIFICATION_ID);
     }
 
     @Test

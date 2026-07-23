@@ -1,0 +1,282 @@
+package project.plantly.companyTest.companyControllerTest;
+
+import io.restassured.filter.cookie.CookieFilter;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import project.plantly.AcceptanceTest;
+import project.plantly.companyTest.support.CompanyAggregateSeeder;
+import project.plantly.domain.user.repository.UserRepository;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
+
+// 임시저장(초안) 인수 테스트 — 실제 서버(RANDOM_PORT) + 실 DB(H2) + 실 필터 체인.
+// 초안의 본질인 "직렬화 왕복 / 통째 교체(upsert) / 느슨한 저장 / 멱등 폐기" 를 실제로 저장·복원해 검증하고,
+// 접근 제어(401/409/남의 인증 400)와 상태 매핑을 실 응답으로 못 박는다.
+//
+// 발행(POST /companies, 201) 성공 후 초안 자동 삭제 seam 은 여기서 다루지 않는다 — 등록 경로가 검색 도큐먼트
+// 동기화(Postgres 전용 SQL)를 거쳐 H2 인수 프로파일에서 뜨지 않기 때문. 그 seam 은 CompanyServiceTest 가
+// draftRepository.deleteByVerificationId 호출로 단위 검증한다. (반대로 @Valid 400 은 서비스 진입 전이라 H2 에서도 안전 → 아래 대비 테스트로 확인)
+class CompanyDraftAcceptanceTest extends AcceptanceTest {
+
+    @Autowired
+    private CompanyAggregateSeeder seeder;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    private static final String DRAFT_PATH = "/api/v1/companies/drafts/{verificationId}";
+
+    @Nested
+    @DisplayName("저장·조회 왕복 PUT/GET /api/v1/companies/drafts/{verificationId}")
+    class SaveAndGet {
+
+        @Test
+        @DisplayName("저장한 폼 상태(부분 입력)를 그대로 복원하고 마지막 저장 시각을 함께 준다")
+        void save_thenGet_restoresPayload() {
+            Session owner = signUpMember("draft-owner@example.com");
+            long vid = seeder.seedUsableVerification(owner.userId());
+
+            String body = """
+                    {"verificationId":%d,"companyName":"작성중회사","introTitle":"한 줄 요약 초안","tagNames":["친환경","B2B"]}
+                    """.formatted(vid);
+            putDraft(owner, vid, body).then().statusCode(200).body("success", equalTo(true));
+
+            given()
+                    .filter(owner.cookies())
+                    .when()
+                    .get(DRAFT_PATH, vid)
+                    .then()
+                    .statusCode(200)
+                    .body("success", equalTo(true))
+                    .body("data.payload.companyName", equalTo("작성중회사"))
+                    .body("data.payload.introTitle", equalTo("한 줄 요약 초안"))
+                    .body("data.payload.tagNames[0]", equalTo("친환경"))
+                    .body("data.payload.tagNames[1]", equalTo("B2B"))
+                    .body("data.updatedAt", notNullValue());
+        }
+
+        @Test
+        @DisplayName("재저장은 payload 를 통째 교체한다 — 인증당 1개만 유지하며 이전 입력은 남지 않는다(upsert)")
+        void save_isFullReplace_notMerge() {
+            Session owner = signUpMember("draft-replace@example.com");
+            long vid = seeder.seedUsableVerification(owner.userId());
+
+            // 1차: companyName + introTitle
+            putDraft(owner, vid, """
+                    {"verificationId":%d,"companyName":"1차회사","introTitle":"지워질 요약"}
+                    """.formatted(vid)).then().statusCode(200);
+            // 2차: companyName 만 (introTitle 없음) → 부분 병합이 아니라 통째 교체여야 한다
+            putDraft(owner, vid, """
+                    {"verificationId":%d,"companyName":"2차회사"}
+                    """.formatted(vid)).then().statusCode(200);
+
+            given()
+                    .filter(owner.cookies())
+                    .when()
+                    .get(DRAFT_PATH, vid)
+                    .then()
+                    .statusCode(200)
+                    .body("data.payload.companyName", equalTo("2차회사"))
+                    .body("data.payload.introTitle", nullValue()); // 1차의 값이 병합되어 남지 않는다
+        }
+
+        @Test
+        @DisplayName("저장된 초안이 없으면 조회는 404(DRAFT_NOT_FOUND)")
+        void get_withoutDraft_isNotFound() {
+            Session owner = signUpMember("draft-none@example.com");
+            long vid = seeder.seedUsableVerification(owner.userId());
+
+            given()
+                    .filter(owner.cookies())
+                    .when()
+                    .get(DRAFT_PATH, vid)
+                    .then()
+                    .statusCode(404)
+                    .body("success", equalTo(false));
+        }
+    }
+
+    @Nested
+    @DisplayName("느슨한 저장 vs 엄격한 발행")
+    class LooseSaveVsStrictPublish {
+
+        // 같은 '부분 입력' 본문(필수값 companyName 누락)을 두 경로에 보낸다.
+        // 초안 저장은 @Valid 가 없어 통과(200)하고, 발행(POST /companies)은 @Valid 로 400 — 계약이 갈리는 지점이다.
+        @Test
+        @DisplayName("companyName 이 빠진 부분 입력을 초안은 200 으로 저장하고, 발행은 400 으로 거절한다")
+        void partialInput_savedAsDraft_butRejectedOnPublish() {
+            Session owner = signUpMember("draft-loose@example.com");
+            long vid = seeder.seedUsableVerification(owner.userId());
+
+            String partial = """
+                    {"verificationId":%d,"introTitle":"아직 회사명 미정","tagNames":["초안"]}
+                    """.formatted(vid);
+
+            // 느슨한 저장: 필수값이 없어도 그대로 보관된다
+            putDraft(owner, vid, partial).then().statusCode(200).body("success", equalTo(true));
+
+            // 엄격한 발행: 같은 본문을 정식 등록으로 보내면 @NotBlank(companyName) 위반으로 400 (서비스 진입 전이라 H2 에서도 안전)
+            given()
+                    .filter(owner.cookies())
+                    .header("X-XSRF-TOKEN", owner.csrf())
+                    .contentType(ContentType.JSON)
+                    .body(partial)
+                    .when()
+                    .post("/api/v1/companies")
+                    .then()
+                    .statusCode(400)
+                    .body("success", equalTo(false));
+        }
+    }
+
+    @Nested
+    @DisplayName("폐기 DELETE /api/v1/companies/drafts/{verificationId}")
+    class Delete {
+
+        @Test
+        @DisplayName("폐기하면 이후 조회는 404 가 된다")
+        void delete_thenGet_isNotFound() {
+            Session owner = signUpMember("draft-del@example.com");
+            long vid = seeder.seedUsableVerification(owner.userId());
+            putDraft(owner, vid, """
+                    {"verificationId":%d,"companyName":"버릴회사"}
+                    """.formatted(vid)).then().statusCode(200);
+
+            deleteDraft(owner, vid).then().statusCode(200).body("success", equalTo(true));
+
+            given()
+                    .filter(owner.cookies())
+                    .when()
+                    .get(DRAFT_PATH, vid)
+                    .then()
+                    .statusCode(404);
+        }
+
+        @Test
+        @DisplayName("저장한 적 없는 초안을 폐기해도 멱등하게 200")
+        void delete_withoutDraft_isIdempotent() {
+            Session owner = signUpMember("draft-del-idem@example.com");
+            long vid = seeder.seedUsableVerification(owner.userId());
+
+            deleteDraft(owner, vid).then().statusCode(200).body("success", equalTo(true));
+        }
+    }
+
+    @Nested
+    @DisplayName("접근 제어")
+    class AccessControl {
+
+        // 경로가 2세그먼트('drafts/{vid}')라 공개 상세(/{id}, permitAll)로 새지 않고 인증 규칙에 걸려야 한다.
+        // 여기서 401 이 아니라 404/500 이 나오면 요청이 /{id} 로 샜다는 뜻이다.
+        @Test
+        @DisplayName("미인증 조회는 401 (공개 상세 /{id} 로 새지 않는다)")
+        void get_unauthenticated_isUnauthorized() {
+            given() // 세션 없음 = 익명
+                    .when()
+                    .get(DRAFT_PATH, 1)
+                    .then()
+                    .statusCode(401);
+        }
+
+        @Test
+        @DisplayName("미인증 저장은 401 (CSRF 는 통과시키고 인증에서 막힘)")
+        void put_unauthenticated_isUnauthorized() {
+            // 익명이라도 CSRF 토큰은 발급받아 실어 보낸다 → CSRF(403)가 아니라 인증(401)에서 막히는 것을 본다.
+            CookieFilter anonymous = new CookieFilter();
+            String csrf = issueCsrfToken(anonymous);
+
+            given()
+                    .filter(anonymous)
+                    .header("X-XSRF-TOKEN", csrf)
+                    .contentType(ContentType.JSON)
+                    .body("{\"verificationId\":1,\"companyName\":\"익명\"}")
+                    .when()
+                    .put(DRAFT_PATH, 1)
+                    .then()
+                    .statusCode(401);
+        }
+
+        @Test
+        @DisplayName("남의 인증 식별자로는 저장·조회·폐기 모두 400(VERIFICATION_NOT_FOUND) — 크로스키 방어")
+        void foreignVerification_isRejected() {
+            Session owner = signUpMember("draft-owner2@example.com");
+            long vid = seeder.seedUsableVerification(owner.userId());
+            Session intruder = signUpMember("draft-intruder@example.com");
+
+            // 침입자가 소유자의 verificationId 로 조회
+            given().filter(intruder.cookies())
+                    .when().get(DRAFT_PATH, vid)
+                    .then().statusCode(400).body("success", equalTo(false));
+
+            // 저장
+            given().filter(intruder.cookies())
+                    .header("X-XSRF-TOKEN", intruder.csrf())
+                    .contentType(ContentType.JSON)
+                    .body("{\"verificationId\":%d,\"companyName\":\"가로채기\"}".formatted(vid))
+                    .when().put(DRAFT_PATH, vid)
+                    .then().statusCode(400);
+
+            // 폐기
+            given().filter(intruder.cookies())
+                    .header("X-XSRF-TOKEN", intruder.csrf())
+                    .when().delete(DRAFT_PATH, vid)
+                    .then().statusCode(400);
+        }
+
+        @Test
+        @DisplayName("이미 등록에 소비된(CONSUMED) 인증에 저장하면 409(VERIFICATION_ALREADY_USED)")
+        void consumedVerification_saveRejected() {
+            Session owner = signUpMember("draft-consumed@example.com");
+            long vid = seeder.seedConsumedVerification(owner.userId());
+
+            putDraft(owner, vid, """
+                    {"verificationId":%d,"companyName":"이미소비된인증"}
+                    """.formatted(vid))
+                    .then()
+                    .statusCode(409)
+                    .body("success", equalTo(false));
+        }
+    }
+
+    // ---- helpers ----
+
+    // 세션 쿠키 + 변경요청용 CSRF 토큰 + 유저 id 를 한 묶음으로 들고 다닌다.
+    private record Session(CookieFilter cookies, String csrf, long userId) {}
+
+    // 회원가입 + 로그인까지 마친 멤버 세션을 만든다. 로그인이 CSRF 토큰을 회전시키면 새 값을 쓴다(변경요청에 필요).
+    private Session signUpMember(String email) {
+        CookieFilter cookies = new CookieFilter();
+        String csrf = issueCsrfToken(cookies);
+        signUp(cookies, csrf, email).then().statusCode(201);
+        Response loginResponse = login(cookies, csrf, email, VALID_PASSWORD, false);
+        loginResponse.then().statusCode(200);
+        String rotated = loginResponse.cookie("XSRF-TOKEN");
+        long userId = userRepository.findByEmail(email).orElseThrow().getId();
+        return new Session(cookies, rotated != null ? rotated : csrf, userId);
+    }
+
+    private Response putDraft(Session session, long verificationId, String jsonBody) {
+        return given()
+                .filter(session.cookies())
+                .header("X-XSRF-TOKEN", session.csrf())
+                .contentType(ContentType.JSON)
+                .body(jsonBody)
+                .when()
+                .put(DRAFT_PATH, verificationId);
+    }
+
+    private Response deleteDraft(Session session, long verificationId) {
+        return given()
+                .filter(session.cookies())
+                .header("X-XSRF-TOKEN", session.csrf())
+                .when()
+                .delete(DRAFT_PATH, verificationId);
+    }
+}

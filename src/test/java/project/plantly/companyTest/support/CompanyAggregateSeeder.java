@@ -14,6 +14,7 @@ import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.entity.CompanyContact;
+import project.plantly.domain.company.entity.CompanyVerification;
 import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.entity.CompanyEquipment;
@@ -32,7 +33,9 @@ import project.plantly.domain.company.enums.PricingType;
 import project.plantly.domain.company.enums.TrlLevel;
 import project.plantly.domain.company.industry.Industry;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 // 인수 테스트용 회사 애그리거트 영속화 시더.
 // 실제 DB에 본체 + 멤버 + 부속(대표 연락처/레퍼런스/표지 썸네일/갤러리/소재·장비·태그/링크 마스터)을 저장해
@@ -117,6 +120,27 @@ public class CompanyAggregateSeeder {
         em.persist(company);
         // 미연동: CompanyMember 를 만들지 않는다 (소유자 없음).
         return company.getId();
+    }
+
+    // 사용 가능한(VERIFIED·미소비·미만료) 선행 인증. 임시저장은 이 인증 1건당 1개라, 초안 인수 테스트가
+    // 실제 verificationId 를 손에 쥐고 시작하게 한다. 국세청 호출 없이 통과 상태로 바로 영속화한다.
+    @Transactional
+    public Long seedUsableVerification(Long userId) {
+        CompanyVerification verification = CompanyVerification.issue(
+                userId, BUSINESS_NUMBER, CEO_NAME, ESTABLISHMENT_DATE, LocalDateTime.now(), Duration.ofMinutes(30));
+        em.persist(verification);
+        return verification.getId();
+    }
+
+    // 이미 어떤 회사 등록에 소비된(CONSUMED) 인증. 초안 저장을 거절해야 함(회사가 이미 존재 → 수정 대상)을 검증하는 데 쓴다.
+    // companyId 컬럼은 FK 가 아니라 raw Long 이므로 실제 회사 없이 임의 값으로 소비 상태만 만든다.
+    @Transactional
+    public Long seedConsumedVerification(Long userId) {
+        CompanyVerification verification = CompanyVerification.issue(
+                userId, BUSINESS_NUMBER, CEO_NAME, ESTABLISHMENT_DATE, LocalDateTime.now(), Duration.ofMinutes(30));
+        verification.consume(999L);
+        em.persist(verification);
+        return verification.getId();
     }
 
     private void attachOwner(Company company, Long ownerUserId) {

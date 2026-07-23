@@ -30,6 +30,7 @@ import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.service.CompanyQueryService;
+import project.plantly.domain.company.service.CompanyDraftService;
 import project.plantly.domain.company.service.CompanyVerificationService;
 import project.plantly.domain.company.service.CompanyService;
 import project.plantly.domain.company.service.CompanyUpdateService;
@@ -84,6 +85,9 @@ public class CompanyUpdateControllerTest {
 
     @MockitoBean
     private CompanyVerificationService companyVerificationService;
+
+    @MockitoBean
+    private CompanyDraftService companyDraftService;
 
     private MockMvc mockMvc;
 
