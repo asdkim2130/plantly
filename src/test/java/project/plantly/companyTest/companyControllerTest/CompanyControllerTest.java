@@ -28,6 +28,7 @@ import project.plantly.companyTest.support.CompanyApiDocs;
 import project.plantly.companyTest.support.CompanyCreateRequestSamples;
 import project.plantly.companyTest.support.CompanyResponseSamples;
 import project.plantly.domain.company.controller.CompanyController;
+import project.plantly.domain.company.dto.CompanyDraftResponse;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
 import project.plantly.domain.company.dto.CompanyReverificationRequest;
 import project.plantly.domain.company.dto.CompanyReverificationResponse;
@@ -39,6 +40,7 @@ import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.search.CompanySearchCriteria;
 import project.plantly.domain.company.search.dto.CompanySummary;
+import project.plantly.domain.company.service.CompanyDraftService;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
 import project.plantly.domain.company.service.CompanyUpdateService;
@@ -61,11 +63,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.put;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
+import static org.springframework.restdocs.payload.PayloadDocumentation.relaxedResponseFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
@@ -104,6 +111,10 @@ public class CompanyControllerTest {
 
     @MockitoBean
     private CompanyVerificationService companyVerificationService;
+
+    // 컨트롤러가 임시저장용으로 주입받는 협력 객체. 초안 슬라이스 테스트에서 사용하며, 나머지 테스트는 컨텍스트 로딩용으로만 둔다.
+    @MockitoBean
+    private CompanyDraftService companyDraftService;
 
     private MockMvc mockMvc;
 
@@ -273,6 +284,95 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.error").value("현재 등급에서 선택 가능한 카테고리 개수를 초과했습니다."))
                 .andDo(document("company-create-policy-violation",
                         responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    // ===== 임시저장(초안) PUT/GET/DELETE /api/v1/companies/drafts/{verificationId} =====
+
+    @Test
+    @DisplayName("임시저장은 자가등록 폼을 인증 1건당 1개 보관하고 성공 플래그만 반환한다 (@Valid 없이 부분 입력 허용)")
+    void saveDraft_success() throws Exception {
+        // save 는 void — 기본 mock 이 삼킨다. 경로의 verificationId(99)와 인증 principal(7)이 서비스로 전달되는지 verify 로 확인한다.
+        MyCompanyCreateRequest request = CompanyCreateRequestSamples.myFull();
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(put("/api/v1/companies/drafts/{verificationId}", 99L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andDo(document("company-draft-save",
+                        pathParameters(parameterWithName("verificationId").description("선행 사업자 인증 식별자")),
+                        requestFields(CompanyApiDocs.myCompanyCreateRequestFields()),
+                        responseFields(CompanyApiDocs.okResponseFields())));
+
+        verify(companyDraftService).save(eq(7L), eq(99L), any(MyCompanyCreateRequest.class));
+    }
+
+    @Test
+    @DisplayName("재진입 시 초안 조회는 저장했던 폼 상태(payload)와 마지막 저장 시각을 반환한다")
+    void getDraft_success() throws Exception {
+        CompanyDraftResponse response = new CompanyDraftResponse(
+                CompanyCreateRequestSamples.myFull(), LocalDateTime.of(2026, 7, 23, 10, 0));
+        given(companyDraftService.get(7L, 99L)).willReturn(response);
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/companies/drafts/{verificationId}", 99L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.payload.verificationId").value(99L))
+                .andExpect(jsonPath("$.data.payload.companyName").value("플랜틀리"))
+                .andExpect(jsonPath("$.data.updatedAt").value("2026-07-23T10:00:00"))
+                // payload 내부 필드는 회사 등록 요청과 동일하므로 relaxed 로 봉투·저장시각만 문서화한다(중복 방지).
+                .andDo(document("company-draft-get",
+                        pathParameters(parameterWithName("verificationId").description("선행 사업자 인증 식별자")),
+                        relaxedResponseFields(CompanyApiDocs.companyDraftResponseFields())));
+    }
+
+    @Test
+    @DisplayName("저장된 초안이 없으면 404(DRAFT_NOT_FOUND) 를 반환한다")
+    void getDraft_notFound() throws Exception {
+        given(companyDraftService.get(7L, 99L))
+                .willThrow(new BusinessException(CompanyErrorCode.DRAFT_NOT_FOUND));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(get("/api/v1/companies/drafts/{verificationId}", 99L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("저장된 임시저장 내역이 없습니다."))
+                .andDo(document("company-draft-not-found",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    @Test
+    @DisplayName("이미 등록에 소비된 인증에 임시저장하면 409(VERIFICATION_ALREADY_USED) 를 반환한다")
+    void saveDraft_alreadyUsed() throws Exception {
+        willThrow(new BusinessException(CompanyErrorCode.VERIFICATION_ALREADY_USED))
+                .given(companyDraftService).save(eq(7L), eq(99L), any(MyCompanyCreateRequest.class));
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(put("/api/v1/companies/drafts/{verificationId}", 99L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.myFull())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("이미 회사 등록에 사용된 사업자 인증입니다."))
+                .andDo(document("company-draft-already-used",
+                        responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    @Test
+    @DisplayName("임시저장 폐기는 성공 플래그만 반환한다 (초안이 없어도 멱등하게 성공)")
+    void deleteDraft_success() throws Exception {
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(delete("/api/v1/companies/drafts/{verificationId}", 99L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andDo(document("company-draft-delete",
+                        pathParameters(parameterWithName("verificationId").description("선행 사업자 인증 식별자")),
+                        responseFields(CompanyApiDocs.okResponseFields())));
+
+        verify(companyDraftService).delete(eq(7L), eq(99L));
     }
 
     @Test

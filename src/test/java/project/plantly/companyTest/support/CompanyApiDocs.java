@@ -159,9 +159,23 @@ public class CompanyApiDocs {
 
     // 본문 없는 성공 응답(ApiResponse.ok). success=true 만 존재하고 message/data/error 는 NON_NULL 로 생략된다.
     // 수정 API(본체 PATCH·컬렉션 PUT)는 변경 결과가 이미 화면에 반영되므로 성공 플래그만 내려준다.
+    // 임시저장 저장(PUT)·폐기(DELETE) 도 결과 본문 없이 성공 플래그만 내려주므로 이 디스크립터를 공유한다.
     public static FieldDescriptor[] okResponseFields() {
         return new FieldDescriptor[]{
                 fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부 (true)")
+        };
+    }
+
+    // 임시저장 초안 조회 응답(ApiResponse<CompanyDraftResponse>). data.payload 는 저장했던 자가등록 폼 전체로,
+    // 필드 구성이 회사 등록 요청(company-create 스니펫)과 동일하다 — 28개 필드를 data.payload. 접두로 복제하지 않고
+    // relaxedResponseFields 와 함께 써서 봉투·payload 객체·저장 시각만 문서화한다(payload 내부는 등록 요청 문서 참조).
+    public static FieldDescriptor[] companyDraftResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
+                fieldWithPath("data.payload").type(JsonFieldType.OBJECT)
+                        .description("저장했던 자가등록 폼 상태(부분 입력 가능). 필드 구성은 회사 등록 요청과 동일 — company-create 참조"),
+                fieldWithPath("data.updatedAt").type(JsonFieldType.STRING)
+                        .description("마지막 저장 시각 (\"n분 전 저장됨\" 등 표시용)")
         };
     }
 
