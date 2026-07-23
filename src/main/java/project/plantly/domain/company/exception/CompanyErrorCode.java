@@ -77,7 +77,14 @@ public enum CompanyErrorCode implements ErrorCode {
 
     // 재인증은 국세청 인증을 이미 받은 회사에서만 가능하다. 인증이 회수됐거나 애초에 미인증인(관리자 대신등록 등)
     // 회사는 이 경로로 배지를 (재)획득할 수 없다 — 그건 관리자 모더레이션 영역이다.
-    COMPANY_NOT_BUSINESS_VERIFIED(HttpStatus.BAD_REQUEST, "국세청 인증을 받은 회사만 재인증할 수 있습니다.");
+    COMPANY_NOT_BUSINESS_VERIFIED(HttpStatus.BAD_REQUEST, "국세청 인증을 받은 회사만 재인증할 수 있습니다."),
+
+    // ===== 임시저장(초안) =====
+    // 복원하려는 초안이 없는 경우(저장한 적 없거나 이미 발행/폐기된 경우).
+    DRAFT_NOT_FOUND(HttpStatus.NOT_FOUND, "저장된 임시저장 내역이 없습니다."),
+
+    // 초안 payload 직렬화/역직렬화 실패(서버 내부 오류).
+    DRAFT_SERIALIZATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "임시저장 처리 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final String message;

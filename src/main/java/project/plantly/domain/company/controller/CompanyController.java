@@ -20,6 +20,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
+import project.plantly.domain.company.dto.CompanyDraftResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
 import project.plantly.domain.company.dto.CompanyReverificationRequest;
 import project.plantly.domain.company.dto.CompanyReverificationResponse;
@@ -31,6 +32,7 @@ import project.plantly.domain.company.dto.CompanyVisibilityUpdateRequest;
 import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.search.dto.CompanySearchRequest;
 import project.plantly.domain.company.search.dto.CompanySummary;
+import project.plantly.domain.company.service.CompanyDraftService;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
 import project.plantly.domain.company.service.CompanyUpdateService;
@@ -50,6 +52,7 @@ public class CompanyController {
     private final CompanyQueryService companyQueryService;
     private final CompanyUpdateService companyUpdateService;
     private final CompanyVerificationService companyVerificationService;
+    private final CompanyDraftService companyDraftService;
 
     // 사업자 인증 — 회사 등록 폼 앞단에서 아이디 중복 확인처럼 먼저 수행한다.
     // 국세청 진위확인(사업자번호+대표자명+개업일자) + 상태조회(계속사업자 여부) + 중복 검사를 한 번에 통과해야
@@ -84,6 +87,36 @@ public class CompanyController {
 
         Long id = companyService.createByUser(principal.getUser().getId(), request);
         return ApiResponse.success("회사 등록이 완료되었습니다.", new IdResponse(id));
+    }
+
+    // ===== 임시저장(초안) — 발행(POST /companies) 전, 작성 중인 폼 상태를 인증 1건당 1개 보관한다. =====
+    // 경로 키는 선행 인증 식별자(verificationId). 'drafts' 는 두 세그먼트라 공개 상세(/{id}, 단일 세그먼트)와 겹치지
+    // 않으며, SecurityConfig 의 기본 규칙(anyRequest().authenticated())으로 보호된다.
+
+    // 자동저장(upsert). @Valid 를 붙이지 않아 부분 입력을 그대로 저장한다 — 필수값·마스터 검증은 발행 시점에만 한다.
+    // 컬렉션도 요청 본문에 함께 실려 초안 payload 안에 보관되므로, 회사 생성 전까지 한 문서로 관리된다.
+    @PutMapping("/api/v1/companies/drafts/{verificationId}")
+    public ApiResponse<Void> saveDraft(@AuthenticationPrincipal UserPrincipal principal,
+                                       @PathVariable Long verificationId,
+                                       @RequestBody MyCompanyCreateRequest request) {
+        companyDraftService.save(principal.getUser().getId(), verificationId, request);
+        return ApiResponse.ok();
+    }
+
+    // 재진입 시 폼 복원 — 저장했던 폼 상태(기본 필드 + 컬렉션)와 마지막 저장 시각을 반환한다. 초안이 없으면 404.
+    @GetMapping("/api/v1/companies/drafts/{verificationId}")
+    public ApiResponse<CompanyDraftResponse> getDraft(@AuthenticationPrincipal UserPrincipal principal,
+                                                      @PathVariable Long verificationId) {
+        return ApiResponse.success(companyDraftService.get(principal.getUser().getId(), verificationId));
+    }
+
+    // 임시저장 수동 폐기. 발행이 성공하면 초안은 서버가 자동 삭제하므로(CompanyService.createByUser), 이 경로는
+    // 사용자가 작성을 포기할 때만 쓴다. 초안이 없어도 멱등하게 성공한다.
+    @DeleteMapping("/api/v1/companies/drafts/{verificationId}")
+    public ApiResponse<Void> deleteDraft(@AuthenticationPrincipal UserPrincipal principal,
+                                         @PathVariable Long verificationId) {
+        companyDraftService.delete(principal.getUser().getId(), verificationId);
+        return ApiResponse.ok();
     }
 
     // 공개 회사 목록/검색 — 인증 없이 누구나. 통합 키워드 + 고급검색 + 패싯(인증/산업군/카테고리 서브트리).

@@ -15,6 +15,7 @@ import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.global.exception.BusinessException;
 import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
+import project.plantly.domain.company.repository.CompanyDraftRepository;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
 import project.plantly.domain.company.repository.CompanySubscriptionRepository;
@@ -40,6 +41,9 @@ public class CompanyService {
 
     // 선행 인증 레코드. 자가등록이 소비해 신원 3종(사업자번호/대표자명/개업일자)의 출처가 된다.
     private final CompanyVerificationRepository verificationRepository;
+
+    // 임시저장 초안. 발행이 성공하면 소임을 다한 초안을 같은 트랜잭션에서 제거한다.
+    private final CompanyDraftRepository draftRepository;
 
     // 회사 구독. 등록 시 회사의 초기 구독(등급)을 1건 저장한다. 정책은 이 구독의 등급을 참조한다.
     private final CompanySubscriptionRepository companySubscriptionRepository;
@@ -74,6 +78,10 @@ public class CompanyService {
 
         // 인증을 소비 처리해 재사용을 막는다. 같은 인증으로 여러 회사를 만들 수 없다.
         verification.consume(companyId);
+
+        // 발행 성공 → 임시저장 초안은 소임을 다했으므로 제거한다. 초안 없이 바로 등록했다면 아무 일도 안 한다(멱등).
+        // 등록이 실패하면 이 트랜잭션이 롤백되어 초안도 그대로 남는다.
+        draftRepository.deleteByVerificationId(myRequest.verificationId());
 
         // 자가등록자 = OWNER. 관리자 등록(createByAdmin)은 소유자 미연동이라 멤버를 만들지 않는다.
         // 소유의 단일 진실원(SSOT) — Company 는 소유자를 직접 참조하지 않고 이 멤버십으로만 표현한다.
