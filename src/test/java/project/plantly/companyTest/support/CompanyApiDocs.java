@@ -449,7 +449,7 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "categories").type(JsonFieldType.ARRAY).description("카테고리 목록"),
                 fieldWithPath(p + "categories[].id").type(JsonFieldType.NUMBER).description("카테고리 ID"),
                 fieldWithPath(p + "categories[].categoryName").type(JsonFieldType.STRING).description("카테고리명"),
-                fieldWithPath(p + "categories[].categoryCode").type(JsonFieldType.STRING).description("카테고리 코드"),
+                fieldWithPath(p + "categories[].slug").type(JsonFieldType.STRING).description("카테고리 슬러그(URL slug)"),
                 fieldWithPath(p + "categories[].depth").type(JsonFieldType.NUMBER).description("계층 깊이"),
                 fieldWithPath(p + "categories[].iconUrl").type(JsonFieldType.STRING).optional().description("아이콘 URL"),
 

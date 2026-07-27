@@ -13,7 +13,7 @@ public class CategoryNode {
 
     private final Long id;
     private final Long parentId;
-    private final String categoryCode;
+    private final String slug;
     private final String categoryName;
     private final String iconUrl;
     private final String description;
@@ -25,7 +25,7 @@ public class CategoryNode {
     public CategoryNode (Category category){
         this.id = category.getId();
         this.parentId = category.getParentId();
-        this.categoryCode = category.getCategoryCode();
+        this.slug = category.getSlug();
         this.categoryName = category.getCategoryName();
         this.iconUrl = category.getIconUrl();
         this.description = category.getDescription();

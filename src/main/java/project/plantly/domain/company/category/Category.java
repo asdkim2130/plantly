@@ -25,7 +25,7 @@ public class Category extends CompanyChild {
 
     @NotNull
     @Column(nullable = false, unique = true)
-    private String categoryCode;
+    private String slug;
 
     private String iconUrl;
     private String description;
@@ -33,10 +33,10 @@ public class Category extends CompanyChild {
     @Column(nullable = false)
     private int depth;
 
-    public Category(Long parentId, String categoryName, String categoryCode, String iconUrl, String description, int depth) {
+    public Category(Long parentId, String categoryName, String slug, String iconUrl, String description, int depth) {
         this.parentId = parentId;
         this.categoryName = categoryName;
-        this.categoryCode = categoryCode;
+        this.slug = slug;
         this.iconUrl = iconUrl;
         this.description = description;
         this.depth = depth;

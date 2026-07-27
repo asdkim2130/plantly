@@ -42,7 +42,7 @@ public class CategoryAdminServiceTest {
     @DisplayName("코드가 중복이면 예외가 발생하고 저장하지 않음")
     public void create_duplicateCode (){
         CategoryCreateRequest request = new CategoryCreateRequest(null, "a", "a", null, null, null);
-        given(categoryRepository.existsByCategoryCode("a")).willReturn(true);
+        given(categoryRepository.existsBySlug("a")).willReturn(true);
 
         assertThatThrownBy(
                 () -> categoryAdminService.create(request)
@@ -56,7 +56,7 @@ public class CategoryAdminServiceTest {
     @DisplayName("parentId가 있지만 상위 카테고리가 없으면 예외 발생")
     public void create_parentNotFound(){
         CategoryCreateRequest request = new CategoryCreateRequest(99L, "a", "a", null, null, null);
-        given(categoryRepository.existsByCategoryCode("a")).willReturn(false);
+        given(categoryRepository.existsBySlug("a")).willReturn(false);
         given(categoryRepository.findById(99L)).willReturn(Optional.empty());
 
         assertThatThrownBy(
@@ -70,7 +70,7 @@ public class CategoryAdminServiceTest {
     public void create_autoDisplayOrder_andPublishEvent(){
         CategoryCreateRequest request = new CategoryCreateRequest(null, "a", "a", null, null, null);
 
-        given(categoryRepository.existsByCategoryCode("a")).willReturn(false);
+        given(categoryRepository.existsBySlug("a")).willReturn(false);
         given(categoryRepository.findMaxDisplayOrderByParentId(null)).willReturn(2);
         given(categoryRepository.save(any(Category.class))).willAnswer(
                 inv -> {
@@ -107,7 +107,7 @@ public class CategoryAdminServiceTest {
         assertThat(result).hasSize(1);
         CategoryTreeResponse rootDto = result.get(0);
         assertThat(rootDto.id()).isEqualTo(1L);
-        assertThat(rootDto.categoryCode()).isEqualTo("a");
+        assertThat(rootDto.slug()).isEqualTo("a");
         assertThat(rootDto.depth()).isEqualTo(1);
         assertThat(rootDto.active()).isTrue();
 

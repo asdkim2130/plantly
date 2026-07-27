@@ -150,10 +150,10 @@ public record CompanyPublicResponse(
         }
     }
 
-    public record CategoryResponse(Long id, String categoryName, String categoryCode, int depth, String iconUrl) {
+    public record CategoryResponse(Long id, String categoryName, String slug, int depth, String iconUrl) {
         public static CategoryResponse from(Category category) {
             return new CategoryResponse(category.getId(), category.getCategoryName(),
-                    category.getCategoryCode(), category.getDepth(), category.getIconUrl());
+                    category.getSlug(), category.getDepth(), category.getIconUrl());
         }
     }
 

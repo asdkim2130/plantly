@@ -38,7 +38,7 @@ public class CategoryTreeService {
         Map<String, CategoryNode> byCode = new HashMap<>();
         for(Category c : all){
             CategoryNode node = byId.get(c.getId());
-            byCode.put(node.getCategoryCode(), node);
+            byCode.put(node.getSlug(), node);
             if(c.getParentId() == null) {
                 roots.add(node);
                 continue;
