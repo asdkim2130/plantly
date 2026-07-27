@@ -34,7 +34,8 @@ public class ReferenceDataSeeder implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator(
                 new ClassPathResource("db/seed/domestic-region.sql"),
-                new ClassPathResource("db/seed/country.sql")
+                new ClassPathResource("db/seed/country.sql"),
+                new ClassPathResource("db/seed/category.sql")
         );
         populator.execute(dataSource);
     }
