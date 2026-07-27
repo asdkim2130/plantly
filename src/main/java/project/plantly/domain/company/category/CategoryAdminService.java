@@ -25,7 +25,7 @@ public class CategoryAdminService {
 
     @Transactional
     public Long create (CategoryCreateRequest request){
-        if(categoryRepository.existsByCategoryCode(request.categoryCode())){
+        if(categoryRepository.existsBySlug(request.slug())){
             throw new BusinessException(CategoryErrorException.DUPLICATE_CATEGORY_CODE);
         }
 
@@ -35,12 +35,12 @@ public class CategoryAdminService {
                 () -> categoryRepository.findMaxDisplayOrderByParentId(request.parentId()));
 
         Category category = (request.parentId() == null) ?
-                Category.createRoot(request.categoryName(), request.categoryCode(), request.iconUrl(), request.description(), displayOrder)
+                Category.createRoot(request.categoryName(), request.slug(), request.iconUrl(), request.description(), displayOrder)
                 : Category.createChild(
                 categoryRepository.findById(request.parentId()).orElseThrow(
                         () -> new BusinessException(CategoryErrorException.PARENT_CATEGORY_NOT_FOUND)
                 ),
-                request.categoryName(), request.categoryCode(), request.iconUrl(), request.description(), displayOrder
+                request.categoryName(), request.slug(), request.iconUrl(), request.description(), displayOrder
         );
 
         Long id = categoryRepository.save(category).getId();

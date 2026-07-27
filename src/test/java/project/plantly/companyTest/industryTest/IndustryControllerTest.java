@@ -107,8 +107,8 @@ public class IndustryControllerTest {
                         requestFields(
                                 fieldWithPath("industryName").type(JsonFieldType.STRING)
                                         .description("산업군 이름"),
-                                fieldWithPath("industryCode").type(JsonFieldType.STRING)
-                                        .description("산업군 코드 (영문/숫자/하이픈)"),
+                                fieldWithPath("slug").type(JsonFieldType.STRING)
+                                        .description("산업군 슬러그 (영문/숫자/하이픈)"),
                                 fieldWithPath("iconUrl").type(JsonFieldType.STRING).optional()
                                         .description("아이콘 URL"),
                                 fieldWithPath("description").type(JsonFieldType.STRING).optional()
@@ -154,7 +154,7 @@ public class IndustryControllerTest {
     }
 
     @Test
-    @DisplayName("industryCode에 한글이 들어가면 400에러와 검증 에러 반환")
+    @DisplayName("slug에 한글이 들어가면 400에러와 검증 에러 반환")
     public void create_invalidCode_validationFail() throws Exception {
         IndustryCreateRequest request = new IndustryCreateRequest("한글", "한글", null, null, null);
         authenticate(1L, UserRole.ADMIN);
@@ -230,7 +230,7 @@ public class IndustryControllerTest {
         IndustryAdminResponse response = IndustryAdminResponse.builder()
                 .id(1L)
                 .industryName("농업")
-                .industryCode("agri")
+                .slug("agri")
                 .iconUrl("icon-agri")
                 .description("농업 설명")
                 .displayOrder(0)
@@ -244,7 +244,7 @@ public class IndustryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].id").value(1))
-                .andExpect(jsonPath("$.data[0].industryCode").value("agri"))
+                .andExpect(jsonPath("$.data[0].slug").value("agri"))
                 .andExpect(jsonPath("$.data[0].iconUrl").value("icon-agri"))
                 .andDo(document("industry-list",
                         responseFields(
@@ -258,8 +258,8 @@ public class IndustryControllerTest {
                                         .description("산업군 ID"),
                                 fieldWithPath("data[].industryName").type(JsonFieldType.STRING)
                                         .description("산업군 이름"),
-                                fieldWithPath("data[].industryCode").type(JsonFieldType.STRING)
-                                        .description("산업군 코드"),
+                                fieldWithPath("data[].slug").type(JsonFieldType.STRING)
+                                        .description("산업군 슬러그"),
                                 fieldWithPath("data[].iconUrl").type(JsonFieldType.STRING).optional()
                                         .description("아이콘 URL"),
                                 fieldWithPath("data[].description").type(JsonFieldType.STRING).optional()

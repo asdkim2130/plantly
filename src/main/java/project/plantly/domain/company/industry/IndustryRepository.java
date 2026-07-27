@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface IndustryRepository extends JpaRepository<Industry, Long> {
 
-    boolean existsByIndustryCode(String industryCode);
+    boolean existsBySlug(String slug);
     boolean existsByIndustryName(String industryName);
 
     // 전체를 displayOrder 순으로 조회 (관리자 목록 정렬용)

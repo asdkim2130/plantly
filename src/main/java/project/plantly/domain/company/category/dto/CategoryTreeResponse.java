@@ -8,7 +8,7 @@ import java.util.List;
 @Builder
 public record CategoryTreeResponse(
         Long id,
-        String categoryCode,
+        String slug,
         String categoryName,
         String iconUrl,
         String description,
@@ -20,7 +20,7 @@ public record CategoryTreeResponse(
     public static CategoryTreeResponse from (CategoryNode node){
         return CategoryTreeResponse.builder()
                 .id(node.getId())
-                .categoryCode(node.getCategoryCode())
+                .slug(node.getSlug())
                 .categoryName(node.getCategoryName())
                 .iconUrl(node.getIconUrl())
                 .description(node.getDescription())

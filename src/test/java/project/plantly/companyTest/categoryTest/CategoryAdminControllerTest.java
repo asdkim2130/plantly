@@ -112,8 +112,8 @@ public class CategoryAdminControllerTest {
                                         .description("상위 카테고리 ID (최상위면 null)"),
                                 fieldWithPath("categoryName").type(JsonFieldType.STRING)
                                         .description("카테고리 이름"),
-                                fieldWithPath("categoryCode").type(JsonFieldType.STRING)
-                                        .description("카테고리 코드 (영문/숫자/하이픈)"),
+                                fieldWithPath("slug").type(JsonFieldType.STRING)
+                                        .description("URL slug (영문/숫자/하이픈)"),
                                 fieldWithPath("iconUrl").type(JsonFieldType.STRING).optional()
                                         .description("아이콘 URL"),
                                 fieldWithPath("description").type(JsonFieldType.STRING).optional()
@@ -160,7 +160,7 @@ public class CategoryAdminControllerTest {
     }
 
     @Test
-    @DisplayName("categoryCode에 한글이 들어가면 400에러와 검증 에러 반환")
+    @DisplayName("slug에 한글이 들어가면 400에러와 검증 에러 반환")
     public void create_invalidCod_validationFail() throws Exception {
         CategoryCreateRequest request = new CategoryCreateRequest(null, "한글", "한글", null, null, null);
         authenticate(1L, UserRole.ADMIN);
@@ -213,7 +213,7 @@ public class CategoryAdminControllerTest {
     public void getTree_admin_success () throws Exception {
         CategoryTreeResponse child = CategoryTreeResponse.builder()
                 .id(2L)
-                .categoryCode("child-category")
+                .slug("child-category")
                 .categoryName("자식 카테고리")
                 .iconUrl("icon")
                 .description("설명")
@@ -224,7 +224,7 @@ public class CategoryAdminControllerTest {
 
         CategoryTreeResponse root = CategoryTreeResponse.builder()
                 .id(1L)
-                .categoryCode("root-category")
+                .slug("root-category")
                 .categoryName("루트 카테고리")
                 .iconUrl("icon")
                 .description("설명")
@@ -240,7 +240,7 @@ public class CategoryAdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].id").value(1))
-                .andExpect(jsonPath("$.data[0].categoryCode").value("root-category"))
+                .andExpect(jsonPath("$.data[0].slug").value("root-category"))
                 .andExpect(jsonPath("$.data[0].children[0].id").value(2))
                 .andExpect(jsonPath("$.data[0].children[0].categoryName").value("자식 카테고리"))
                 .andDo(document("category-tree",
@@ -253,8 +253,8 @@ public class CategoryAdminControllerTest {
                                         .description("최상위(루트) 카테고리 목록"),
                                 fieldWithPath("data[].id").type(JsonFieldType.NUMBER)
                                         .description("카테고리 ID"),
-                                fieldWithPath("data[].categoryCode").type(JsonFieldType.STRING)
-                                        .description("카테고리 코드"),
+                                fieldWithPath("data[].slug").type(JsonFieldType.STRING)
+                                        .description("URL slug"),
                                 fieldWithPath("data[].categoryName").type(JsonFieldType.STRING)
                                         .description("카테고리 이름"),
                                 fieldWithPath("data[].iconUrl").type(JsonFieldType.STRING).optional()

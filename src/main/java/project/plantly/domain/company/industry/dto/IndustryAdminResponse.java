@@ -7,7 +7,7 @@ import project.plantly.domain.company.industry.Industry;
 public record IndustryAdminResponse(
         Long id,
         String industryName,
-        String industryCode,
+        String slug,
         String iconUrl,
         String description,
         int displayOrder,
@@ -18,7 +18,7 @@ public record IndustryAdminResponse(
         return IndustryAdminResponse.builder()
                 .id(industry.getId())
                 .industryName(industry.getIndustryName())
-                .industryCode(industry.getIndustryCode())
+                .slug(industry.getSlug())
                 .iconUrl(industry.getIconUrl())
                 .description(industry.getDescription())
                 .displayOrder(industry.getDisplayOrder())

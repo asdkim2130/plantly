@@ -22,21 +22,21 @@ public class Industry extends CompanyChild {
 
     @NotNull
     @Column(nullable = false, unique = true)
-    private String industryCode;
+    private String slug;
 
     private String iconUrl;
 
     private String description;
 
-    public Industry(String industryName, String industryCode, String iconUrl, String description) {
+    public Industry(String industryName, String slug, String iconUrl, String description) {
         this.industryName = industryName;
-        this.industryCode = industryCode;
+        this.slug = slug;
         this.iconUrl = iconUrl;
         this.description = description;
     }
 
-    public static Industry create (String industryName, String industryCode, String iconUrl, String description, int displayOrder){
-        Industry industry = new Industry(industryName, industryCode, iconUrl, description);
+    public static Industry create (String industryName, String slug, String iconUrl, String description, int displayOrder){
+        Industry industry = new Industry(industryName, slug, iconUrl, description);
         industry.activate();
         industry.changeDisplayOrder(displayOrder);
 
