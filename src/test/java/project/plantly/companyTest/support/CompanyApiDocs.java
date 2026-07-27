@@ -473,7 +473,7 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "industries").type(JsonFieldType.ARRAY).description("산업군 목록"),
                 fieldWithPath(p + "industries[].id").type(JsonFieldType.NUMBER).description("산업군 ID"),
                 fieldWithPath(p + "industries[].industryName").type(JsonFieldType.STRING).description("산업군명"),
-                fieldWithPath(p + "industries[].industryCode").type(JsonFieldType.STRING).description("산업군 코드"),
+                fieldWithPath(p + "industries[].slug").type(JsonFieldType.STRING).description("산업군 슬러그"),
                 fieldWithPath(p + "industries[].iconUrl").type(JsonFieldType.STRING).optional().description("아이콘 URL")
         };
     }

@@ -49,7 +49,7 @@ public class IndustryServiceTest {
     public void create_duplicateCode (){
         IndustryCreateRequest request = new IndustryCreateRequest("a", "a", null, null, null);
         given(industryRepository.existsByIndustryName("a")).willReturn(false);
-        given(industryRepository.existsByIndustryCode("a")).willReturn(true);
+        given(industryRepository.existsBySlug("a")).willReturn(true);
 
         assertThatThrownBy(
                 () -> industryService.createIndustry(request)
@@ -64,7 +64,7 @@ public class IndustryServiceTest {
         IndustryCreateRequest request = new IndustryCreateRequest("a", "a", null, null, null);
 
         given(industryRepository.existsByIndustryName("a")).willReturn(false);
-        given(industryRepository.existsByIndustryCode("a")).willReturn(false);
+        given(industryRepository.existsBySlug("a")).willReturn(false);
         given(industryRepository.findMaxDisplayOrder()).willReturn(2);
         given(industryRepository.save(any(Industry.class))).willAnswer(
                 inv -> {
@@ -89,7 +89,7 @@ public class IndustryServiceTest {
         IndustryCreateRequest request = new IndustryCreateRequest("a", "a", null, null, 5);
 
         given(industryRepository.existsByIndustryName("a")).willReturn(false);
-        given(industryRepository.existsByIndustryCode("a")).willReturn(false);
+        given(industryRepository.existsBySlug("a")).willReturn(false);
         given(industryRepository.save(any(Industry.class))).willAnswer(
                 inv -> {
                     Industry i = inv.getArgument(0);
@@ -122,8 +122,8 @@ public class IndustryServiceTest {
         IndustryAdminResponse firstDto = result.get(0);
         assertThat(firstDto.id()).isEqualTo(1L);
         assertThat(firstDto.industryName()).isEqualTo("농업");
-        assertThat(firstDto.industryCode()).isEqualTo("agri");
-        assertThat(firstDto.iconUrl()).isEqualTo("icon-agri");   // industryCode와 분리되어 올바르게 매핑되는지 검증
+        assertThat(firstDto.slug()).isEqualTo("agri");
+        assertThat(firstDto.iconUrl()).isEqualTo("icon-agri");   // slug와 분리되어 올바르게 매핑되는지 검증
         assertThat(firstDto.description()).isEqualTo("농업 설명");
         assertThat(firstDto.displayOrder()).isEqualTo(0);
         assertThat(firstDto.active()).isTrue();

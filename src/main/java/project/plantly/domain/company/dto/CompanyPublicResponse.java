@@ -176,10 +176,10 @@ public record CompanyPublicResponse(
         }
     }
 
-    public record IndustryResponse(Long id, String industryName, String industryCode, String iconUrl) {
+    public record IndustryResponse(Long id, String industryName, String slug, String iconUrl) {
         public static IndustryResponse from(Industry industry) {
             return new IndustryResponse(industry.getId(), industry.getIndustryName(),
-                    industry.getIndustryCode(), industry.getIconUrl());
+                    industry.getSlug(), industry.getIconUrl());
         }
     }
 }

@@ -23,7 +23,7 @@ public class IndustryService {
             throw new BusinessException(IndustryErrorCode.DUPLICATE_INDUSTRY_NAME);
         }
 
-        if(industryRepository.existsByIndustryCode(request.industryCode())){
+        if(industryRepository.existsBySlug(request.slug())){
             throw new BusinessException(IndustryErrorCode.DUPLICATE_INDUSTRY_CODE);
         }
 
@@ -31,7 +31,7 @@ public class IndustryService {
         int displayOrder = DisplayOrders.resolve(
                 request.displayOrder(), industryRepository::findMaxDisplayOrder);
 
-        Industry industry = Industry.create(request.industryName(), request.industryCode(), request.iconUrl(), request.description(), displayOrder);
+        Industry industry = Industry.create(request.industryName(), request.slug(), request.iconUrl(), request.description(), displayOrder);
         return industryRepository.save(industry).getId();
 
     }
