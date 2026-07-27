@@ -8,6 +8,7 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 참조데이터(행정구역/국가) 시드.
@@ -37,6 +38,9 @@ public class ReferenceDataSeeder implements ApplicationRunner {
                 new ClassPathResource("db/seed/country.sql"),
                 new ClassPathResource("db/seed/category.sql")
         );
+        // seed 파일은 UTF-8. 지정하지 않으면 플랫폼 기본 charset(윈도우 = MS949)으로 읽어
+        // 한글이 U+FFFD 로 깨진 채 적재된다. 실행 환경에 무관하도록 명시한다.
+        populator.setSqlScriptEncoding(StandardCharsets.UTF_8.name());
         populator.execute(dataSource);
     }
 }
