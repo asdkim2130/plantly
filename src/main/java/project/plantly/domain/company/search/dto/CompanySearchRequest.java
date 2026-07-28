@@ -26,6 +26,9 @@ public record CompanySearchRequest(
         String material,
 
         // 패싯: 선택 중 하나라도 매칭(차원 내 OR). 카테고리는 후손 서브트리까지.
+        // 인증만 예외 — type(경영시스템/산업특화/시장진입) 내부는 OR, type 간에는 AND.
+        // 프론트가 type 별 드롭다운을 분리하므로 각 드롭다운이 독립 조건으로 동작한다.
+        // 평면 리스트로 받고 서버가 type 으로 묶는다(프론트가 그룹 구조를 실어 보낼 필요 없음).
         List<Long> certificationIds,
         List<Long> industryIds,
         List<Long> categoryIds

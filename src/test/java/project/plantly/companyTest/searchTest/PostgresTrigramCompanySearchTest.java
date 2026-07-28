@@ -124,6 +124,60 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
     }
 
     @Test
+    @DisplayName("인증 패싯: 같은 type 안에서 복수 선택하면 OR — 하나만 보유해도 매칭한다")
+    void certificationFacetWithinTypeIsOr() {
+        Certification iso9001 = persistCert("ISO9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM);
+        Certification iso14001 = persistCert("ISO14001", "iso-14001", CertificationType.MANAGEMENT_SYSTEM);
+
+        Company only9001 = persistCompany("구공공일", "x");
+        em.persist(new CompanyCertification(only9001, iso9001, 0));
+        index(only9001);
+
+        Company only14001 = persistCompany("일사공공일", "y");
+        em.persist(new CompanyCertification(only14001, iso14001, 0));
+        index(only14001);
+
+        Company neither = index(persistCompany("무인증", "z"));
+
+        // 둘 다 경영시스템 → type 내 OR → 하나씩만 가진 회사도 모두 노출
+        assertThat(ids(search(new CompanySearchCriteria(
+                null, null, List.of(iso9001.getId(), iso14001.getId()), null, null))))
+                .containsExactlyInAnyOrder(only9001.getId(), only14001.getId())
+                .doesNotContain(neither.getId());
+    }
+
+    @Test
+    @DisplayName("인증 패싯: 서로 다른 type 을 선택하면 AND — 양쪽 type 을 모두 보유한 회사만 매칭한다")
+    void certificationFacetAcrossTypesIsAnd() {
+        Certification iso9001 = persistCert("ISO9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM);
+        Certification iso14001 = persistCert("ISO14001", "iso-14001", CertificationType.MANAGEMENT_SYSTEM);
+        Certification kc = persistCert("KC", "kc", CertificationType.MARKET_ACCESS);
+
+        Company both = persistCompany("둘다", "x");
+        em.persist(new CompanyCertification(both, iso9001, 0));
+        em.persist(new CompanyCertification(both, kc, 1));
+        index(both);
+
+        Company onlyManagement = persistCompany("경영만", "y");
+        em.persist(new CompanyCertification(onlyManagement, iso9001, 0));
+        index(onlyManagement);
+
+        Company onlyMarket = persistCompany("시장만", "z");
+        em.persist(new CompanyCertification(onlyMarket, kc, 0));
+        index(onlyMarket);
+
+        // 경영시스템 + 시장진입 선택 → type 간 AND → 한쪽만 가진 회사는 제외
+        assertThat(ids(search(new CompanySearchCriteria(
+                null, null, List.of(iso9001.getId(), kc.getId()), null, null))))
+                .containsExactly(both.getId());
+
+        // 경영시스템에서 2개 + 시장진입 1개 → (9001 or 14001) and KC. 조합 규칙이 함께 적용된다.
+        assertThat(ids(search(new CompanySearchCriteria(
+                null, null, List.of(iso9001.getId(), iso14001.getId(), kc.getId()), null, null))))
+                .containsExactly(both.getId());
+    }
+
+    @Test
     @DisplayName("기본 정렬: 스팟라이트 → 추천 → 최신 (플래그가 생성시간을 이긴다)")
     void defaultSort() {
         Company spot = persistCompany("스팟", "x");   // 가장 먼저 생성(가장 오래됨)
@@ -197,6 +251,12 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
     private Company index(Company c) {
         writer.write(c.getId());
         return c;
+    }
+
+    private Certification persistCert(String name, String slug, CertificationType type) {
+        Certification cert = Certification.create(name, slug, type, 0);
+        em.persist(cert);
+        return cert;
     }
 
     private Page<CompanySummary> search(CompanySearchCriteria criteria) {

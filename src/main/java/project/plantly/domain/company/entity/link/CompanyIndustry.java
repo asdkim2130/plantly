@@ -13,7 +13,11 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"company_id", "industry_id"}))
+// 패싯 필터(industry_id IN (...) → company_id)는 유니크 제약 btree 의 선두 컬럼과 맞지 않아 전용 인덱스를 둔다.
+// 상세 근거는 CompanyCertification 의 동일 인덱스 주석 참고.
+@Table(
+        uniqueConstraints = @UniqueConstraint(columnNames = {"company_id", "industry_id"}),
+        indexes = @Index(name = "idx_company_industry_facet", columnList = "industry_id, company_id"))
 public class CompanyIndustry {
 
     @Id
