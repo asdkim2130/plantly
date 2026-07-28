@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.certification.Certification;
+import project.plantly.domain.company.certification.CertificationType;
 import project.plantly.domain.company.country.Continent;
 import project.plantly.domain.company.country.Country;
 import project.plantly.domain.company.domesticRegion.DomesticRegion;
@@ -187,7 +188,7 @@ public class CompanyAggregateSeeder {
         em.persist(category);
         em.persist(new CompanyCategory(company, category, 0));
 
-        Certification certification = Certification.create(CERTIFICATION_NAME, 0);
+        Certification certification = Certification.create(CERTIFICATION_NAME, "iso-9001", CertificationType.MANAGEMENT_SYSTEM, 0);
         em.persist(certification);
         em.persist(new CompanyCertification(company, certification, 0));
 

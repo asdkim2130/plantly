@@ -37,7 +37,8 @@ public class ReferenceDataSeeder implements ApplicationRunner {
                 new ClassPathResource("db/seed/domestic-region.sql"),
                 new ClassPathResource("db/seed/country.sql"),
                 new ClassPathResource("db/seed/category.sql"),
-                new ClassPathResource("db/seed/industry.sql")
+                new ClassPathResource("db/seed/industry.sql"),
+                new ClassPathResource("db/seed/certification.sql")
         );
         // seed 파일은 UTF-8. 지정하지 않으면 플랫폼 기본 charset(윈도우 = MS949)으로 읽어
         // 한글이 U+FFFD 로 깨진 채 적재된다. 실행 환경에 무관하도록 명시한다.

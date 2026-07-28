@@ -30,6 +30,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import project.plantly.domain.company.certification.CertificationController;
 import project.plantly.domain.company.certification.CertificationService;
+import project.plantly.domain.company.certification.CertificationType;
 import project.plantly.domain.company.certification.dto.CertificationAdminResponse;
 import project.plantly.domain.company.certification.dto.CertificationCreateRequest;
 import project.plantly.domain.user.User;
@@ -91,7 +92,8 @@ public class CertificationControllerTest {
     @Test
     @DisplayName("관리자가 인증 생성시 201 Created와 id 반환")
     public void create_admin_success () throws Exception {
-        CertificationCreateRequest request = new CertificationCreateRequest("ISO 9001", 0);
+        CertificationCreateRequest request = new CertificationCreateRequest(
+                "ISO 9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM, 0);
 
         given(service.createCertification(any(CertificationCreateRequest.class))).willReturn(1L);
         authenticate(1L, UserRole.ADMIN);
@@ -107,6 +109,10 @@ public class CertificationControllerTest {
                         requestFields(
                                 fieldWithPath("name").type(JsonFieldType.STRING)
                                         .description("인증 이름"),
+                                fieldWithPath("slug").type(JsonFieldType.STRING)
+                                        .description("인증 슬러그 (영문/숫자/하이픈)"),
+                                fieldWithPath("type").type(JsonFieldType.STRING)
+                                        .description("인증 구분 (MANAGEMENT_SYSTEM: 경영시스템, INDUSTRY_SPECIFIC: 산업특화, MARKET_ACCESS: 시장진입)"),
                                 fieldWithPath("displayOrder").type(JsonFieldType.NUMBER).optional()
                                         .description("노출 순서 (0 이상, 미입력 시 마지막 순번 + 1 자동 부여)")
                         ),
@@ -128,7 +134,8 @@ public class CertificationControllerTest {
     @Test
     @DisplayName("권한 없는 회원이 인증 생성 시도시 403 반환, 서비스 호출되지 않음")
     public void create_member_forbidden () throws Exception {
-        CertificationCreateRequest request = new CertificationCreateRequest("ISO 9001", null);
+        CertificationCreateRequest request = new CertificationCreateRequest(
+                "ISO 9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM, null);
         authenticate(1L, UserRole.MEMBER);
 
         mockMvc.perform(post("/api/v1/admin/certifications")
@@ -150,7 +157,8 @@ public class CertificationControllerTest {
     @Test
     @DisplayName("이름이 비어 있으면 400에러와 검증 에러 반환")
     public void create_blankName_validationFail() throws Exception {
-        CertificationCreateRequest request = new CertificationCreateRequest("", null);
+        CertificationCreateRequest request = new CertificationCreateRequest(
+                "", "iso-9001", CertificationType.MANAGEMENT_SYSTEM, null);
         authenticate(1L, UserRole.ADMIN);
 
         mockMvc.perform(post("/api/v1/admin/certifications")
@@ -174,7 +182,8 @@ public class CertificationControllerTest {
     @Test
     @DisplayName("이름이 중복이면 409를 반환")
     public void create_duplicateName_conflict () throws Exception {
-        CertificationCreateRequest request = new CertificationCreateRequest("ISO 9001", null);
+        CertificationCreateRequest request = new CertificationCreateRequest(
+                "ISO 9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM, null);
         willThrow(new BusinessException(CertificationExceptionError.DUPLICATE_CERTIFICATION_NAME))
                 .given(service).createCertification(any(CertificationCreateRequest.class));
 

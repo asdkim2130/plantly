@@ -9,6 +9,8 @@ public interface CertificationRepository extends JpaRepository<Certification, Lo
 
     boolean existsByCertificationName(String certificationName);
 
+    boolean existsBySlug(String slug);
+
     // 전체를 displayOrder 순으로 조회 (관리자 목록 정렬용)
     List<Certification> findAllByOrderByDisplayOrderAsc();
 

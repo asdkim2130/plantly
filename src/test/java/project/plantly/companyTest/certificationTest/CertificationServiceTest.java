@@ -11,6 +11,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import project.plantly.domain.company.certification.Certification;
 import project.plantly.domain.company.certification.CertificationRepository;
 import project.plantly.domain.company.certification.CertificationService;
+import project.plantly.domain.company.certification.CertificationType;
 import project.plantly.domain.company.certification.dto.CertificationAdminResponse;
 import project.plantly.domain.company.certification.dto.CertificationCreateRequest;
 import project.plantly.global.exception.BusinessException;
@@ -34,7 +35,7 @@ public class CertificationServiceTest {
     @Test
     @DisplayName("이름이 중복이면 예외가 발생하고 저장하지 않음")
     public void create_duplicateName (){
-        CertificationCreateRequest request = new CertificationCreateRequest("a", null);
+        CertificationCreateRequest request = request("a", null);
         given(certificationRepository.existsByCertificationName("a")).willReturn(true);
 
         assertThatThrownBy(
@@ -47,7 +48,7 @@ public class CertificationServiceTest {
     @Test
     @DisplayName("displayOrder 미입력 시 최대값 +1로 저장")
     public void create_autoDisplayOrder (){
-        CertificationCreateRequest request = new CertificationCreateRequest("a", null);
+        CertificationCreateRequest request = request("a", null);
 
         given(certificationRepository.existsByCertificationName("a")).willReturn(false);
         given(certificationRepository.findMaxDisplayOrder()).willReturn(2);
@@ -71,7 +72,7 @@ public class CertificationServiceTest {
     @Test
     @DisplayName("displayOrder 입력 시 입력값 그대로 저장하고 최대값을 조회하지 않음")
     public void create_manualDisplayOrder (){
-        CertificationCreateRequest request = new CertificationCreateRequest("a", 5);
+        CertificationCreateRequest request = request("a", 5);
 
         given(certificationRepository.existsByCertificationName("a")).willReturn(false);
         given(certificationRepository.save(any(Certification.class))).willAnswer(
@@ -121,9 +122,14 @@ public class CertificationServiceTest {
     }
 
 
+    // 테스트 헬퍼 — slug / type 은 이 테스트의 관심사가 아니므로 이름에서 파생한 값으로 고정
+    private CertificationCreateRequest request (String name, Integer displayOrder){
+        return new CertificationCreateRequest(name, name, CertificationType.MANAGEMENT_SYSTEM, displayOrder);
+    }
+
     // 테스트 헬퍼 — create 로 만든 뒤 id 만 리플렉션으로 주입
     private Certification certification (Long id, String name, int displayOrder){
-        Certification certification = Certification.create(name, displayOrder);
+        Certification certification = Certification.create(name, name, CertificationType.MANAGEMENT_SYSTEM, displayOrder);
         ReflectionTestUtils.setField(certification, "id", id);
         return certification;
     }

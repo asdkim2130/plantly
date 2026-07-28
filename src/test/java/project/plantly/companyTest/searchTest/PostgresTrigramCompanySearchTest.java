@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import project.plantly.companyTest.support.PostgresContainerTest;
 import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.certification.Certification;
+import project.plantly.domain.company.certification.CertificationType;
 import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanyTag;
@@ -110,7 +111,7 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
     @Test
     @DisplayName("인증 패싯: 선택한 인증에 링크된 회사만 매칭한다")
     void certificationFacet() {
-        Certification iso = Certification.create("ISO9001", 0);
+        Certification iso = Certification.create("ISO9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM, 0);
         em.persist(iso);
 
         Company a = persistCompany("가가", "x");

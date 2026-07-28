@@ -23,11 +23,15 @@ public class CertificationService {
             throw new BusinessException(CertificationExceptionError.DUPLICATE_CERTIFICATION_NAME);
         }
 
+        if(certificationRepository.existsBySlug(request.slug())){
+            throw new BusinessException(CertificationExceptionError.DUPLICATE_CERTIFICATION_SLUG);
+        }
+
         // displayOrder값이 null이면 할당
         int displayOrder = DisplayOrders.resolve(
                 request.displayOrder(), certificationRepository::findMaxDisplayOrder);
 
-        Certification certification = Certification.create(request.name(), displayOrder);
+        Certification certification = Certification.create(request.name(), request.slug(), request.type(), displayOrder);
         return certificationRepository.save(certification).getId();
     }
 
