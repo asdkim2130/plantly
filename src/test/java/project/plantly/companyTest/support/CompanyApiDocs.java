@@ -458,6 +458,8 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "certifications").type(JsonFieldType.ARRAY).description("인증 목록"),
                 fieldWithPath(p + "certifications[].id").type(JsonFieldType.NUMBER).description("인증 ID"),
                 fieldWithPath(p + "certifications[].certificationName").type(JsonFieldType.STRING).description("인증명"),
+                fieldWithPath(p + "certifications[].type").type(JsonFieldType.STRING)
+                        .description("인증 구분: MANAGEMENT_SYSTEM(경영시스템), INDUSTRY_SPECIFIC(산업특화), MARKET_ACCESS(시장진입)"),
 
                 fieldWithPath(p + "countries").type(JsonFieldType.ARRAY).description("수출 국가 목록"),
                 fieldWithPath(p + "countries[].id").type(JsonFieldType.NUMBER).description("국가 ID"),

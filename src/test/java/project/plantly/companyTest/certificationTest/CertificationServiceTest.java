@@ -14,6 +14,7 @@ import project.plantly.domain.company.certification.CertificationService;
 import project.plantly.domain.company.certification.CertificationType;
 import project.plantly.domain.company.certification.dto.CertificationAdminResponse;
 import project.plantly.domain.company.certification.dto.CertificationCreateRequest;
+import project.plantly.domain.company.certification.dto.CertificationPublicResponse;
 import project.plantly.global.exception.BusinessException;
 
 import java.util.List;
@@ -111,6 +112,28 @@ public class CertificationServiceTest {
         assertThat(firstDto.active()).isTrue();
 
         assertThat(result.get(1).id()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("공개 목록은 활성 인증만 조회하는 쿼리를 쓰고 slug/type 을 함께 매핑한다")
+    public void getPublicList_mapToDto (){
+        Certification management = certification(1L, "ISO 9001", 0);
+        Certification market = Certification.create("KC 인증", "kc", CertificationType.MARKET_ACCESS, 1);
+        ReflectionTestUtils.setField(market, "id", 2L);
+        given(certificationRepository.findAllByActiveTrueOrderByDisplayOrderAsc())
+                .willReturn(List.of(management, market));
+
+        List<CertificationPublicResponse> result = certificationService.getPublicList();
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).id()).isEqualTo(1L);
+        assertThat(result.get(0).certificationName()).isEqualTo("ISO 9001");
+        assertThat(result.get(0).slug()).isEqualTo("ISO 9001");
+        assertThat(result.get(0).type()).isEqualTo(CertificationType.MANAGEMENT_SYSTEM);
+        assertThat(result.get(1).type()).isEqualTo(CertificationType.MARKET_ACCESS);
+
+        // 전체 조회(관리자용)가 아니라 활성만 조회하는 쿼리를 써야 한다 — 폐기 인증이 옵션에 남으면 안 된다.
+        verify(certificationRepository, never()).findAllByOrderByDisplayOrderAsc();
     }
 
     @Test

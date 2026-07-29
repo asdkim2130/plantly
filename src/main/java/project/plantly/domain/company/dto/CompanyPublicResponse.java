@@ -2,6 +2,7 @@ package project.plantly.domain.company.dto;
 
 import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.certification.Certification;
+import project.plantly.domain.company.certification.CertificationType;
 import project.plantly.domain.company.country.Continent;
 import project.plantly.domain.company.country.Country;
 import project.plantly.domain.company.domesticRegion.DomesticRegion;
@@ -157,9 +158,11 @@ public record CompanyPublicResponse(
         }
     }
 
-    public record CertificationResponse(Long id, String certificationName) {
+    // type 은 상세 페이지에서 인증 배지를 그룹별로 구분(색 등)하는 데 쓴다.
+    public record CertificationResponse(Long id, String certificationName, CertificationType type) {
         public static CertificationResponse from(Certification certification) {
-            return new CertificationResponse(certification.getId(), certification.getCertificationName());
+            return new CertificationResponse(certification.getId(), certification.getCertificationName(),
+                    certification.getType());
         }
     }
 

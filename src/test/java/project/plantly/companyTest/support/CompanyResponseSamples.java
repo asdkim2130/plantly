@@ -1,5 +1,6 @@
 package project.plantly.companyTest.support;
 
+import project.plantly.domain.company.certification.CertificationType;
 import project.plantly.domain.company.country.Continent;
 import project.plantly.domain.company.domesticRegion.RegionLevel;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
@@ -46,7 +47,7 @@ public class CompanyResponseSamples {
                 List.of("CNC 선반"),
                 List.of("정밀"),
                 List.of(new CategoryResponse(1L, "정밀가공", "CAT-001", 1, "https://cdn.plantly.test/cat.png")),
-                List.of(new CertificationResponse(1L, "ISO 9001")),
+                List.of(new CertificationResponse(1L, "ISO 9001", CertificationType.MANAGEMENT_SYSTEM)),
                 List.of(new CountryResponse(1L, "KR", "대한민국", "South Korea", Continent.ASIA)),
                 List.of(new RegionResponse(1L, "1100000000", "서울특별시", RegionLevel.SIDO)),
                 List.of(new IndustryResponse(1L, "기계", "IND-001", "https://cdn.plantly.test/ind.png"))
