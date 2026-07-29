@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.DisplayOrders;
 import project.plantly.domain.company.industry.dto.IndustryAdminResponse;
 import project.plantly.domain.company.industry.dto.IndustryCreateRequest;
+import project.plantly.domain.company.industry.dto.IndustryPublicResponse;
 import project.plantly.global.exception.BusinessException;
 
 import java.util.List;
@@ -43,5 +44,13 @@ public class IndustryService {
         List<Industry> industries = industryRepository.findAllByOrderByDisplayOrderAsc();
 
         return industries.stream().map(IndustryAdminResponse::from).toList();
+    }
+
+    // 공개 옵션 목록 — 등록 폼/검색 필터의 드롭다운 소스. 활성 항목만, displayOrder 순.
+    @Transactional(readOnly = true)
+    public List<IndustryPublicResponse> getPublicList (){
+        List<Industry> industries = industryRepository.findAllByActiveTrueOrderByDisplayOrderAsc();
+
+        return industries.stream().map(IndustryPublicResponse::from).toList();
     }
 }
