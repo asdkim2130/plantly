@@ -95,8 +95,8 @@ public class CategoryAdminServiceTest {
     @DisplayName("카테고리 트리 구조 캐시 루트 노드들을 중첩 DTO 트리로 반환")
     public void getTree_mapNodesToNestedDto (){
 
-        CategoryNode root = node(1L, null, "a", "a", 1, 0);
-        CategoryNode child = node(2L, 1L, "a-1", "a-1", 2, 0);
+        CategoryNode root = node(1L, null, "a", "a", 1, 0, true);
+        CategoryNode child = node(2L, 1L, "a-1", "a-1", 2, 0, true);
         addChild(root, child);
 
         given(treeService.getRoots()).willReturn(List.of(root));
@@ -121,6 +121,41 @@ public class CategoryAdminServiceTest {
     }
 
     @Test
+    @DisplayName("관리자 트리는 비활성 노드를 서브트리째 유지한다 (공개 트리와 조회 범위가 다르다)")
+    public void getTree_includesInactive (){
+
+        CategoryNode retiredRoot = node(1L, null, "retired", "폐기된 대분류", 1, 0, false);
+        CategoryNode childOfRetired = node(2L, 1L, "retired-child", "살아있는 중분류", 2, 0, true);
+        addChild(retiredRoot, childOfRetired);
+
+        CategoryNode aliveRoot = node(3L, null, "mach", "기계", 1, 1, true);
+        CategoryNode retiredChild = node(4L, 3L, "retired-cnc", "폐기된 중분류", 2, 0, false);
+        addChild(aliveRoot, retiredChild);
+
+        given(treeService.getRoots()).willReturn(List.of(retiredRoot, aliveRoot));
+
+        List<CategoryTreeResponse> result = categoryAdminService.getTree();
+
+        // 운영자는 폐기한 카테고리도 보고 되살릴 수 있어야 한다. 공개 트리
+        // (CategoryPublicResponse.activeTreeOf)처럼 비활성 서브트리를 쳐내면 안 된다 —
+        // 두 경로가 같은 스냅샷을 각자 DTO 로 매핑하므로 필터를 잘못 옮겨오기 쉽다.
+        assertThat(result).hasSize(2);
+
+        CategoryTreeResponse retiredRootDto = result.get(0);
+        assertThat(retiredRootDto.id()).isEqualTo(1L);
+        assertThat(retiredRootDto.active()).isFalse();
+        assertThat(retiredRootDto.children()).hasSize(1);   // 폐기 부모 밑의 자식도 남는다
+        assertThat(retiredRootDto.children().get(0).id()).isEqualTo(2L);
+
+        // 활성 부모 밑의 비활성 자식도 active=false 로 그대로 내려간다(운영 화면의 회색 표시용).
+        CategoryTreeResponse aliveRootDto = result.get(1);
+        assertThat(aliveRootDto.active()).isTrue();
+        assertThat(aliveRootDto.children()).hasSize(1);
+        assertThat(aliveRootDto.children().get(0).id()).isEqualTo(4L);
+        assertThat(aliveRootDto.children().get(0).active()).isFalse();
+    }
+
+    @Test
     @DisplayName("루트가 없으면 빈 리스트를 반환")
     public void getTree_empty(){
         given(treeService.getRoots()).willReturn(List.of());
@@ -131,8 +166,8 @@ public class CategoryAdminServiceTest {
 
 
     // 테스트 헬퍼
-    private CategoryNode node (Long id, Long parentId, String code, String name, int depth, int order){
-        return new CategoryNode(id, parentId, code, name, "icon-"+code, "desc-" + code, depth, order, true);
+    private CategoryNode node (Long id, Long parentId, String code, String name, int depth, int order, boolean active){
+        return new CategoryNode(id, parentId, code, name, "icon-"+code, "desc-" + code, depth, order, active);
     }
 
     @SuppressWarnings("unchecked")
