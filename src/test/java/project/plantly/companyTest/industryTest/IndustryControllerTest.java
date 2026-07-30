@@ -238,7 +238,16 @@ public class IndustryControllerTest {
                 .active(true)
                 .build();
 
-        given(service.getAll()).willReturn(List.of(response));
+        // 관리자 목록은 폐기(active=false)된 산업도 함께 내려준다 — 공개 목록과 조회 범위가 다르다.
+        IndustryAdminResponse retired = IndustryAdminResponse.builder()
+                .id(2L)
+                .industryName("폐기된 산업")
+                .slug("retired")
+                .displayOrder(1)
+                .active(false)
+                .build();
+
+        given(service.getAll()).willReturn(List.of(response, retired));
         authenticate(1L, UserRole.ADMIN);
 
         mockMvc.perform(get("/api/v1/admin/industries"))
@@ -247,6 +256,9 @@ public class IndustryControllerTest {
                 .andExpect(jsonPath("$.data[0].id").value(1))
                 .andExpect(jsonPath("$.data[0].slug").value("agri"))
                 .andExpect(jsonPath("$.data[0].iconUrl").value("icon-agri"))
+                .andExpect(jsonPath("$.data[0].active").value(true))
+                .andExpect(jsonPath("$.data[1].slug").value("retired"))
+                .andExpect(jsonPath("$.data[1].active").value(false))
                 .andDo(document("industry-list",
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
@@ -254,7 +266,7 @@ public class IndustryControllerTest {
                                 fieldWithPath("message").type(JsonFieldType.STRING).optional()
                                         .description("응답 메시지 (단순 조회는 생략됨)"),
                                 fieldWithPath("data").type(JsonFieldType.ARRAY)
-                                        .description("산업군 목록 (displayOrder 오름차순)"),
+                                        .description("산업군 목록 (displayOrder 오름차순). 폐기(active=false)된 산업도 포함된다"),
                                 fieldWithPath("data[].id").type(JsonFieldType.NUMBER)
                                         .description("산업군 ID"),
                                 fieldWithPath("data[].industryName").type(JsonFieldType.STRING)
