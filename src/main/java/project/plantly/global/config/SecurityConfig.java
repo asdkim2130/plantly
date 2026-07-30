@@ -78,6 +78,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/sign-up", "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
+                        // 인증 옵션 목록은 누구에게나 허용 — 검색 필터 패널은 비로그인도 쓴다.
+                        // (/api/v1/admin/certifications 와 경로가 달라 관리자 경로는 영향 없다)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/certifications").permitAll()
+                        // 산업 옵션 목록도 같은 이유로 공개 — 검색 패싯(industryIds)의 선택지다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/industries").permitAll()
+                        // 카테고리 트리도 같은 이유로 공개 — 검색 패싯(categoryIds)의 선택지다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
                         // 공개 회사 목록/검색은 누구에게나 허용. (단일 세그먼트라 /{id}·/private·/admin 과 구분된다)
                         .requestMatchers(HttpMethod.GET, "/api/v1/companies").permitAll()
                         // 내 회사 목록은 인증 필수. /{id} permitAll 이 'my' 도 단일 세그먼트로 잡으므로 반드시 그 앞에 둔다.

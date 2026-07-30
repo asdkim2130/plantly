@@ -9,7 +9,8 @@ import project.plantly.global.exception.ErrorCode;
 @RequiredArgsConstructor
 public enum CertificationExceptionError implements ErrorCode {
 
-    DUPLICATE_CERTIFICATION_NAME(HttpStatus.CONFLICT, "인증 이름은 중복 불가합니다.");
+    DUPLICATE_CERTIFICATION_NAME(HttpStatus.CONFLICT, "인증 이름은 중복 불가합니다."),
+    DUPLICATE_CERTIFICATION_SLUG(HttpStatus.CONFLICT, "인증 슬러그는 중복 불가합니다.");
 
     private final HttpStatus status;
     private final String message;

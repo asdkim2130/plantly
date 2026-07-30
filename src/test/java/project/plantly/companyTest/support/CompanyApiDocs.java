@@ -240,7 +240,9 @@ public class CompanyApiDocs {
                 parameterWithName("reference").optional().description("고급검색: 레퍼런스(프로젝트명·성과·협력사)"),
                 parameterWithName("equipment").optional().description("고급검색: 보유 설비"),
                 parameterWithName("material").optional().description("고급검색: 취급 소재"),
-                parameterWithName("certificationIds").optional().description("인증 ID 목록 (선택 중 하나라도 보유)"),
+                parameterWithName("certificationIds").optional().description(
+                        "인증 ID 목록 (같은 구분 내에서는 하나라도 보유, 서로 다른 구분끼리는 모두 보유. "
+                                + "예: 경영시스템 2개 + 시장진입 1개 선택 → 경영시스템 중 하나 이상 AND 해당 시장진입 보유)"),
                 parameterWithName("industryIds").optional().description("산업군 ID 목록 (선택 중 하나라도 보유)"),
                 parameterWithName("categoryIds").optional().description("카테고리 ID 목록 (대분류 선택 시 후손 서브트리까지 매칭)"),
                 parameterWithName("page").optional().description("페이지 번호 (1-base 입력)"),
@@ -456,6 +458,8 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "certifications").type(JsonFieldType.ARRAY).description("인증 목록"),
                 fieldWithPath(p + "certifications[].id").type(JsonFieldType.NUMBER).description("인증 ID"),
                 fieldWithPath(p + "certifications[].certificationName").type(JsonFieldType.STRING).description("인증명"),
+                fieldWithPath(p + "certifications[].type").type(JsonFieldType.STRING)
+                        .description("인증 구분: MANAGEMENT_SYSTEM(경영시스템), INDUSTRY_SPECIFIC(산업특화), MARKET_ACCESS(시장진입)"),
 
                 fieldWithPath(p + "countries").type(JsonFieldType.ARRAY).description("수출 국가 목록"),
                 fieldWithPath(p + "countries[].id").type(JsonFieldType.NUMBER).description("국가 ID"),

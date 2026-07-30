@@ -2,6 +2,8 @@ package project.plantly.domain.company.category.tree;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.category.exception.CategoryErrorException;
@@ -17,9 +19,26 @@ public class CategoryTreeService {
     private final CategoryRepository categoryRepository;
     private volatile CategorySnapshot categorySnapshot;  // 원자적 교체 대상
 
-    // 기동 시 1회 빌드
+    // 기동 시 1회 빌드. 스냅샷 non-null 을 보장하는 것이 주 목적 — 웹 서버는 컨텍스트 refresh
+    // 중에 이미 뜨므로, 이 시점에 채워두지 않으면 getRoots() 가 NPE 를 던질 창이 생긴다.
     @PostConstruct
     void init() {
+        reload();
+    }
+
+    /**
+     * 기동 완료 후 재빌드. {@code @PostConstruct} 만으로는 부족하다 — 참조데이터 시드
+     * ({@code ReferenceDataSeeder})가 Flyway 순환 의존을 피하려고 {@code ApplicationRunner} 로
+     * 실행되는데, 그건 컨텍스트 refresh 가 끝난 <b>뒤</b>다. 즉 빈 DB 로 첫 기동하면
+     * {@code @PostConstruct} 는 0행 상태를 읽고, 시드가 143행을 넣어도 재빌드 트리거가 없어
+     * 카테고리 조회가 빈 배열을 반환한다(2회차 기동부터는 행이 있어 정상).
+     *
+     * <p>{@code @PostConstruct} 를 이 리스너로 <b>교체</b>하지 않고 더한 이유는 위의 null 창
+     * 때문이다. 기동 시 SELECT 가 한 번 더 나가지만 순서에 무관하게 항상 옳다.
+     * {@code ApplicationReadyEvent} 는 모든 {@code ApplicationRunner} 이후에 발행된다.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    void reloadAfterStartup() {
         reload();
     }
 

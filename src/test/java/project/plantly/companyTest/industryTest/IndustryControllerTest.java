@@ -32,6 +32,7 @@ import project.plantly.domain.company.industry.IndustryController;
 import project.plantly.domain.company.industry.IndustryService;
 import project.plantly.domain.company.industry.dto.IndustryAdminResponse;
 import project.plantly.domain.company.industry.dto.IndustryCreateRequest;
+import project.plantly.domain.company.industry.dto.IndustryPublicResponse;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
@@ -237,7 +238,16 @@ public class IndustryControllerTest {
                 .active(true)
                 .build();
 
-        given(service.getAll()).willReturn(List.of(response));
+        // 관리자 목록은 폐기(active=false)된 산업도 함께 내려준다 — 공개 목록과 조회 범위가 다르다.
+        IndustryAdminResponse retired = IndustryAdminResponse.builder()
+                .id(2L)
+                .industryName("폐기된 산업")
+                .slug("retired")
+                .displayOrder(1)
+                .active(false)
+                .build();
+
+        given(service.getAll()).willReturn(List.of(response, retired));
         authenticate(1L, UserRole.ADMIN);
 
         mockMvc.perform(get("/api/v1/admin/industries"))
@@ -246,6 +256,9 @@ public class IndustryControllerTest {
                 .andExpect(jsonPath("$.data[0].id").value(1))
                 .andExpect(jsonPath("$.data[0].slug").value("agri"))
                 .andExpect(jsonPath("$.data[0].iconUrl").value("icon-agri"))
+                .andExpect(jsonPath("$.data[0].active").value(true))
+                .andExpect(jsonPath("$.data[1].slug").value("retired"))
+                .andExpect(jsonPath("$.data[1].active").value(false))
                 .andDo(document("industry-list",
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
@@ -253,7 +266,7 @@ public class IndustryControllerTest {
                                 fieldWithPath("message").type(JsonFieldType.STRING).optional()
                                         .description("응답 메시지 (단순 조회는 생략됨)"),
                                 fieldWithPath("data").type(JsonFieldType.ARRAY)
-                                        .description("산업군 목록 (displayOrder 오름차순)"),
+                                        .description("산업군 목록 (displayOrder 오름차순). 폐기(active=false)된 산업도 포함된다"),
                                 fieldWithPath("data[].id").type(JsonFieldType.NUMBER)
                                         .description("산업군 ID"),
                                 fieldWithPath("data[].industryName").type(JsonFieldType.STRING)
@@ -268,6 +281,47 @@ public class IndustryControllerTest {
                                         .description("노출 순서"),
                                 fieldWithPath("data[].active").type(JsonFieldType.BOOLEAN)
                                         .description("활성화 여부"),
+                                fieldWithPath("error").type(JsonFieldType.STRING).optional()
+                                        .description("에러 메시지 (성공 시 생략됨)")
+                        )
+                ));
+    }
+
+    @Test
+    @DisplayName("공개 산업 목록은 인증 없이 200 과 옵션 목록을 반환한다")
+    public void getPublicList_success () throws Exception {
+        given(service.getPublicList()).willReturn(List.of(
+                new IndustryPublicResponse(1L, "농업", "agri", "icon-agri"),
+                new IndustryPublicResponse(2L, "제조업", "manu", null)));
+        // authenticate() 를 호출하지 않는다 — 로그인 없이 접근 가능해야 한다.
+
+        mockMvc.perform(get("/api/v1/industries"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].id").value(1))
+                .andExpect(jsonPath("$.data[0].industryName").value("농업"))
+                .andExpect(jsonPath("$.data[0].slug").value("agri"))
+                .andExpect(jsonPath("$.data[0].iconUrl").value("icon-agri"))
+                // 운영 필드는 공개 응답에 없다
+                .andExpect(jsonPath("$.data[0].displayOrder").doesNotExist())
+                .andExpect(jsonPath("$.data[0].active").doesNotExist())
+                .andExpect(jsonPath("$.data[0].description").doesNotExist())
+                .andDo(document("industry-public-list",
+                        responseFields(
+                                fieldWithPath("success").type(JsonFieldType.BOOLEAN)
+                                        .description("요청 성공 여부"),
+                                fieldWithPath("message").type(JsonFieldType.STRING).optional()
+                                        .description("응답 메시지 (단순 조회는 생략됨)"),
+                                fieldWithPath("data").type(JsonFieldType.ARRAY)
+                                        .description("활성 산업 목록 (displayOrder 오름차순)"),
+                                fieldWithPath("data[].id").type(JsonFieldType.NUMBER)
+                                        .description("산업 ID. 검색 필터(industryIds)·회사 등록(industryIds)에 그대로 실어 보낸다"),
+                                fieldWithPath("data[].industryName").type(JsonFieldType.STRING)
+                                        .description("산업 이름"),
+                                fieldWithPath("data[].slug").type(JsonFieldType.STRING)
+                                        .description("산업 슬러그"),
+                                fieldWithPath("data[].iconUrl").type(JsonFieldType.STRING).optional()
+                                        .description("아이콘 URL (미등록 시 null)"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 생략됨)")
                         )

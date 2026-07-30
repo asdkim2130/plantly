@@ -13,6 +13,7 @@ import project.plantly.domain.company.industry.IndustryRepository;
 import project.plantly.domain.company.industry.IndustryService;
 import project.plantly.domain.company.industry.dto.IndustryAdminResponse;
 import project.plantly.domain.company.industry.dto.IndustryCreateRequest;
+import project.plantly.domain.company.industry.dto.IndustryPublicResponse;
 import project.plantly.global.exception.BusinessException;
 
 import java.util.List;
@@ -129,6 +130,47 @@ public class IndustryServiceTest {
         assertThat(firstDto.active()).isTrue();
 
         assertThat(result.get(1).id()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("관리자 목록은 비활성 산업까지 포함한다 (공개 목록과 조회 범위가 다르다)")
+    public void getAll_includesInactive (){
+        Industry active = industry(1L, "농업", "agri", null, null, 0);
+        Industry retired = industry(2L, "폐기된 산업", "retired", null, null, 1);
+        retired.deactivate();
+        given(industryRepository.findAllByOrderByDisplayOrderAsc()).willReturn(List.of(active, retired));
+
+        List<IndustryAdminResponse> result = industryService.getAll();
+
+        // 운영자는 폐기한 산업도 보고 되살릴 수 있어야 하므로 목록에서 빠지면 안 된다.
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).active()).isTrue();
+        assertThat(result.get(1).industryName()).isEqualTo("폐기된 산업");
+        assertThat(result.get(1).active()).isFalse();
+
+        // 공개 목록용 활성 전용 쿼리를 관리자 경로에 잘못 끌어다 쓰면 안 된다.
+        verify(industryRepository, never()).findAllByActiveTrueOrderByDisplayOrderAsc();
+    }
+
+    @Test
+    @DisplayName("공개 목록은 활성 산업만 조회하는 쿼리를 쓰고 운영 필드 없이 매핑한다")
+    public void getPublicList_mapToDto (){
+        Industry first = industry(1L, "농업", "agri", "icon-agri", "농업 설명", 0);
+        Industry second = industry(2L, "제조업", "manu", null, null, 1);
+        given(industryRepository.findAllByActiveTrueOrderByDisplayOrderAsc()).willReturn(List.of(first, second));
+
+        List<IndustryPublicResponse> result = industryService.getPublicList();
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).id()).isEqualTo(1L);
+        assertThat(result.get(0).industryName()).isEqualTo("농업");
+        assertThat(result.get(0).slug()).isEqualTo("agri");
+        assertThat(result.get(0).iconUrl()).isEqualTo("icon-agri");
+        // 시드가 iconUrl 을 넣지 않아 대부분 null 이다 — 매핑이 터지지 않고 그대로 내려가야 한다.
+        assertThat(result.get(1).iconUrl()).isNull();
+
+        // 전체 조회(관리자용)가 아니라 활성만 조회하는 쿼리를 써야 한다 — 폐기 산업이 옵션에 남으면 안 된다.
+        verify(industryRepository, never()).findAllByOrderByDisplayOrderAsc();
     }
 
     @Test
