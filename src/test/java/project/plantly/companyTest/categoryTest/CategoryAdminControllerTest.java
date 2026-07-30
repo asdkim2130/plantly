@@ -219,6 +219,21 @@ public class CategoryAdminControllerTest {
                 .description("설명")
                 .depth(2)
                 .displayOrder(0)
+                .active(true)
+                .children(List.of())
+                .build();
+
+        // 폐기 항목을 샘플에 포함시켜, 관리자 응답이 공개 트리와 달리 비활성 카테고리도
+        // 내려준다는 계약이 category-tree 스니펫에서 보이게 한다.
+        CategoryTreeResponse retiredChild = CategoryTreeResponse.builder()
+                .id(3L)
+                .slug("retired-category")
+                .categoryName("폐기된 자식 카테고리")
+                .iconUrl("icon")
+                .description("설명")
+                .depth(2)
+                .displayOrder(1)
+                .active(false)
                 .children(List.of())
                 .build();
 
@@ -230,7 +245,8 @@ public class CategoryAdminControllerTest {
                 .description("설명")
                 .depth(1)
                 .displayOrder(0)
-                .children(List.of(child))
+                .active(true)
+                .children(List.of(child, retiredChild))
                 .build();
 
         given(service.getTree()).willReturn(List.of(root));
@@ -241,8 +257,12 @@ public class CategoryAdminControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].id").value(1))
                 .andExpect(jsonPath("$.data[0].slug").value("root-category"))
+                .andExpect(jsonPath("$.data[0].active").value(true))
                 .andExpect(jsonPath("$.data[0].children[0].id").value(2))
                 .andExpect(jsonPath("$.data[0].children[0].categoryName").value("자식 카테고리"))
+                // 비활성 카테고리도 목록에서 빠지지 않고 active=false 로 실려 나간다
+                .andExpect(jsonPath("$.data[0].children[1].id").value(3))
+                .andExpect(jsonPath("$.data[0].children[1].active").value(false))
                 .andDo(document("category-tree",
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
