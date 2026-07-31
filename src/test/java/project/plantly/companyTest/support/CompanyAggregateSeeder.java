@@ -65,6 +65,8 @@ public class CompanyAggregateSeeder {
     public static final String CERTIFICATION_NAME = "ISO 9001";
     public static final String COUNTRY_NAME_KO = "대한민국";
     public static final String REGION_NAME = "서울특별시";
+    // 자식이 없는 광역시라 short/display 가 같다. 부모명이 붙는 표기는 시군구에서만 갈린다.
+    public static final String REGION_DISPLAY_NAME = "서울";
     public static final String INDUSTRY_NAME = "기계";
 
     // 유저 자가등록 회사의 구독(seedPublishedCompany): FREE, ACTIVE, 무기한(expiresAt 없음).
@@ -196,7 +198,7 @@ public class CompanyAggregateSeeder {
         em.persist(country);
         em.persist(new CompanyCountry(company, country, 0));
 
-        DomesticRegion region = DomesticRegion.create("1100000000", REGION_NAME, RegionLevel.SIDO, null);
+        DomesticRegion region = DomesticRegion.create("1100000000", REGION_NAME, "서울", REGION_DISPLAY_NAME, RegionLevel.SIDO, null);
         em.persist(region);
         em.persist(new CompanyDomesticRegion(company, region, 0));
 
