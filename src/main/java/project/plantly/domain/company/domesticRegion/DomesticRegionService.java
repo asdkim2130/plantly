@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.domesticRegion.dto.DomesticRegionAdminResponse;
 import project.plantly.domain.company.domesticRegion.dto.DomesticRegionPublicResponse;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,10 +22,7 @@ public class DomesticRegionService {
     public List<DomesticRegionAdminResponse> getTree() {
         List<DomesticRegion> all = domesticRegionRepository.findAllByOrderByCodeAsc();
 
-        // 부모 code -> 자식 목록 (code 순 유지). 시군구만 parentCode 를 가진다.
-        Map<String, List<DomesticRegion>> childrenByParent = all.stream()
-                .filter(region -> region.getParentCode() != null)
-                .collect(Collectors.groupingBy(DomesticRegion::getParentCode));
+        Map<String, List<DomesticRegion>> childrenByParent = groupChildrenByParent(all);
 
         // 루트(시도) = parentCode 없음
         return all.stream()
@@ -48,14 +46,40 @@ public class DomesticRegionService {
     public List<DomesticRegionPublicResponse> getPublicTree() {
         List<DomesticRegion> actives = domesticRegionRepository.findByActiveTrueOrderByCodeAsc();
 
-        Map<String, List<DomesticRegion>> childrenByParent = actives.stream()
-                .filter(region -> region.getParentCode() != null)
-                .collect(Collectors.groupingBy(DomesticRegion::getParentCode));
+        Map<String, List<DomesticRegion>> childrenByParent = groupChildrenByParent(actives);
 
         return actives.stream()
                 .filter(region -> region.getParentCode() == null)
                 .map(root -> toPublicResponse(root, childrenByParent))
                 .toList();
+    }
+
+    /**
+     * 부모 code -> 자식 목록. 시군구만 {@code parentCode} 를 가지므로 잎 노드만 모인다.
+     *
+     * <p>자식은 {@code shortName}("수원" / "오산") 가나다순으로 정렬한다. 루트(전국·시도)는
+     * 리포지토리가 준 code 순 그대로 둔다 — 법정동코드 순서가 곧 서울·부산·… 이라는
+     * 관습적 배열이라, 여기서만 순서를 바꾸면 오히려 낯설어진다.
+     *
+     * <p>정렬을 {@code ORDER BY} 가 아니라 애플리케이션에서 하는 이유는 {@code CountryService}
+     * 와 같다 — 한글 정렬은 DB collation 에 좌우되고(컨테이너 기본 en_US.utf8 에서 실제로
+     * 순서가 어긋난다), 운영 DB 로케일이 다르면 또 바뀐다. {@code String} 자연 순서면 충분하다:
+     * 한글 음절(U+AC00~U+D7A3)이 초성-중성-종성 순으로 배열돼 코드포인트 순서가 곧 가나다순이고,
+     * 시드의 {@code shortName} 은 전부 한글 음절이다.
+     *
+     * <p>{@code shortName} 은 DB 제약이 없어 이론상 null 이 가능하다(엔티티 주석 참고).
+     * 시드가 항상 채우지만, 빠진 행 하나 때문에 옵션 API 전체가 죽지 않도록 null 은 뒤로 보낸다.
+     */
+    private Map<String, List<DomesticRegion>> groupChildrenByParent(List<DomesticRegion> regions) {
+        Map<String, List<DomesticRegion>> childrenByParent = regions.stream()
+                .filter(region -> region.getParentCode() != null)
+                .collect(Collectors.groupingBy(DomesticRegion::getParentCode));
+
+        Comparator<DomesticRegion> byShortName = Comparator.comparing(
+                DomesticRegion::getShortName, Comparator.nullsLast(Comparator.naturalOrder()));
+        childrenByParent.values().forEach(children -> children.sort(byShortName));
+
+        return childrenByParent;
     }
 
     private DomesticRegionPublicResponse toPublicResponse(DomesticRegion region, Map<String, List<DomesticRegion>> childrenByParent) {

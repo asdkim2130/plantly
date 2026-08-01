@@ -67,6 +67,21 @@ public class DomesticRegionServiceTest {
     }
 
     @Test
+    @DisplayName("관리자 트리의 자식(시군구)은 shortName 가나다순으로 정렬된다")
+    public void getTree_sortsChildrenByShortName (){
+        // 리포지토리는 code 순으로 준다: 수원(4111) < 오산(4137) < 광주(4161).
+        // 가나다순이면 광주 → 수원 → 오산 이어야 한다.
+        given(domesticRegionRepository.findAllByOrderByCodeAsc())
+                .willReturn(List.of(gyeonggi(), suwon(), osan(), gwangju()));
+
+        List<DomesticRegionAdminResponse> tree = domesticRegionService.getTree();
+
+        assertThat(tree.get(0).children())
+                .extracting(DomesticRegionAdminResponse::name)
+                .containsExactly("경기도 광주시", "경기도 수원시", "경기도 오산시");
+    }
+
+    @Test
     @DisplayName("행정구역이 없으면 빈 리스트를 반환")
     public void getTree_empty (){
         given(domesticRegionRepository.findAllByOrderByCodeAsc()).willReturn(List.of());
@@ -130,6 +145,26 @@ public class DomesticRegionServiceTest {
     }
 
     @Test
+    @DisplayName("공개 트리도 자식(시군구)만 가나다순으로 정렬하고 루트는 code 순을 지킨다")
+    public void getPublicTree_sortsChildrenByShortName (){
+        // code 순 입력: 전국(0000) < 세종(3611) < 경기(4100) < 수원(4111) < 오산(4137) < 광주(4161)
+        given(domesticRegionRepository.findByActiveTrueOrderByCodeAsc())
+                .willReturn(List.of(nationwide(), sejong(), gyeonggi(), suwon(), osan(), gwangju()));
+
+        List<DomesticRegionPublicResponse> tree = domesticRegionService.getPublicTree();
+
+        // 루트는 code 순 그대로 — 전국이 맨 앞, 그다음 세종·경기.
+        assertThat(tree)
+                .extracting(DomesticRegionPublicResponse::shortName)
+                .containsExactly("전국", "세종", "경기");
+
+        // 자식만 가나다순으로 재정렬된다.
+        assertThat(tree.get(2).children())
+                .extracting(DomesticRegionPublicResponse::shortName)
+                .containsExactly("광주", "수원", "오산");
+    }
+
+    @Test
     @DisplayName("활성 행정구역이 없으면 공개 트리는 빈 리스트를 반환")
     public void getPublicTree_empty (){
         given(domesticRegionRepository.findByActiveTrueOrderByCodeAsc()).willReturn(List.of());
@@ -152,5 +187,13 @@ public class DomesticRegionServiceTest {
 
     private DomesticRegion suwon() {
         return DomesticRegion.create("4111000000", "경기도 수원시", "수원", "경기 수원", RegionLevel.SIGUNGU, "4100000000");
+    }
+
+    private DomesticRegion osan() {
+        return DomesticRegion.create("4137000000", "경기도 오산시", "오산", "경기 오산", RegionLevel.SIGUNGU, "4100000000");
+    }
+
+    private DomesticRegion gwangju() {
+        return DomesticRegion.create("4161000000", "경기도 광주시", "광주", "경기 광주", RegionLevel.SIGUNGU, "4100000000");
     }
 }
