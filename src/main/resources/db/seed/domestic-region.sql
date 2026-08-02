@@ -32,6 +32,19 @@
 DELETE FROM domestic_region
  WHERE code IN ('2671000000', '2771000000', '2772000000', '2871000000', '2872000000', '3171000000');
 
+-- 0-2) 스키마 정리 — level CHECK 제약에 NATION 추가.
+--    ddl-auto=update 는 기존 테이블의 CHECK 제약을 건드리지 않는다. 그래서 RegionLevel 에 NATION 을
+--    추가하기 전에 만들어진 DB 에는 SIDO/SIGUNGU 만 허용하는 제약이 그대로 남고, 아래 3) 전국 행
+--    삽입이 제약 위반으로 실패한다 → ReferenceDataSeeder 가 예외를 던져 기동 자체가 중단된다.
+--    새로 만든 DB 는 Hibernate 가 세 값으로 만들어 주므로 영향이 없다.
+--
+--    제약 이름은 Hibernate 생성 규칙(<table>_<column>_check)이라 고정이다. DROP IF EXISTS 후 ADD 를
+--    쌍으로 두어 매 기동 멱등하게 만든다(176행짜리 마스터라 재검증 비용은 무시할 수준).
+--    0) 블록과 마찬가지로, 모든 DB 가 한 번씩 기동을 마치면 통째로 지워도 된다.
+ALTER TABLE domestic_region DROP CONSTRAINT IF EXISTS domestic_region_level_check;
+ALTER TABLE domestic_region ADD CONSTRAINT domestic_region_level_check
+  CHECK (level IN ('NATION', 'SIDO', 'SIGUNGU'));
+
 -- 1) 시도 (부모 없음) — 자식보다 먼저 삽입
 INSERT INTO domestic_region (code, name, short_name, display_name, level, parent_code) VALUES
   ('1100000000', '서울특별시', '서울', '서울', 'SIDO', NULL),
