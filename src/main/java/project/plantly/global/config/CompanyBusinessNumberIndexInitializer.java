@@ -2,6 +2,7 @@ package project.plantly.global.config;
 
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
@@ -23,7 +24,9 @@ import java.sql.Statement;
  * <p>Postgres 전용 문법이라 실제 DB 가 Postgres 일 때만 실행한다(H2 단위 테스트는 건너뛴다 — 그쪽 유일성은
  * 앱 레벨 사전검증 {@code existsByBusinessNumberAndDeletedFalse} 가 담당). {@code IF NOT EXISTS} 로 멱등하다.
  */
+// 이 인덱스가 있어야 사업자번호 중복 등록이 DB 레벨에서 막힌다. fake data 시드보다 먼저 실행되도록 순서를 고정한다.
 @Component
+@Order(20)
 public class CompanyBusinessNumberIndexInitializer implements ApplicationRunner {
 
     private final DataSource dataSource;

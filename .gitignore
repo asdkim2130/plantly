@@ -42,3 +42,8 @@ src/main/resources/application-local.properties
 
 ### DB (postgres runtime data)
 /db/postgres/data/
+
+### fake data 시드 산출물 (매 시드 실행마다 덮어써짐)
+# 케이스 정의는 src/main/java/project/plantly/global/seed/ 코드가 소유한다.
+# 이 파일들은 그 코드의 실행 결과일 뿐이라, 커밋하면 시드를 돌릴 때마다 diff 가 생긴다.
+/docs/seed/

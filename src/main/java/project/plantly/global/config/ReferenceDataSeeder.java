@@ -3,6 +3,7 @@ package project.plantly.global.config;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.stereotype.Component;
@@ -21,8 +22,11 @@ import java.nio.charset.StandardCharsets;
  * {@link ApplicationRunner} 로 직접 실행한다. seed 는 {@code ON CONFLICT DO NOTHING} 으로 멱등이라
  * 매 기동 안전하다. Postgres 전용 문법이므로 H2 를 쓰는 test 프로파일에서는 제외한다.
  */
+// 순서를 명시한다 — fake data 시드(FakeDataSeedRunner)가 여기서 넣은 마스터를 조회해 쓰므로,
+// 러너 간 순서가 정해져 있지 않으면 마스터가 없는 상태로 시드가 돌 수 있다.
 @Component
 @Profile("!test")
+@Order(10)
 public class ReferenceDataSeeder implements ApplicationRunner {
 
     private final DataSource dataSource;
