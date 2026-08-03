@@ -12,7 +12,11 @@ public final class SeedBusinessNumbers {
 
     private static final String PREFIX = "700000";
 
-    /** 멱등 판정용 마커. 이 번호를 가진 활성 회사가 있으면 시드가 이미 돌았다고 본다. */
+    /**
+     * 시드 잔여물 판정용 마커(C01 의 번호). 완료 판정은 {@link SeedState} 의 표식이 하고, 이 번호는
+     * "완료되지 않았는데 데이터가 남아 있다"를 가려내는 데만 쓴다 — C01 은 가장 먼저 만들어지므로
+     * 이것만으로 완료를 판정하면 뒤쪽에서 깨진 시드를 완료로 오인한다.
+     */
     public static final String MARKER = caseNumber(1);
 
     // ===== FakeNtsClient 실패 분기용 (D07 감사 로그) =====

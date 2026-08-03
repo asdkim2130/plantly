@@ -11,6 +11,7 @@ import project.plantly.domain.company.nts.FakeNtsClient;
 import project.plantly.domain.company.nts.NtsClient;
 import project.plantly.domain.company.repository.CompanyRepository;
 import project.plantly.domain.company.search.CompanySearchDocumentWriter;
+import project.plantly.domain.user.repository.UserRepository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +51,9 @@ public class FakeDataSeedRunner implements ApplicationRunner {
     private final NtsClient ntsClient;
     private final SeedProperties properties;
     private final SeedResetter resetter;
+    private final SeedState state;
     private final CompanyRepository companyRepository;
+    private final UserRepository userRepository;
 
     private final SeedMasterCatalog masters;
     private final SeedAccountFactory accountFactory;
@@ -64,13 +67,15 @@ public class FakeDataSeedRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         guardFakeNtsClient();
+        state.ensureTable();
 
         if (properties.reset()) {
             resetter.reset();
-        } else if (alreadySeeded()) {
-            log.info("[seed] 이미 시드된 DB 입니다(마커 {}). 다시 심으려면 --app.seed.reset=true 로 실행하세요.",
-                    SeedBusinessNumbers.MARKER);
+        } else if (state.completed()) {
+            log.info("[seed] 이미 시드된 DB 입니다. 다시 심으려면 --app.seed.reset=true 로 실행하세요.");
             return;
+        } else {
+            requireNoLeftovers();
         }
 
         long startedAt = System.currentTimeMillis();
@@ -93,6 +98,10 @@ public class FakeDataSeedRunner implements ApplicationRunner {
         searchDocumentWriter.backfillAll();
 
         manifestWriter.write(accounts, companies, draftResult.drafts());
+
+        // 여기까지 와야 완료다. 앞 단계에서 예외가 나면 표식이 남지 않고, 다음 기동은 아래 requireNoLeftovers()
+        // 에서 멈춘다 — 반쪽짜리 DB 가 "이미 시드됨"으로 통과하지 않게 하는 지점.
+        state.markCompleted();
 
         log.info("[seed] 완료 — 계정 {}, 회사 {}, 인증/초안 케이스 {} ({}ms)",
                 accounts.all().size(), companies.size(), draftResult.drafts().size(),
@@ -128,7 +137,21 @@ public class FakeDataSeedRunner implements ApplicationRunner {
         }
     }
 
-    private boolean alreadySeeded() {
-        return companyRepository.existsByBusinessNumberAndDeletedFalse(SeedBusinessNumbers.MARKER);
+    /**
+     * 지난 시드가 중간에 깨진 상태인지 확인한다.
+     *
+     * <p>완료 표식이 없는데 시드 흔적이 남아 있다면 앞선 실행이 도중에 끊긴 것이다. 그대로 다시 심으면
+     * 계정 이메일이나 사업자번호 유니크 제약에 걸려, 원인이 한참 뒤의 스택트레이스로만 드러난다.
+     * 시드 계정은 회사보다 먼저 만들어지므로 U1 이메일이 남아 있는지가 가장 이른 흔적이고, 계정 생성
+     * 자체가 롤백된 뒤 회사만 남는 경우는 없지만 판정은 마커 회사까지 함께 본다.
+     */
+    private void requireNoLeftovers() {
+        boolean leftover = userRepository.existsByEmail(SeedAccountFactory.OWNER1_EMAIL)
+                || companyRepository.existsByBusinessNumberAndDeletedFalse(SeedBusinessNumbers.MARKER);
+        if (leftover) {
+            throw new IllegalStateException(
+                    "지난 시드가 완료되지 못한 채 데이터가 남아 있습니다(완료 표식 없음). 남은 데이터 위에 다시 심으면"
+                            + " 이메일·사업자번호 중복으로 실패하므로 중단합니다. --app.seed.reset=true 로 다시 실행하세요.");
+        }
     }
 }

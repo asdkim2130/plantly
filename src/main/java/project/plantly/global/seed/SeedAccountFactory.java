@@ -27,13 +27,16 @@ public class SeedAccountFactory {
     /** 모든 시드 계정의 공통 비밀번호. 인수테스트(AcceptanceTest.VALID_PASSWORD)와 같은 값. */
     public static final String PASSWORD = "Password1!";
 
+    /** 시드가 만드는 첫 행. 중간에 깨진 시드의 잔여물을 판정할 때 이 이메일의 존재를 본다. */
+    public static final String OWNER1_EMAIL = "owner1@plantly.local";
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public SeedAccounts create() {
         SeedAccounts accounts = new SeedAccounts(
-                save("U1", "owner1@plantly.local", "김소유", "010-1000-0001", UserRole.MEMBER, UserStatus.ACTIVE,
+                save("U1", OWNER1_EMAIL, "김소유", "010-1000-0001", UserRole.MEMBER, UserStatus.ACTIVE,
                         "회사 다수 소유 + 즐겨찾기 다수 + 인증/초안 보유. 프론트 주 작업 계정"),
                 save("U2", "owner2@plantly.local", "박이웃", "010-1000-0002", UserRole.MEMBER, UserStatus.ACTIVE,
                         "회사 1건 소유. U1 이 이 회사를 수정 시도하면 차단되어야 한다"),

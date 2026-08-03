@@ -33,8 +33,10 @@ import java.util.Objects;
  * 케이스↔id 매핑 산출물 생성. JSON(기계 판독)과 Markdown(사람 판독)을 함께 쓴다.
  *
  * <p>id 는 시드할 때마다 새로 부여되지만, {@code --app.seed.reset=true} 경로는 테이블을
- * {@code RESTART IDENTITY} 로 비우고 항상 같은 순서로 심으므로 id 까지 재현된다. 그래서 이 문서를
- * 리포에 커밋해도 금방 낡지 않는다. 케이스 코드(C13 등)는 어느 경우에도 변하지 않는 안정 키다.
+ * {@code RESTART IDENTITY} 로 비우고 항상 같은 순서로 심으므로 id 까지 재현된다. 그래서 이 산출물은
+ * 커밋하지 않고({@code .gitignore} 의 {@code /docs/seed/}) 필요할 때 다시 심어 얻는다 — 케이스 정의는
+ * 이 패키지의 코드가 소유하고, 문서는 그 실행 결과일 뿐이다. 케이스 코드(C13 등)는 id 가 어떻게 매겨지든
+ * 변하지 않는 안정 키라, 프론트는 이 코드로 참조하면 된다.
  */
 @Slf4j
 @Component
