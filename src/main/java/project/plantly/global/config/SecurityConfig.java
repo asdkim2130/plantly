@@ -87,6 +87,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
                         // 국가 목록도 공개. 검색 패싯은 아니고 등록/수정 폼의 수출국 선택지다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/countries").permitAll()
+                        // 국내 지역 트리도 공개 — 등록/수정 폼의 커버리지 선택지이자 향후 검색 패싯이다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/domestic-regions").permitAll()
                         // 공개 회사 목록/검색은 누구에게나 허용. (단일 세그먼트라 /{id}·/private·/admin 과 구분된다)
                         .requestMatchers(HttpMethod.GET, "/api/v1/companies").permitAll()
                         // 내 회사 목록은 인증 필수. /{id} permitAll 이 'my' 도 단일 세그먼트로 잡으므로 반드시 그 앞에 둔다.

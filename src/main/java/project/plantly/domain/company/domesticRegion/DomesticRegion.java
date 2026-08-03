@@ -20,11 +20,23 @@ public class DomesticRegion {
     @Column(nullable = false, unique = true, length = 10)
     private String code;
 
+    // 행정안전부 원본 명칭("경기도 오산시"). 출처 대조용이며 화면 표기에는 쓰지 않는다.
     @NotNull
     @Column(nullable = false, length = 50)
     private String name;
 
-    // SIDO(시도) / SIGUNGU(시군구). 컬럼에는 문자열로 저장 (시드 값과 동일).
+    // 드롭다운 항목용 자기 단계 이름("경기" / "오산"). 부모명을 포함하지 않는다.
+    // 시드가 항상 채우지만 DB 제약은 걸지 않는다 — ddl-auto=update 가 기존 행이 있는
+    // 테이블에 NOT NULL 컬럼을 추가하려다 실패하기 때문. 시드의 DO UPDATE 가 곧바로 채운다.
+    @Column(length = 30)
+    private String shortName;
+
+    // 배지·카드·상세용 완성형("경기 전역" / "경기 오산"). 조회 응답은 부모 문맥이 없는
+    // 평평한 목록이라 런타임 조합이 불가능해, 조합 결과를 미리 데이터로 갖는다.
+    @Column(length = 30)
+    private String displayName;
+
+    // NATION(전국) / SIDO(시도) / SIGUNGU(시군구). 컬럼에는 문자열로 저장 (시드 값과 동일).
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
@@ -38,16 +50,20 @@ public class DomesticRegion {
     @Column(nullable = false, columnDefinition = "boolean default true")
     private boolean active;
 
-    public DomesticRegion(String code, String name, RegionLevel level, String parentCode) {
+    public DomesticRegion(String code, String name, String shortName, String displayName,
+                          RegionLevel level, String parentCode) {
         this.code = code;
         this.name = name;
+        this.shortName = shortName;
+        this.displayName = displayName;
         this.level = level;
         this.parentCode = parentCode;
         this.active = true;
     }
 
-    public static DomesticRegion create(String code, String name, RegionLevel level, String parentCode) {
-        return new DomesticRegion(code, name, level, parentCode);
+    public static DomesticRegion create(String code, String name, String shortName, String displayName,
+                                        RegionLevel level, String parentCode) {
+        return new DomesticRegion(code, name, shortName, displayName, level, parentCode);
     }
 
     public void activate() {
