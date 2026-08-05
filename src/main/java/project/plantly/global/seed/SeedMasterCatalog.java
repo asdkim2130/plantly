@@ -119,33 +119,40 @@ public class SeedMasterCatalog {
         return regions.get(Math.floorMod(seed, regions.size()));
     }
 
-    // 시군구 단계가 없는 게 실제인 시도. 주소가 시도 하나로 끝나는 유일한 정상 케이스라 손대지 않는다.
-    private static final String NO_SIGUNGU_SIDO = "세종특별자치시";
-
     /**
      * 주소 문자열 앞에 붙일 지역 명칭을 "시도 시군구" 형태로 돌려준다.
      *
-     * <p>지역 풀에는 시군구뿐 아니라 시도 행도 들어 있는데({@link #load()} 참고), 시도 명칭을 그대로 쓰면
-     * 주소가 "서울특별시 산업로 100" 이 되어 카드 지역 라벨(시도+시군구)이 도로명 조각을 물게 된다.
-     * 실제 주소도 세종을 빼면 시도 하나로 끝나지 않으므로, 시군구 토큰을 채워 형태를 실제와 맞춘다.
+     * <p>지역 풀에는 시군구뿐 아니라 시도 행도 들어 있는데({@link #load()} 참고), 시도를 그대로 쓰면 주소가
+     * "서울 산업로 100" 이 되어 카드 지역 라벨(시도+시군구)이 도로명 조각을 물게 된다. 실제 주소도 세종을
+     * 빼면 시도 하나로 끝나지 않으므로, 시군구 토큰을 채워 형태를 실제와 맞춘다.
      *
-     * <p>도(道)는 마스터에 실제 자식 시군구가 있으니 그중 하나를 쓰고("경기도" → "경기도 수원시"),
-     * 자식이 없는 광역시·특별시만 구 이름을 지어 붙인다("서울특별시" → "서울특별시 중구").
+     * <p>이름은 행안부 원본(name)이 아니라 {@code display_name} 을 쓴다 — 우편번호 서비스가 내려주는
+     * 주소는 시도가 축약형("강원 고성군")이고, 대응 지역 배지도 같은 축약 표기라 원본명("강원특별자치도
+     * 고성군")을 쓰면 한 화면에서 같은 지역이 다른 표기로 보인다.
+     *
+     * <p>도(道)는 마스터에 실제 자식 시군구가 있으니 그중 하나를 쓰고("경기도" → "경기 수원시"), 자식이
+     * 없는 광역시·특별시만 구 이름을 지어 붙인다("서울" → "서울 중구"). 대응 지역은 광역시를 한 단위로
+     * 보지만(구로 쪼개지 않는다) 소재지는 구까지 적는 게 실제 주소라, 이 차이는 의도된 것이다.
      * 회사가 연결된 지역 행은 그대로이므로 지역 필터와 주소는 여전히 같은 시도를 가리킨다.
      */
     public String addressRegionName(DomesticRegion region, int seed) {
-        if (region.getLevel() == RegionLevel.SIGUNGU || NO_SIGUNGU_SIDO.equals(region.getName())) {
-            return region.getName();
+        if (region.getLevel() == RegionLevel.SIGUNGU) {
+            return region.getDisplayName();     // 이미 "강원 고성군" 형태
         }
         List<DomesticRegion> children = regions.stream()
                 .filter(r -> region.getCode().equals(r.getParentCode()))
                 .toList();
-        if (children.isEmpty()) {
-            return region.getName() + " " + SeedVocabulary.district(seed);
+        if (!children.isEmpty()) {
+            return children.get(Math.floorMod(seed, children.size())).getDisplayName();
         }
-        // 자식 명칭은 이미 "경기도 수원시" 형태(행안부 원본)라 그대로 쓰면 된다.
-        return children.get(Math.floorMod(seed, children.size())).getName();
+        // 자식 없는 시도 = 광역시·특별시·세종. 세종만 시군구 단계가 없는 게 실제라 시도 하나로 끝난다.
+        return NO_SIGUNGU_SIDO.equals(region.getDisplayName())
+                ? region.getDisplayName()
+                : region.getDisplayName() + " " + SeedVocabulary.district(seed);
     }
+
+    // 시군구 단계가 없는 게 실제인 시도(display_name 기준). 주소가 시도 하나로 끝나는 유일한 정상 케이스다.
+    private static final String NO_SIGUNGU_SIDO = "세종";
 
     public Category leafCategory(int seed) {
         return leafCategories.get(Math.floorMod(seed, leafCategories.size()));
