@@ -66,13 +66,15 @@ public class SeedCompanyRequestBuilder {
     private SeedCompanyRequestBuilder(int index, SeedMasterCatalog masters) {
         this.index = index;
         DomesticRegion region = masters.region(index);
+        // 주소 문자열은 "시도 시군구" 로 시작해야 카드 지역 라벨이 온전히 잘린다. 링크는 region 그대로.
+        String addressRegionName = masters.addressRegionName(region, index);
 
         this.companyName = SeedVocabulary.companyName(index);
         this.ceoName = SeedVocabulary.ceoName(index);
         this.establishmentDate = SeedVocabulary.establishmentDate(index);
         this.postalCode = SeedVocabulary.postalCode(index);
-        this.roadAddress = SeedVocabulary.roadAddress(region, index);
-        this.jibunAddress = SeedVocabulary.jibunAddress(region, index);
+        this.roadAddress = SeedVocabulary.roadAddress(addressRegionName, index);
+        this.jibunAddress = SeedVocabulary.jibunAddress(addressRegionName, index);
         this.detailAddress = SeedVocabulary.detailAddress(index);
         this.website = SeedVocabulary.website(index);
         this.logoUrl = SeedVocabulary.logoUrl(index);
@@ -201,6 +203,9 @@ public class SeedCompanyRequestBuilder {
 
     /** 선택 필드를 전부 비운다. null 자리에 프론트가 무엇을 그리는지 확인하는 케이스용. */
     public SeedCompanyRequestBuilder withoutOptionalFields() {
+        // 지번은 선택 필드다. 지번이 없는 주소에서 우편번호 서비스가 내려주는 빈 문자열을 그대로 재현한다
+        // — Address 가 이를 null 로 접는지(= 상세 화면에 빈 줄이 남지 않는지)까지 시드로 드러난다.
+        this.jibunAddress = "";
         this.website = null;
         this.introTitle = null;
         this.content = null;

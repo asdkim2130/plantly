@@ -1,7 +1,5 @@
 package project.plantly.global.seed;
 
-import project.plantly.domain.company.domesticRegion.DomesticRegion;
-
 import java.time.LocalDate;
 import java.util.List;
 
@@ -33,6 +31,11 @@ public final class SeedVocabulary {
 
     private static final List<String> STREETS = List.of(
             "산업로", "테크노로", "공단로", "첨단로", "중앙로", "디지털로", "과학로", "성장로");
+
+    // 시군구 자식이 없는 광역시·특별시(커버리지 모델상 시도 행 자체가 지역)의 주소에 붙일 구 이름.
+    // 도로명·번지가 이미 가짜인 데이터라 지리적 정확성이 아니라 "시도 + 시군구" 형태를 맞추는 게 목적이다
+    // — 카드의 지역 라벨이 시도만으로 끝나면 도로명 조각을 물기 때문. 조합에 따라 실재하지 않는 구가 나올 수 있다.
+    private static final List<String> DISTRICTS = List.of("중구", "동구", "북구", "남구", "서구");
 
     private static final List<String> MATERIALS = List.of(
             "알루미늄", "스테인리스", "티타늄", "황동", "탄소강", "엔지니어링 플라스틱", "인코넬", "마그네슘");
@@ -75,16 +78,24 @@ public final class SeedVocabulary {
         return ceoName(index + 37);
     }
 
-    /** 지역 마스터의 원본 명칭(예: "경기도 수원시")을 앞에 두어, 주소 문자열과 지역 필터가 어긋나지 않게 한다. */
-    public static String roadAddress(DomesticRegion region, int index) {
-        String street = STREETS.get(Math.floorMod(index, STREETS.size()));
-        int number = 10 + Math.floorMod(index * 17, 400);
-        return region.getName() + " " + street + " " + number;
+    /** 광역시·특별시 주소에 붙일 구 이름. {@link SeedMasterCatalog#addressRegionName} 이 쓴다. */
+    public static String district(int index) {
+        return DISTRICTS.get(Math.floorMod(index, DISTRICTS.size()));
     }
 
-    public static String jibunAddress(DomesticRegion region, int index) {
+    /**
+     * 도로명 주소. 앞에 붙는 지역 명칭은 {@link SeedMasterCatalog#addressRegionName} 이 "시도 시군구" 형태로
+     * 맞춰 넘겨준다 — 주소 문자열과 지역 필터가 어긋나지 않게 하면서, 카드 지역 라벨도 온전하게 잘리도록.
+     */
+    public static String roadAddress(String regionName, int index) {
+        String street = STREETS.get(Math.floorMod(index, STREETS.size()));
+        int number = 10 + Math.floorMod(index * 17, 400);
+        return regionName + " " + street + " " + number;
+    }
+
+    public static String jibunAddress(String regionName, int index) {
         int bunji = 100 + Math.floorMod(index * 23, 800);
-        return region.getName() + " " + bunji + "-" + (1 + Math.floorMod(index, 9));
+        return regionName + " " + bunji + "-" + (1 + Math.floorMod(index, 9));
     }
 
     public static String detailAddress(int index) {

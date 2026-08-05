@@ -155,7 +155,7 @@ public class SeedDraftCases {
                 verificationId,
                 SeedVocabulary.companyName(index) + "산업",
                 SeedVocabulary.postalCode(index),
-                SeedVocabulary.roadAddress(masters.region(index), index),
+                SeedVocabulary.roadAddress(masters.addressRegionName(masters.region(index), index), index),
                 null,
                 SeedVocabulary.detailAddress(index),
                 null,
