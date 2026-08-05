@@ -23,6 +23,7 @@ import java.util.List;
 // 의도적으로 제외: businessNumber(사업자번호), 소유/등록 provenance(userId/registrationSource/registeredBy),
 //                spotlightOrder, deleted, 타임스탬프 등 내부·운영 정보.
 //                → 이들은 소유자/관리자 전용인 CompanyDetailResponse 의 meta 로만 노출한다.
+//                postalCode(우편번호)도 제외한다 — 화면에 쓰이지 않고, 위치는 도로명/지번 주소로 이미 충분하다.
 //
 // 부속(연락처/이미지/레퍼런스/소재·장비·태그/링크 마스터)은 민감 정보가 아니므로 공개 뷰에도 그대로 포함하며,
 // 소유자/관리자 뷰는 이 응답을 'profile' 로 통째로 재사용한다.
@@ -31,7 +32,6 @@ public record CompanyPublicResponse(
         String companyName,
         String ceoName,
         LocalDate establishmentDate,
-        String postalCode,
         String roadAddress,
         String jibunAddress,
         String detailAddress,
@@ -83,7 +83,6 @@ public record CompanyPublicResponse(
                 c.getCompanyName(),
                 c.getCeoName(),
                 c.getEstablishmentDate(),
-                c.getAddress().getPostalCode(),
                 c.getAddress().getRoadAddress(),
                 c.getAddress().getJibunAddress(),
                 c.getAddress().getDetailAddress(),
