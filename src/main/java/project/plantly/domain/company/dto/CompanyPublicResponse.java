@@ -172,7 +172,7 @@ public record CompanyPublicResponse(
         }
     }
 
-    // displayName 이 화면에 그대로 쓰는 완성형 표기다("경기 전역" / "경기 오산").
+    // displayName 이 화면에 그대로 쓰는 완성형 표기다("경기 전역" / "경기 오산시").
     // 회사에 연결된 지역은 부모 문맥 없이 평평하게 내려가므로 프론트가 조합할 수 없어,
     // 시드에 저장해 둔 조합 결과를 그대로 전달한다. name(원본 명칭)은 하위호환으로 남긴다.
     public record RegionResponse(Long id, String code, String name, String displayName, RegionLevel level) {

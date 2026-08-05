@@ -31,7 +31,7 @@ public class DomesticRegion {
     @Column(length = 30)
     private String shortName;
 
-    // 배지·카드·상세용 완성형("경기 전역" / "경기 오산"). 조회 응답은 부모 문맥이 없는
+    // 배지·카드·상세용 완성형("경기 전역" / "경기 오산시"). 조회 응답은 부모 문맥이 없는
     // 평평한 목록이라 런타임 조합이 불가능해, 조합 결과를 미리 데이터로 갖는다.
     @Column(length = 30)
     private String displayName;
