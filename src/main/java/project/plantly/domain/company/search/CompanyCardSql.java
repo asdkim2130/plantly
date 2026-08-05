@@ -2,6 +2,7 @@ package project.plantly.domain.company.search;
 
 import org.springframework.jdbc.core.RowMapper;
 import project.plantly.domain.company.search.dto.CompanySummary;
+import project.plantly.domain.company.support.RegionLabels;
 
 import java.sql.Array;
 import java.sql.SQLException;
@@ -16,6 +17,10 @@ import java.util.Objects;
  * <p>{@link #CARD_COLUMNS} 는 별칭 {@code c = company} 를 전제로 한 SELECT 컬럼 목록이다(SELECT/FROM 은 호출부가 붙인다).
  * 회사 스칼라 + 회사가 연결한 카테고리/태그/산업군 이름을 회사당 array_agg 로 집계한다. 카테고리는 직접 링크
  * (company_category)만 — closure 조상은 제외. 셋 다 회사가 등록 시 고른 순서(링크/태그의 display_order)로 정렬한다.
+ *
+ * <p>주소는 {@code road_address} 원본을 뽑아 오지만 카드에는 시도+시군구까지만 나간다 — 자르는 규칙
+ * ({@link RegionLabels})은 SQL 이 아니라 RowMapper 에 둔다. 세종처럼 시군구 단계가 없는 예외가 있어
+ * 규칙에 분기가 생기는데, 이를 SQL 문자열 함수로 옮기면 이 공유 프로젝션에 박혀 테스트가 어려워진다.
  */
 public final class CompanyCardSql {
 
@@ -40,7 +45,8 @@ public final class CompanyCardSql {
             rs.getString("company_name"),
             rs.getString("intro_title"),
             rs.getString("logo_url"),
-            rs.getString("address"),
+            // 카드는 전체 도로명이 아니라 시도+시군구까지만 보여준다("서울시 강남구"). 파생은 읽기 시점 1회.
+            RegionLabels.fromRoadAddress(rs.getString("address")),
             rs.getBoolean("verified"),
             rs.getBoolean("featured"),
             rs.getBoolean("spotlight"),
