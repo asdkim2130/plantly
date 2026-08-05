@@ -24,7 +24,7 @@ public record AdminCompanySummary(
         String companyName,
         String introTitle,
         String logoUrl,
-        String address,
+        String address,        // 공개 카드와 동일한 지역 라벨(시도+시군구). 전체 주소는 관리자 상세에서 본다.
         boolean verified,
         boolean featured,
         boolean spotlight,

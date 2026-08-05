@@ -11,6 +11,9 @@ public record CompanySummary(
         String companyName,
         String introTitle,
         String logoUrl,
+
+        // 표시용 지역 라벨: 도로명 주소에서 시도+시군구까지만 남긴 값("서울시 강남구" / "경기 화성시" / "세종특별자치시").
+        // 전체 주소(도로명·지번·상세)는 상세 조회 응답에서 본다.
         String address,
         boolean verified,
         boolean featured,

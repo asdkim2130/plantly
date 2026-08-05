@@ -6,6 +6,7 @@ import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.RegistrationSource;
 import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.search.dto.AdminCompanySummary;
+import project.plantly.domain.company.support.RegionLabels;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -42,7 +43,7 @@ public final class AdminCompanyCardSql {
             rs.getString("company_name"),
             rs.getString("intro_title"),
             rs.getString("logo_url"),
-            rs.getString("address"),
+            RegionLabels.fromRoadAddress(rs.getString("address")), // 공개 카드와 같은 시도+시군구 표기
             rs.getBoolean("verified"),
             rs.getBoolean("featured"),
             rs.getBoolean("spotlight"),
