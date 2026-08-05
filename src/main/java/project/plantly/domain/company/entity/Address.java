@@ -51,8 +51,11 @@ public class Address {
         this.detailAddress = detailAddress;
     }
 
+    // 선택 필드인 jibunAddress 는 blank("") 를 null 로 접는다 — 지번이 부여되지 않은 주소에서 우편번호 서비스가
+    // 빈 문자열을 내려주기 때문. 그대로 저장하면 검색 도큐먼트의 concat_ws 가 null-skip 을 못 타 공백이 남고,
+    // 같은 값을 merged 로 수정했을 때(= null)와 저장 결과가 갈린다. 두 생성 경로의 규약을 여기서 맞춘다.
     public static Address of(String postalCode, String roadAddress, String jibunAddress, String detailAddress) {
-        return new Address(postalCode, roadAddress, jibunAddress, detailAddress);
+        return new Address(postalCode, roadAddress, blankToNull(jibunAddress), detailAddress);
     }
 
     // 부분 수정(PATCH) 병합: null = 미변경.
@@ -66,7 +69,9 @@ public class Address {
                 detailAddress != null ? detailAddress : this.detailAddress);
     }
 
+    // null 도 그대로 null 로 흘린다 — of 는 값 없이도 호출되고(임시저장 호환), merged 는 호출 전에
+    // null(=미변경)을 이미 걸러내므로 양쪽 의미가 어긋나지 않는다.
     private static String blankToNull(String value) {
-        return value.isBlank() ? null : value;
+        return value == null || value.isBlank() ? null : value;
     }
 }
