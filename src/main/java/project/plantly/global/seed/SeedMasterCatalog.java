@@ -66,9 +66,10 @@ public class SeedMasterCatalog {
         countries = countryRepository.findAll();
         // 광역시·특별시는 커버리지 모델상 시도 행 자체가 지역이라 SIGUNGU 자식이 없다. 시군구만 쓰면
         // 서울·부산이 통째로 빠져 지역 필터가 도(道) 지역만 검증하게 되므로 둘 다 풀에 넣는다.
-        // NATION(전국)은 검색 필터용 합성 행이지 회사의 소재지가 아니므로 제외한다.
+        // NATION(전국)·REGION_GROUP(수도권)은 커버리지 표현용 합성 행이지 회사가 실제로 앉아 있는
+        // 소재지가 아니다 — 넣으면 "수도권 산업로 100" 같은 존재하지 않는 주소가 만들어진다.
         regions = domesticRegionRepository.findAllByOrderByCodeAsc().stream()
-                .filter(r -> r.getLevel() != RegionLevel.NATION)
+                .filter(r -> r.getLevel() == RegionLevel.SIDO || r.getLevel() == RegionLevel.SIGUNGU)
                 .toList();
 
         require(leafCategories, "카테고리(소분류)");

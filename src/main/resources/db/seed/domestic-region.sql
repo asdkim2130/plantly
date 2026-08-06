@@ -6,6 +6,7 @@
 --   * 도/특별자치도      : 시도 + 시/군 (행정구는 시로 흡수)
 --   * 읍면동·리 전부 제외
 --   * 전국(code 0000000000) : 법정동코드에 없는 합성 행. 아래 3) 참고
+--   * 권역(code 01000000xx) : 여러 시도를 묶은 커버리지 단위(수도권). 합성 행. 아래 4) 참고
 --
 -- 이름 3종의 용도가 서로 다르다:
 --   name         행정안전부 원본 명칭. 출처 대조용이며 화면에 쓰지 않는다.
@@ -16,7 +17,7 @@
 --                '경기 광주시'처럼 광역시와 이름이 겹치는 시군도 접미사로 구분된다.
 -- display_name 을 저장해 두는 이유: 조회 응답은 회사에 연결된 지역을 평평한 목록으로
 -- 돌려주므로 부모 문맥이 없다. 런타임에 조합하려면 카드 조회마다 부모 자기조인이
--- 붙는데, 176행짜리 고정 마스터에 컬럼 하나 두는 편이 싸고 표기 변경도 쉽다.
+-- 붙는데, 172행짜리 고정 마스터에 컬럼 하나 두는 편이 싸고 표기 변경도 쉽다.
 --
 -- 적재 주체: ReferenceDataSeeder(ApplicationRunner). 컨텍스트 기동 완료 후 실행된다.
 -- 멱등성: ON CONFLICT (code) DO UPDATE — 재기동 안전 + 표기 변경이 기존 행에도 반영된다.
@@ -35,18 +36,21 @@
 DELETE FROM domestic_region
  WHERE code IN ('2671000000', '2771000000', '2772000000', '2871000000', '2872000000', '3171000000');
 
--- 0-2) 스키마 정리 — level CHECK 제약에 NATION 추가.
---    ddl-auto=update 는 기존 테이블의 CHECK 제약을 건드리지 않는다. 그래서 RegionLevel 에 NATION 을
---    추가하기 전에 만들어진 DB 에는 SIDO/SIGUNGU 만 허용하는 제약이 그대로 남고, 아래 3) 전국 행
---    삽입이 제약 위반으로 실패한다 → ReferenceDataSeeder 가 예외를 던져 기동 자체가 중단된다.
---    새로 만든 DB 는 Hibernate 가 세 값으로 만들어 주므로 영향이 없다.
+-- 0-2) 스키마 정리 — level CHECK 제약을 RegionLevel 현재 값과 맞춘다.
+--    ddl-auto=update 는 기존 테이블의 CHECK 제약을 건드리지 않는다. 그래서 RegionLevel 에 값을
+--    추가하기 전에 만들어진 DB 에는 옛 값만 허용하는 제약이 그대로 남고, 새 level 행 삽입이 제약
+--    위반으로 실패한다 → ReferenceDataSeeder 가 예외를 던져 기동 자체가 중단된다.
+--    새로 만든 DB 는 Hibernate 가 네 값으로 만들어 주므로 영향이 없다.
 --
 --    제약 이름은 Hibernate 생성 규칙(<table>_<column>_check)이라 고정이다. DROP IF EXISTS 후 ADD 를
---    쌍으로 두어 매 기동 멱등하게 만든다(176행짜리 마스터라 재검증 비용은 무시할 수준).
---    0) 블록과 마찬가지로, 모든 DB 가 한 번씩 기동을 마치면 통째로 지워도 된다.
+--    쌍으로 두어 매 기동 멱등하게 만든다(172행짜리 마스터라 재검증 비용은 무시할 수준).
+--    RegionLevel 에 값이 늘 때마다 여기도 함께 고쳐야 한다 — 이 블록이 계속 필요한 이유다.
+--    길이도 같은 이유로 여기서 맞춘다 — ddl-auto=update 는 기존 컬럼을 넓혀주지 않아, 옛 DB 는
+--    varchar(10) 인 채로 남고 REGION_GROUP(12자) 삽입이 "value too long" 으로 실패한다.
 ALTER TABLE domestic_region DROP CONSTRAINT IF EXISTS domestic_region_level_check;
+ALTER TABLE domestic_region ALTER COLUMN level TYPE varchar(20);
 ALTER TABLE domestic_region ADD CONSTRAINT domestic_region_level_check
-  CHECK (level IN ('NATION', 'SIDO', 'SIGUNGU'));
+  CHECK (level IN ('NATION', 'REGION_GROUP', 'SIDO', 'SIGUNGU'));
 
 -- 1) 시도 (부모 없음) — 자식보다 먼저 삽입
 INSERT INTO domestic_region (code, name, short_name, display_name, level, parent_code) VALUES
@@ -237,6 +241,25 @@ ON CONFLICT (code) DO UPDATE SET
 --    시도와 형제인 루트(parent_code = NULL)로 두어 트리 조립 규칙을 그대로 재사용한다.
 INSERT INTO domestic_region (code, name, short_name, display_name, level, parent_code) VALUES
   ('0000000000', '전국', '전국', '전국', 'NATION', NULL)
+ON CONFLICT (code) DO UPDATE SET
+  name = EXCLUDED.name, short_name = EXCLUDED.short_name,
+  display_name = EXCLUDED.display_name, level = EXCLUDED.level, parent_code = EXCLUDED.parent_code;
+
+-- 4) 권역 — 여러 시도를 묶은 커버리지 단위. 전국과 같은 합성 행이다.
+--    의미는 "그 범위 전체를 커버할 수 있다" 이다 — 수도권 = 서울·인천·경기를 모두 커버.
+--    "수도권 안 어딘가" 가 아니므로, 경기만 커버하는 회사는 수도권을 고를 수 없다.
+--
+--    code '0100000000' 은 법정동코드에 존재하지 않는다(시도 코드는 11/26~31/36/41/43/44/46~48/50~52
+--    로 시작하고 01 로 시작하는 시도는 없다). code 오름차순에서 전국 바로 다음, 서울 앞에 온다.
+--    권역이 늘면 '0200000000', '0300000000' … 으로 이어 붙이면 같은 자리에 모인다.
+--
+--    level 을 NATION 으로 재사용하지 않는 이유: 전국은 "전 국토" 라는 유일무이한 뜻이라 시드·필터가
+--    특별 취급할 여지가 있는데, 권역과 한 값을 쓰면 그 구분이 불가능해진다.
+--    시도의 부모(3단 트리)로 두지 않은 것은 전국과 같은 이유다 — 트리 조립과 "children 이 비면 확정"
+--    이라는 프론트 규칙이 특수 케이스를 떠안게 된다. 멤버(서울·인천·경기)는 parent_code 로 표현할 수
+--    없으므로(경기의 parent 는 이미 NULL), 검색 확장이 필요해지는 시점에 별도 매핑으로 둔다.
+INSERT INTO domestic_region (code, name, short_name, display_name, level, parent_code) VALUES
+  ('0100000000', '수도권', '수도권', '수도권', 'REGION_GROUP', NULL)
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name, short_name = EXCLUDED.short_name,
   display_name = EXCLUDED.display_name, level = EXCLUDED.level, parent_code = EXCLUDED.parent_code;

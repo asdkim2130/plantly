@@ -36,10 +36,12 @@ public class DomesticRegion {
     @Column(length = 30)
     private String displayName;
 
-    // NATION(전국) / SIDO(시도) / SIGUNGU(시군구). 컬럼에는 문자열로 저장 (시드 값과 동일).
+    // NATION(전국) / REGION_GROUP(권역) / SIDO(시도) / SIGUNGU(시군구). 컬럼에는 문자열로 저장 (시드 값과 동일).
+    // length 는 가장 긴 값(REGION_GROUP, 12자)보다 넉넉히 잡는다. ddl-auto=update 는 기존 컬럼의
+    // 길이를 넓혀주지 않으므로, 이미 적재된 DB 는 시드의 ALTER COLUMN 이 맞춘다.
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 20)
     private RegionLevel level;
 
     // 부모 행정구역의 code (시도는 부모 없음 → null). id 가 아닌 code 값을 참조한다.

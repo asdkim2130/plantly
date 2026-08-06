@@ -38,9 +38,10 @@ public class DomesticRegionService {
      * 활성이더라도 붙을 루트가 없어 함께 사라지는데, 이게 의도한 동작이다 — 시도를 내렸으면
      * 그 안의 시군구도 더는 고를 수 없어야 한다.
      *
-     * <p>루트에는 전국(NATION)과 시도(SIDO)가 섞여 나오고, 둘 다 {@code parentCode} 가 없다.
-     * 전국을 3단 트리의 최상위로 두지 않은 건 의도적이다 — 그렇게 하면 "children 이 비면 확정"
-     * 이라는 프론트 규칙과 기존 트리 조립 코드가 모두 특수 케이스를 떠안는다.
+     * <p>루트에는 전국(NATION)·권역(REGION_GROUP)·시도(SIDO)가 섞여 나오고, 셋 다 {@code parentCode}
+     * 가 없다. 합성 행을 3단 트리의 최상위로 두지 않은 건 의도적이다 — 그렇게 하면 "children 이 비면
+     * 확정" 이라는 프론트 규칙과 기존 트리 조립 코드가 모두 특수 케이스를 떠안는다. code 오름차순이라
+     * 전국 → 수도권 → 서울 … 순으로 나온다.
      */
     @Transactional(readOnly = true)
     public List<DomesticRegionPublicResponse> getPublicTree() {
