@@ -471,8 +471,8 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "regions[].id").type(JsonFieldType.NUMBER).description("지역 ID"),
                 fieldWithPath(p + "regions[].code").type(JsonFieldType.STRING).description("지역 코드"),
                 fieldWithPath(p + "regions[].name").type(JsonFieldType.STRING).description("지역명(행정안전부 원본 명칭)"),
-                fieldWithPath(p + "regions[].displayName").type(JsonFieldType.STRING).description("화면 표기용 지역명 (예: 서울 / 경기 전역 / 경기 오산)"),
-                fieldWithPath(p + "regions[].level").type(JsonFieldType.STRING).description("지역 레벨 (NATION/SIDO/SIGUNGU)"),
+                fieldWithPath(p + "regions[].displayName").type(JsonFieldType.STRING).description("화면 표기용 지역명 (예: 서울 / 경기 전역 / 경기 오산시)"),
+                fieldWithPath(p + "regions[].level").type(JsonFieldType.STRING).description("지역 레벨 (NATION/REGION_GROUP/SIDO/SIGUNGU)"),
 
                 fieldWithPath(p + "industries").type(JsonFieldType.ARRAY).description("산업군 목록"),
                 fieldWithPath(p + "industries[].id").type(JsonFieldType.NUMBER).description("산업군 ID"),

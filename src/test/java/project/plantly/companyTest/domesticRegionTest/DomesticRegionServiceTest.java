@@ -126,7 +126,7 @@ public class DomesticRegionServiceTest {
         // 시군구는 드롭다운용으로 부모명 없는 이름, 배지용으로 부모명 붙은 이름을 함께 받는다.
         DomesticRegionPublicResponse suwonNode = gyeonggiNode.children().get(0);
         assertThat(suwonNode.shortName()).isEqualTo("수원");
-        assertThat(suwonNode.displayName()).isEqualTo("경기 수원");
+        assertThat(suwonNode.displayName()).isEqualTo("경기 수원시");
         assertThat(suwonNode.children()).isEmpty();
     }
 
@@ -186,11 +186,11 @@ public class DomesticRegionServiceTest {
     }
 
     private DomesticRegion suwon() {
-        return DomesticRegion.create("4111000000", "경기도 수원시", "수원", "경기 수원", RegionLevel.SIGUNGU, "4100000000");
+        return DomesticRegion.create("4111000000", "경기도 수원시", "수원", "경기 수원시", RegionLevel.SIGUNGU, "4100000000");
     }
 
     private DomesticRegion osan() {
-        return DomesticRegion.create("4137000000", "경기도 오산시", "오산", "경기 오산", RegionLevel.SIGUNGU, "4100000000");
+        return DomesticRegion.create("4137000000", "경기도 오산시", "오산", "경기 오산시", RegionLevel.SIGUNGU, "4100000000");
     }
 
     private DomesticRegion gwangju() {

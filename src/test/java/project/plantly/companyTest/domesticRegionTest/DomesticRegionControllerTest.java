@@ -168,7 +168,7 @@ public class DomesticRegionControllerTest {
                 .level(RegionLevel.SIDO).children(List.of()).build();
 
         DomesticRegionPublicResponse suwon = DomesticRegionPublicResponse.builder()
-                .id(4L).shortName("수원").displayName("경기 수원")
+                .id(4L).shortName("수원").displayName("경기 수원시")
                 .level(RegionLevel.SIGUNGU).children(List.of()).build();
 
         DomesticRegionPublicResponse gyeonggi = DomesticRegionPublicResponse.builder()
@@ -192,7 +192,7 @@ public class DomesticRegionControllerTest {
                 // 도는 2차가 열리고, 도 자신의 displayName 이 '전역' 배지가 된다.
                 .andExpect(jsonPath("$.data[2].displayName").value("경기 전역"))
                 .andExpect(jsonPath("$.data[2].children[0].shortName").value("수원"))
-                .andExpect(jsonPath("$.data[2].children[0].displayName").value("경기 수원"))
+                .andExpect(jsonPath("$.data[2].children[0].displayName").value("경기 수원시"))
                 .andDo(document("domestic-region-public-list",
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
@@ -206,9 +206,9 @@ public class DomesticRegionControllerTest {
                                 fieldWithPath("data[].shortName").type(JsonFieldType.STRING)
                                         .description("드롭다운 항목용 이름 (부모명 없음, 예: 경기 / 수원)"),
                                 fieldWithPath("data[].displayName").type(JsonFieldType.STRING)
-                                        .description("확정 후 배지용 이름 (예: 서울 / 경기 전역 / 경기 수원)"),
+                                        .description("확정 후 배지용 이름 (예: 서울 / 경기 전역 / 경기 수원시). 시군구는 시/군 접미사 포함"),
                                 fieldWithPath("data[].level").type(JsonFieldType.STRING)
-                                        .description("지역 레벨 (NATION/SIDO/SIGUNGU)"),
+                                        .description("지역 레벨 (NATION/REGION_GROUP/SIDO/SIGUNGU). 전국·권역은 children 이 비어 바로 확정된다"),
                                 // 자식(시군구)은 동일 구조가 재귀되므로 subsection 으로 묶어 문서화
                                 subsectionWithPath("data[].children").type(JsonFieldType.ARRAY)
                                         .description("하위 시군구 목록 (동일 구조 재귀). 비어 있으면 1차에서 바로 확정하고, "
