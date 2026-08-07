@@ -29,6 +29,7 @@ import project.plantly.companyTest.support.CompanyCreateRequestSamples;
 import project.plantly.companyTest.support.CompanyResponseSamples;
 import project.plantly.domain.company.controller.CompanyController;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
+import project.plantly.domain.company.dto.CompanyShowcaseResponse;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
 import project.plantly.domain.company.dto.CompanyReverificationRequest;
 import project.plantly.domain.company.dto.CompanyReverificationResponse;
@@ -502,6 +503,34 @@ public class CompanyControllerTest {
                 .andDo(document("company-search",
                         queryParameters(CompanyApiDocs.companySearchQueryParameters()),
                         responseFields(CompanyApiDocs.companySearchResponseFields())));
+    }
+
+    @Test
+    @DisplayName("메인 화면 노출 영역은 인증 없이 스팟라이트·추천 두 레일을 반환한다 (페이지가 아니라 고정 리스트)")
+    void getShowcase_public_success() throws Exception {
+        // 스팟라이트 카드의 spotlight=false 가 핵심 — 요금제 자격으로 노출되는 회사는 pin 플래그가 꺼져 있다.
+        CompanySummary paid = new CompanySummary(1L, "유료노출사", "정밀 부품",
+                "https://cdn/logo1.png", "서울 강남구", true, false, false,
+                List.of("제조"), List.of("정밀가공"), List.of("기계"),
+                false, false);
+        CompanySummary recommended = new CompanySummary(2L, "추천사", "스마트팜 솔루션",
+                "https://cdn/logo2.png", "경기 화성시", true, true, false,
+                List.of("농업"), List.of("IoT"), List.of("농업기술"),
+                true, false);
+        given(companyQueryService.getShowcase(isNull()))
+                .willReturn(new CompanyShowcaseResponse(List.of(paid), List.of(recommended)));
+
+        mockMvc.perform(get("/api/v1/companies/showcase"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.spotlight[0].id").value(1L))
+                .andExpect(jsonPath("$.data.spotlight[0].companyName").value("유료노출사"))
+                // 자격은 저장되지 않는다 — pin 이 아닌데도 스팟라이트 레일에 올라온다.
+                .andExpect(jsonPath("$.data.spotlight[0].spotlight").value(false))
+                .andExpect(jsonPath("$.data.featured[0].id").value(2L))
+                .andExpect(jsonPath("$.data.featured[0].featured").value(true))
+                .andDo(document("company-showcase",
+                        responseFields(CompanyApiDocs.companyShowcaseResponseFields())));
     }
 
     @Test

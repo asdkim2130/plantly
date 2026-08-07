@@ -259,29 +259,48 @@ public class CompanyApiDocs {
         };
     }
 
+    // 요약 카드(CompanySummary) 1건의 필드. 목록/검색·내 회사·즐겨찾기·메인 노출 레일이 모두 같은 카드를 쓰므로
+    // 배열 경로(prefix)만 갈아끼워 재사용한다 — 카드에 필드가 늘어도 여기 한 곳만 고치면 된다.
+    private static java.util.List<FieldDescriptor> summaryCardFields(String prefix) {
+        return java.util.List.of(
+                fieldWithPath(prefix + ".id").type(JsonFieldType.NUMBER).description("회사 ID"),
+                fieldWithPath(prefix + ".companyName").type(JsonFieldType.STRING).description("기업 이름"),
+                fieldWithPath(prefix + ".introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약 (없으면 null)"),
+                fieldWithPath(prefix + ".logoUrl").type(JsonFieldType.STRING).description("로고 이미지 URL"),
+                fieldWithPath(prefix + ".address").type(JsonFieldType.STRING).description("지역 (시도+시군구, 예: \"서울시 강남구\"). 전체 주소는 상세 조회 참고"),
+                fieldWithPath(prefix + ".verified").type(JsonFieldType.BOOLEAN).description("관리자 인증 여부"),
+                fieldWithPath(prefix + ".featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
+                fieldWithPath(prefix + ".spotlight").type(JsonFieldType.BOOLEAN)
+                        .description("스팟라이트 수동 고정(pin) 여부. 메인 노출 여부가 아니다 — 요금제 자격으로 노출되는 회사는 이 값이 false 다"),
+                fieldWithPath(prefix + ".likedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 좋아요 했는지 (익명·내 회사 목록은 false)"),
+                fieldWithPath(prefix + ".favoritedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 즐겨찾기 했는지 (익명·내 회사 목록은 false / 즐겨찾기 목록은 정의상 항상 true)"),
+                fieldWithPath(prefix + ".categoryNames").type(JsonFieldType.ARRAY).description("회사가 연결한 카테고리명 목록"),
+                fieldWithPath(prefix + ".tagNames").type(JsonFieldType.ARRAY).description("태그명 목록"),
+                fieldWithPath(prefix + ".industryNames").type(JsonFieldType.ARRAY).description("산업군명 목록"));
+    }
+
     // 목록/검색 응답(ApiResponse<PageResponse<CompanySummary>>). content[] = 요약 카드, pageInfo = 페이지 메타.
     // 내 회사 목록(/my)·내 즐겨찾기 목록(/favorites)도 동일한 요약 카드 페이지 구조라 이 디스크립터를 공유한다.
     public static FieldDescriptor[] companySearchResponseFields() {
-        return new FieldDescriptor[]{
-                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
-                fieldWithPath("data.content[].id").type(JsonFieldType.NUMBER).description("회사 ID"),
-                fieldWithPath("data.content[].companyName").type(JsonFieldType.STRING).description("기업 이름"),
-                fieldWithPath("data.content[].introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약 (없으면 null)"),
-                fieldWithPath("data.content[].logoUrl").type(JsonFieldType.STRING).description("로고 이미지 URL"),
-                fieldWithPath("data.content[].address").type(JsonFieldType.STRING).description("지역 (시도+시군구, 예: \"서울시 강남구\"). 전체 주소는 상세 조회 참고"),
-                fieldWithPath("data.content[].verified").type(JsonFieldType.BOOLEAN).description("관리자 인증 여부"),
-                fieldWithPath("data.content[].featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
-                fieldWithPath("data.content[].spotlight").type(JsonFieldType.BOOLEAN).description("스팟라이트 노출 여부"),
-                fieldWithPath("data.content[].likedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 좋아요 했는지 (익명·내 회사 목록은 false)"),
-                fieldWithPath("data.content[].favoritedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 즐겨찾기 했는지 (익명·내 회사 목록은 false / 즐겨찾기 목록은 정의상 항상 true)"),
-                fieldWithPath("data.content[].categoryNames").type(JsonFieldType.ARRAY).description("회사가 연결한 카테고리명 목록"),
-                fieldWithPath("data.content[].tagNames").type(JsonFieldType.ARRAY).description("태그명 목록"),
-                fieldWithPath("data.content[].industryNames").type(JsonFieldType.ARRAY).description("산업군명 목록"),
+        java.util.List<FieldDescriptor> fields = new java.util.ArrayList<>();
+        fields.add(fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"));
+        fields.addAll(summaryCardFields("data.content[]"));
+        fields.addAll(java.util.List.of(
                 fieldWithPath("data.pageInfo.pageNumber").type(JsonFieldType.NUMBER).description("현재 페이지 (1-base)"),
                 fieldWithPath("data.pageInfo.size").type(JsonFieldType.NUMBER).description("페이지 크기"),
                 fieldWithPath("data.pageInfo.totalElement").type(JsonFieldType.NUMBER).description("전체 건수"),
-                fieldWithPath("data.pageInfo.totalPage").type(JsonFieldType.NUMBER).description("전체 페이지 수")
-        };
+                fieldWithPath("data.pageInfo.totalPage").type(JsonFieldType.NUMBER).description("전체 페이지 수")));
+        return fields.toArray(new FieldDescriptor[0]);
+    }
+
+    // 메인 화면 노출 영역 응답(ApiResponse<CompanyShowcaseResponse>). 페이지가 아니라 자리 수만큼의 고정 리스트라
+    // pageInfo 가 없다. 두 레일에 같은 회사가 함께 나올 수 있다(고정 + 추천).
+    public static FieldDescriptor[] companyShowcaseResponseFields() {
+        java.util.List<FieldDescriptor> fields = new java.util.ArrayList<>();
+        fields.add(fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"));
+        fields.addAll(summaryCardFields("data.spotlight[]"));
+        fields.addAll(summaryCardFields("data.featured[]"));
+        return fields.toArray(new FieldDescriptor[0]);
     }
 
     // 관리자 목록 쿼리 파라미터(GET /api/v1/admin/companies). 전부 선택적, 지정된 것만 AND(교집합).

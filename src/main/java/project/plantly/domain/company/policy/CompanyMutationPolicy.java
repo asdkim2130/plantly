@@ -5,7 +5,7 @@ package project.plantly.domain.company.policy;
 //
 // - create: CompanyService 가 List<CompanyRegistrationPolicy> 로 전 정책을 실행한다(이 마커 포함).
 // - update: CompanyUpdateService 가 List<CompanyMutationPolicy> 로 이 마커를 단 정책만 실행한다.
-// 등록 시점 개념인 정책(예: SpotlightPolicy)이나 writer 가 이미 강제하는 구조 검증(GalleryImageTypePolicy)은
+// writer 가 이미 강제하는 구조 검증(GalleryImageTypePolicy)처럼 등록 시점에서만 의미가 있는 정책은
 // 이 마커를 달지 않아 수정 경로에서 자연히 제외된다.
 public interface CompanyMutationPolicy extends CompanyRegistrationPolicy {
 }

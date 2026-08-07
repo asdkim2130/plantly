@@ -100,9 +100,14 @@ public class Company {
     @Column(nullable = false)
     private boolean featured = false;
 
+    // 스팟라이트 '관리자 수동 고정(pin)' 여부. 이름과 달리 "메인에 노출 중"이라는 뜻이 아니다 —
+    // 요금제 자격으로 노출되는 회사는 이 값이 false 인 채로 메인에 뜬다(자격은 구독에서 조회 시점에 파생).
+    // 이 플래그는 요금제 밖에서 노출해야 하는 회사(제휴·이벤트 등)를 관리자가 꽂는 통로다.
+    // 노출 여부의 최종 판단은 ShowcaseCardRepository 한 곳에 있다.
     @Column(nullable = false)
     private boolean spotlight = false;
 
+    // pin 된 회사들 사이의 노출 순서(작을수록 앞). pin 이 아닌 회사에는 의미가 없다.
     private int spotlightOrder;
 
     @Column(nullable = false)
@@ -240,26 +245,21 @@ public class Company {
         this.featured = false;
     }
 
-    // 스팟라이트 노출. 노출 순서를 함께 지정한다.
+    // 스팟라이트 수동 고정(pin). 고정된 회사들 사이의 노출 순서를 함께 지정한다.
     public void turnOnSpotlight(int spotlightOrder) {
         this.spotlight = true;
         this.spotlightOrder = spotlightOrder;
     }
 
-    // 스팟라이트 해제. 순서값도 초기화한다.
+    // 수동 고정 해제. 순서값도 초기화한다. (요금제 자격으로 노출되던 회사라면 해제 후에도 계속 노출된다)
     public void turnOffSpotlight() {
         this.spotlight = false;
         this.spotlightOrder = 0;
     }
 
-    // 스팟라이트 노출 중 순서만 변경
+    // 고정 유지한 채 순서만 변경
     public void changeSpotlightOrder(int spotlightOrder) {
         this.spotlightOrder = spotlightOrder;
-    }
-
-    // 등급 정책에 따라 등록 시점 spotlight 를 활성화한다. (노출 순서는 별도 큐레이션 전까지 기본값 유지)
-    public void activateSpotlight() {
-        this.spotlight = true;
     }
 
     // 등급 정책에 따라 브랜드 컬러를 강제 지정한다. (커스텀 불가 등급의 기본값 고정 등)
@@ -269,7 +269,7 @@ public class Company {
 
     // ===== 관리자 운영 플래그 직접 지정 (set-to-state) =====
     // 등록 시 전부 false 로 시작하며, 관리자가 목표값(true/false)을 그대로 지정한다 — 토글 아님, 멱등.
-    // verify()/feature()/activateSpotlight() 등 방향별 행위 메서드와 달리 불리언을 받아 켜고 끄는 통합 전환이다.
+    // verify()/feature()/turnOnSpotlight() 등 방향별 행위 메서드와 달리 불리언을 받아 켜고 끄는 통합 전환이다.
     // (spotlight 는 노출 순서 spotlightOrder 와 별개로 on/off 만 다룬다 — 순서 큐레이션은 별도 경로)
     public void changeVerified(boolean verified) {
         this.verified = verified;

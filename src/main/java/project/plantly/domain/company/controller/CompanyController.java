@@ -22,6 +22,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
+import project.plantly.domain.company.dto.CompanyShowcaseResponse;
 import project.plantly.domain.company.dto.CompanyReverificationRequest;
 import project.plantly.domain.company.dto.CompanyReverificationResponse;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
@@ -128,6 +129,17 @@ public class CompanyController {
         // 인증은 선택: 로그인 상태면 카드마다 좋아요/즐겨찾기 여부를 채우고, 익명이면 principal=null → 전부 false.
         Long viewerId = (principal == null) ? null : principal.getUser().getId();
         return ApiResponse.success(companyQueryService.search(request.toCriteria(), pageable, viewerId));
+    }
+
+    // 메인 화면 노출 영역 — 인증 없이 누구나. 스팟라이트·추천 레일을 자리 수만큼 잘라 함께 반환한다.
+    // 목록(GET /companies)을 받아 프론트가 플래그로 걸러내는 방식과 달리, 어느 회사가 자리를 차지하는지는
+    // 서버가 정한다 — 후보가 자리보다 많아져도 화면이 조용히 비지 않는다.
+    // 'my'/'favorites' 와 같은 단일 세그먼트라 공개 상세(/{id})보다 먼저 매칭된다.
+    @GetMapping("/api/v1/companies/showcase")
+    public ApiResponse<CompanyShowcaseResponse> getShowcase(@AuthenticationPrincipal UserPrincipal principal) {
+        // 인증은 선택: 로그인 상태면 카드마다 좋아요/즐겨찾기 여부를 채우고, 익명이면 principal=null → 전부 false.
+        Long viewerId = (principal == null) ? null : principal.getUser().getId();
+        return ApiResponse.success(companyQueryService.getShowcase(viewerId));
     }
 
     // 내가 등록한 회사 목록 — 인증된 본인 소유(userId=본인) 미삭제 회사를 요약 카드로, 최신순 페이징(검색 없음).
