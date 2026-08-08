@@ -378,6 +378,16 @@ include::{snippets}/company-search/response-fields.adoc[]
 
 두 영역에 같은 회사가 함께 나올 수 있습니다(고정 + 추천). 의도된 동작이므로 프론트에서 중복 제거하지 않습니다.
 
+*카드 배경 두 필드*
+
+카드에는 로고(`logoUrl`) 말고도 배경에 쓰는 값이 두 개 더 실립니다. 둘 다 선택이라 `null` 로 내려올 수 있고,
+서버는 대체값을 만들어 주지 않습니다 — 없을 때 무엇을 그릴지는 화면이 정합니다.
+
+* `coverImageUrl` — 카드 커버 사진. 로고와 다른 자리입니다(로고는 정사각 배지, 커버는 카드 배경에 깔리는 와이드 사진).
+  같은 이미지가 스팟라이트(거의 정사각)와 추천 카드(가로로 긴 띠)에서 서로 다른 비율로 잘리므로 `object-fit: cover` 를 전제합니다.
+  회사 갤러리(상세 응답의 `galleryImages`)와도 별개의 값입니다.
+* `brandColor` — 스팟라이트 배너 배경색(`#RRGGBB`). 배너 위 텍스트 대비는 화면이 명도로 판단하세요.
+
 ==== 요청
 
 include::{snippets}/company-showcase/http-request.adoc[]
@@ -547,6 +557,8 @@ include::{snippets}/company-subscription-forbidden/response-fields.adoc[]
 * *부분 수정(sparse)*: 모든 필드가 선택이며, 요청에 담긴 필드만 변경됩니다(`null`/미포함 = 미변경).
 * *비우기(clear) 규약*: 선택 문자열 필드는 빈 문자열(`""`)을 보내면 값을 비웁니다. 필수 필드(회사명·대표자·주소 등)는 빈 문자열로 비울 수 없어 `400` 이 반환됩니다. 날짜·enum 은 비우기를 지원하지 않습니다(값이 오면 교체만).
 * 시스템 플래그(`verified`/`featured`/`spotlight`/`spotlightOrder`/`deleted`)·사업자번호·등록 provenance 는 이 API 로 바꿀 수 없습니다(요청 필드에서 제외).
+* `coverImageUrl` 은 선택 필드라 `""` 로 비울 수 있습니다. 필수인 `logoUrl` 과 다릅니다.
+* `brandColor` 는 `#RRGGBB` 형식만 받습니다(`""` = 비우기). 색 이름·축약형(`#RGB`)·`rgb()` 표기는 `400` 입니다.
 
 수정 값은 이미 화면에 반영되어 있으므로, 성공 응답은 본문 없이 `success` 플래그만 내려갑니다.
 

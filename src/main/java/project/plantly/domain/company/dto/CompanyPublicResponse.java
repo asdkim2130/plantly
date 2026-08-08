@@ -37,6 +37,8 @@ public record CompanyPublicResponse(
         String detailAddress,
         String website,
         String logoUrl,
+        // 카드 커버(선택). 상세에서는 히어로 배경으로 쓴다 — 갤러리(galleryImages)와 다른 자리다.
+        String coverImageUrl,
         String introTitle,
         String content,
         TrlLevel trlLevel,
@@ -88,6 +90,7 @@ public record CompanyPublicResponse(
                 c.getAddress().getDetailAddress(),
                 c.getWebsite(),
                 c.getLogoUrl(),
+                c.getCoverImageUrl(),
                 c.getIntroTitle(),
                 c.getContent(),
                 c.getTrlLevel(),

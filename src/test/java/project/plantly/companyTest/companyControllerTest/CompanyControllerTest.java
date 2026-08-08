@@ -482,7 +482,7 @@ public class CompanyControllerTest {
     @DisplayName("공개 회사 목록/검색은 인증 없이 페이징된 요약 카드를 반환한다")
     void searchCompanies_public_success() throws Exception {
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
-                "https://cdn/logo.png", "서울 강남구", true, false, true,
+                "https://cdn/logo.png", "https://cdn/cover.png", "#2E7D32", "서울 강남구", true, false, true,
                 List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
                 true, false);   // likedByMe, favoritedByMe
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
@@ -510,11 +510,13 @@ public class CompanyControllerTest {
     void getShowcase_public_success() throws Exception {
         // 스팟라이트 카드의 spotlight=false 가 핵심 — 요금제 자격으로 노출되는 회사는 pin 플래그가 꺼져 있다.
         CompanySummary paid = new CompanySummary(1L, "유료노출사", "정밀 부품",
-                "https://cdn/logo1.png", "서울 강남구", true, false, false,
+                "https://cdn/logo1.png", "https://cdn/cover1.png", "#2E7D32", "서울 강남구", true, false, false,
                 List.of("제조"), List.of("정밀가공"), List.of("기계"),
                 false, false);
+        // 커버·브랜드 컬러는 선택 필드다. 둘 다 비운 카드를 섞어 레일이 null 을 그대로 통과시키는지 함께 확인한다
+        // (프론트가 자리표시자·기본 배너 색으로 폴백하는 근거).
         CompanySummary recommended = new CompanySummary(2L, "추천사", "스마트팜 솔루션",
-                "https://cdn/logo2.png", "경기 화성시", true, true, false,
+                "https://cdn/logo2.png", null, null, "경기 화성시", true, true, false,
                 List.of("농업"), List.of("IoT"), List.of("농업기술"),
                 true, false);
         given(companyQueryService.getShowcase(isNull()))
@@ -527,8 +529,13 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.data.spotlight[0].companyName").value("유료노출사"))
                 // 자격은 저장되지 않는다 — pin 이 아닌데도 스팟라이트 레일에 올라온다.
                 .andExpect(jsonPath("$.data.spotlight[0].spotlight").value(false))
+                // 스팟라이트 카드는 로고 외에 커버(배경)와 브랜드 컬러(배너 색)를 함께 받는다.
+                .andExpect(jsonPath("$.data.spotlight[0].coverImageUrl").value("https://cdn/cover1.png"))
+                .andExpect(jsonPath("$.data.spotlight[0].brandColor").value("#2E7D32"))
                 .andExpect(jsonPath("$.data.featured[0].id").value(2L))
                 .andExpect(jsonPath("$.data.featured[0].featured").value(true))
+                .andExpect(jsonPath("$.data.featured[0].coverImageUrl").doesNotExist())
+                .andExpect(jsonPath("$.data.featured[0].brandColor").doesNotExist())
                 .andDo(document("company-showcase",
                         responseFields(CompanyApiDocs.companyShowcaseResponseFields())));
     }
@@ -537,7 +544,7 @@ public class CompanyControllerTest {
     @DisplayName("내 회사 목록은 인증된 본인 소유 회사를 페이징된 요약 카드로 반환한다")
     void getMyCompanies_success() throws Exception {
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
-                "https://cdn/logo.png", "서울 강남구", true, false, true,
+                "https://cdn/logo.png", "https://cdn/cover.png", "#2E7D32", "서울 강남구", true, false, true,
                 List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
                 false, false);   // 내 회사 목록은 개인화 미적용
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
@@ -563,7 +570,7 @@ public class CompanyControllerTest {
     void getMyFavorites_success() throws Exception {
         // 즐겨찾기 목록이므로 favoritedByMe 는 정의상 true. likedByMe 는 카드마다 실제 값이 채워진다.
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
-                "https://cdn/logo.png", "서울 강남구", true, false, true,
+                "https://cdn/logo.png", "https://cdn/cover.png", "#2E7D32", "서울 강남구", true, false, true,
                 List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
                 true, true);
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));

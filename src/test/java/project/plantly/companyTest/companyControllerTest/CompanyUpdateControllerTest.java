@@ -43,6 +43,7 @@ import project.plantly.global.security.UserPrincipal;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
@@ -134,6 +135,37 @@ public class CompanyUpdateControllerTest {
                 .andExpect(jsonPath("$.error").exists())
                 .andDo(document("company-update-validation-error",
                         responseFields(CompanyApiDocs.errorResponseFields())));
+    }
+
+    // 브랜드 컬러는 화면이 CSS 색상으로 그대로 쓰는 값이라(메인 스팟라이트 배너 배경) 형식을 DTO 에서 강제한다.
+    // 색 이름·축약형·rgb() 를 허용하면 저장 표기가 갈라져 프론트의 명도 계산이 분기해야 한다.
+    @Test
+    @DisplayName("브랜드 컬러가 #RRGGBB 형식이 아니면 400 을 반환한다")
+    void updateBasicInfo_malformedBrandColor_validationError() throws Exception {
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(patch("/api/v1/companies/{id}", 9L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"brandColor\":\"red\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        verify(companyUpdateService, never()).updateBasicInfoByUser(any(), any(), any());
+    }
+
+    // 로고(@Size(min=1))와 달리 커버·브랜드 컬러는 선택 필드라 ""(비우기)가 정상 입력이다.
+    @Test
+    @DisplayName("커버 이미지·브랜드 컬러는 빈 문자열로 비울 수 있다")
+    void updateBasicInfo_clearsOptionalImageAndColor() throws Exception {
+        authenticate(7L, UserRole.MEMBER);
+
+        mockMvc.perform(patch("/api/v1/companies/{id}", 9L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"coverImageUrl\":\"\",\"brandColor\":\"\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(companyUpdateService).updateBasicInfoByUser(eq(9L), eq(7L), any(CompanyUpdateRequest.class));
     }
 
     @Test

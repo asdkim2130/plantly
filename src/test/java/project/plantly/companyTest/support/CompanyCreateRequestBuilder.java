@@ -78,6 +78,7 @@ public class CompanyCreateRequestBuilder {
                 null,            // detailAddress
                 null,            // website
                 null,            // logoUrl
+                null,            // coverImageUrl
                 null,            // introTitle
                 null,            // content
                 null,            // trlLevel
@@ -114,6 +115,7 @@ public class CompanyCreateRequestBuilder {
                 null,            // detailAddress
                 null,            // website
                 null,            // logoUrl
+                null,            // coverImageUrl
                 null,            // introTitle
                 null,            // content
                 null,            // trlLevel

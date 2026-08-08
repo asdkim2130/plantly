@@ -126,11 +126,16 @@ public class SeedCompanyCases {
         refs.add(new SeedCompanyRef("C18", spotlight1, null,
                 "관리자 수동 고정(pin), 순서 1. 메인 스팟라이트에서 C19 보다 앞, 요금제 자격분(C11/C12 등)보다 앞에 와야 한다"));
 
-        Long spotlight2 = adminCompany(adminId, 19, "스팟라이트2", CompanyGrade.ENTERPRISE, b -> b);
+        // 커버·브랜드 컬러를 일부러 비운다. 스팟라이트 카드는 커버를 배경으로, 브랜드 컬러를 배너 색으로 쓰는데
+        // 둘 다 선택 필드라 없는 회사가 실제로 레일에 오른다 — 폴백(자리표시자 + 기본 배너 색)이 그려지는지
+        // 개발 단계에서 눈으로 확인할 자리가 필요하다. C18 이 둘 다 갖춘 케이스라 나란히 비교된다.
+        Long spotlight2 = adminCompany(adminId, 19, "스팟라이트2", CompanyGrade.ENTERPRISE,
+                SeedCompanyRequestBuilder::withoutCoverStyling);
         companies.changeSubscription(spotlight2, CompanyGrade.ENTERPRISE, SubscriptionStatus.ACTIVE, today.plusYears(1));
         companies.applyFlags(spotlight2, true, false, true, 2);
         refs.add(new SeedCompanyRef("C19", spotlight2, null,
-                "관리자 수동 고정(pin), 순서 2. C18 다음에 와야 한다"));
+                "관리자 수동 고정(pin), 순서 2. C18 다음에 와야 한다."
+                        + " 커버 이미지·브랜드 컬러가 없어 스팟라이트 카드가 폴백으로 그려져야 한다"));
 
         // 메인 스팟라이트 자리 초과(app.showcase.spotlight-slots=5): 후보가 12건이라 7건이 잘린다.
         //  - pin 2건: C18·C19

@@ -33,6 +33,8 @@ public record CompanyUpdateRequest(
         String website,
         @Size(min = 1, message = "로고 이미지는 빈 값으로 변경할 수 없습니다.")
         String logoUrl,
+        // 커버는 선택 필드라 blank("") 로 비울 수 있다(null = 미변경). 그래서 로고와 달리 @Size(min=1) 를 걸지 않는다.
+        String coverImageUrl,
         String introTitle,
         String content,
         TrlLevel trlLevel,
@@ -40,6 +42,9 @@ public record CompanyUpdateRequest(
         String leadTime,
         String asInfo,
         PricingType pricingType,
+        // null = 미변경, "" = 색 비우기, 그 외에는 #RRGGBB 만 허용한다.
+        // 우편번호와 달리 blank 를 패턴에 포함시킨 이유는 브랜드 컬러가 선택 필드라 비울 수 있어야 하기 때문이다.
+        @Pattern(regexp = CompanyCreateRequest.BRAND_COLOR_CLEARABLE_PATTERN, message = CompanyCreateRequest.BRAND_COLOR_MESSAGE)
         String brandColor
 ) {
 }

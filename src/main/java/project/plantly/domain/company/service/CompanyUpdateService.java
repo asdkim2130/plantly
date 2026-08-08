@@ -55,7 +55,7 @@ public class CompanyUpdateService {
                     company.updateBasicInfo(
                             request.companyName(), request.ceoName(), request.establishmentDate(),
                             request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress(),
-                            request.website(), request.logoUrl(), request.introTitle(), request.content(),
+                            request.website(), request.logoUrl(), request.coverImageUrl(), request.introTitle(), request.content(),
                             request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
                             request.pricingType(), request.brandColor());
                 },
@@ -182,7 +182,7 @@ public class CompanyUpdateService {
                     company.updateBasicInfo(
                             request.companyName(), request.ceoName(), request.establishmentDate(),
                             request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress(),
-                            request.website(), request.logoUrl(), request.introTitle(), request.content(),
+                            request.website(), request.logoUrl(), request.coverImageUrl(), request.introTitle(), request.content(),
                             request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
                             request.pricingType(), request.brandColor());
                 },

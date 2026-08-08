@@ -40,7 +40,7 @@ class CompanyLinkWriterTest {
         Category c3 = persistRoot("C", "CAT-C");
 
         Company company = Company.createByUser(1L, null, "회사", "대표", null,
-                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo",
+                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo", null,
                 null, null, null, null, null, null, null, null);
         em.persist(company);
 

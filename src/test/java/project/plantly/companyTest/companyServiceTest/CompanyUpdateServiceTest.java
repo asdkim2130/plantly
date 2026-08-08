@@ -98,14 +98,14 @@ class CompanyUpdateServiceTest {
 
     // 기본정보 PATCH 요청 — videoUrl / brandColor 만 관심.
     private CompanyUpdateRequest basicInfo(String videoUrl, String brandColor) {
-        return new CompanyUpdateRequest(null, null, null, null, null, null, null, null, null, null, null, null,
+        return new CompanyUpdateRequest(null, null, null, null, null, null, null, null, null, null, null, null, null,
                 videoUrl, null, null, null, brandColor);
     }
 
     // 신원 필드(대표자명/개업일자)만 건드리는 수정 요청.
     private CompanyUpdateRequest identityInfo(String ceoName, LocalDate establishmentDate) {
         return new CompanyUpdateRequest(null, ceoName, establishmentDate, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
     }
 
     @Nested

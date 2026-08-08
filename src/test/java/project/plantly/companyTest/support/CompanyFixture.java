@@ -19,7 +19,7 @@ public class CompanyFixture {
                 "홍길동",          // ceoName
                 null,            // establishmentDate
                 Address.of(null, null, null, null),  // 주소(정책 테스트라 무해)
-                null, null, null, null, null,  // website ~ trlLevel
+                null, null, null, null, null, null,  // website ~ trlLevel (logoUrl 뒤 coverImageUrl 포함)
                 null,            // videoUrl
                 null, null, null,// leadTime, asInfo, pricingType
                 brandColor);

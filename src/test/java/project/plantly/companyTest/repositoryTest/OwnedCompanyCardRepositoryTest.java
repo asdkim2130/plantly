@@ -94,7 +94,7 @@ class OwnedCompanyCardRepositoryTest extends PostgresContainerTest {
     // 회사 + OWNER 멤버를 함께 저장한다. 소유는 company_member(role=OWNER) 로만 표현된다.
     private Company persistCompany(Long ownerId, String name) {
         Company c = Company.createByUser(ownerId, null, name, "대표자", null,
-                Address.of("06236", "서울 강남구", null, "1층"), null, "logo-" + name,
+                Address.of("06236", "서울 강남구", null, "1층"), null, "logo-" + name, null,
                 null, null, null, null, null, null, null, null);
         em.persist(c);
         em.persist(CompanyMember.owner(c.getId(), ownerId)); // IDENTITY 라 persist 직후 id 확정

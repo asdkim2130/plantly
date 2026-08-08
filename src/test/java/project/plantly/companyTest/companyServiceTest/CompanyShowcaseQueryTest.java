@@ -92,7 +92,7 @@ class CompanyShowcaseQueryTest {
     }
 
     private CompanySummary card(Long id) {
-        return new CompanySummary(id, "회사" + id, null, "logo", "서울 강남구",
+        return new CompanySummary(id, "회사" + id, null, "logo", "cover", "#2E7D32", "서울 강남구",
                 false, false, false, List.of(), List.of(), List.of(), false, false);
     }
 }

@@ -50,6 +50,38 @@ class ShowcaseCardRepositoryTest extends PostgresContainerTest {
     }
 
     @Test
+    @DisplayName("스팟라이트 카드는 로고와 별개로 커버 이미지·브랜드 컬러를 실어 온다")
+    void spotlightCard_carriesCoverImageAndBrandColor() {
+        Company premium = withSubscription("프리미엄",
+                CompanySubscription.active(CompanyGrade.PREMIUM, TODAY, TODAY.plusYears(1)));
+        em.flush();
+
+        CompanySummary card = repository.findSpotlight(SLOTS).cards().get(0);
+
+        assertThat(card.id()).isEqualTo(premium.getId());
+        // 로고와 커버는 서로 다른 자리다 — 배너 배경에 로고가 깔리면 안 된다.
+        assertThat(card.logoUrl()).isEqualTo("logo-프리미엄");
+        assertThat(card.coverImageUrl()).isEqualTo("cover-프리미엄");
+        assertThat(card.brandColor()).isEqualTo("#2E7D32");
+    }
+
+    @Test
+    @DisplayName("커버·브랜드 컬러가 없는 회사도 레일에 오른다 — 두 값은 선택이라 노출 자격과 무관하다")
+    void cardWithoutCoverStyling_stillAppears() {
+        Company plain = withSubscription("민무늬",
+                CompanySubscription.active(CompanyGrade.PREMIUM, TODAY, TODAY.plusYears(1)));
+        plain.updateBasicInfo(null, null, null, null, null, null, null,
+                null, null, "", null, null, null, null, null, null, null, "");
+        em.flush();
+
+        CompanySummary card = repository.findSpotlight(SLOTS).cards().get(0);
+
+        // null 로 내려가고, 폴백(자리표시자 + 기본 배너 색)은 화면이 정한다 — 서버가 대체값을 지어내지 않는다.
+        assertThat(card.coverImageUrl()).isNull();
+        assertThat(card.brandColor()).isNull();
+    }
+
+    @Test
     @DisplayName("구독이 만료되면 아무것도 끄지 않아도 레일에서 자동으로 빠진다")
     void expiredSubscription_dropsOutAutomatically() {
         Company valid = withSubscription("유효",
@@ -150,9 +182,10 @@ class ShowcaseCardRepositoryTest extends PostgresContainerTest {
 
     // 회사 + 구독 1:1 을 함께 저장한다. 구독은 회사당 반드시 1건 존재하므로(등록 트랜잭션 불변식) 테스트도 같이 만든다.
     private Company withSubscription(String name, CompanySubscription subscription) {
+        // 커버·브랜드 컬러는 스팟라이트 카드가 배경·배너 색으로 쓰는 값이라 이 리포지토리 테스트에서 함께 채운다.
         Company company = Company.createByUser(10L, null, name, "대표자", null,
-                Address.of("06236", "서울 강남구", null, "1층"), null, "logo-" + name,
-                null, null, null, null, null, null, null, null);
+                Address.of("06236", "서울 강남구", null, "1층"), null, "logo-" + name, "cover-" + name,
+                null, null, null, null, null, null, null, "#2E7D32");
         em.persist(company);
         subscription.assignCompany(company.getId());
         em.persist(subscription);

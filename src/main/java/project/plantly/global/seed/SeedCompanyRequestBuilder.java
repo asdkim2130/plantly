@@ -40,6 +40,7 @@ public class SeedCompanyRequestBuilder {
     private String detailAddress;
     private String website;
     private String logoUrl;
+    private String coverImageUrl;
     private String introTitle;
     private String content;
     private TrlLevel trlLevel;
@@ -78,6 +79,8 @@ public class SeedCompanyRequestBuilder {
         this.detailAddress = SeedVocabulary.detailAddress(index);
         this.website = SeedVocabulary.website(index);
         this.logoUrl = SeedVocabulary.logoUrl(index);
+        // 커버는 등급 무관(게이트 없음)이라 videoUrl/brandColor 와 달리 limitTo 를 기다리지 않고 여기서 채운다.
+        this.coverImageUrl = SeedVocabulary.coverImageUrl(index);
         this.introTitle = SeedVocabulary.introTitle(index);
         this.content = SeedVocabulary.content(index);
         this.trlLevel = TrlLevel.values()[Math.floorMod(index, TrlLevel.values().length)];
@@ -190,6 +193,17 @@ public class SeedCompanyRequestBuilder {
         return this;
     }
 
+    /**
+     * 커버 이미지와 브랜드 컬러만 비운다. 카드가 그릴 게 로고밖에 없는 상태를 만든다.
+     * withoutOptionalFields 와 달리 나머지 선택 필드는 그대로 둔다 — 스팟라이트처럼 "정상 회사인데
+     * 커버만 없는" 경우의 폴백(자리표시자 + 기본 배너 색)을 다른 결핍과 섞이지 않게 확인하기 위해서다.
+     */
+    public SeedCompanyRequestBuilder withoutCoverStyling() {
+        this.coverImageUrl = null;
+        this.brandColor = null;
+        return this;
+    }
+
     /** 모든 부속 컬렉션을 비운다. 빈 섹션이 어떻게 그려지는지 확인하는 케이스용. */
     public SeedCompanyRequestBuilder withoutCollections() {
         this.contacts = List.of();
@@ -206,6 +220,7 @@ public class SeedCompanyRequestBuilder {
         // 지번은 선택 필드다. 지번이 없는 주소에서 우편번호 서비스가 내려주는 빈 문자열을 그대로 재현한다
         // — Address 가 이를 null 로 접는지(= 상세 화면에 빈 줄이 남지 않는지)까지 시드로 드러난다.
         this.jibunAddress = "";
+        this.coverImageUrl = null;
         this.website = null;
         this.introTitle = null;
         this.content = null;
@@ -223,7 +238,7 @@ public class SeedCompanyRequestBuilder {
         return new CompanyCreateRequest(
                 businessNumber, companyName, ceoName, establishmentDate,
                 postalCode, roadAddress, jibunAddress, detailAddress,
-                website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo,
+                website, logoUrl, coverImageUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo,
                 pricingType, brandColor, visibility,
                 contacts, images, references, materialNames, equipmentNames, tagNames,
                 categoryIds, certificationIds, countryIds, domesticRegionIds, industryIds);
@@ -236,7 +251,7 @@ public class SeedCompanyRequestBuilder {
         return new MyCompanyCreateRequest(
                 verificationId, companyName,
                 postalCode, roadAddress, jibunAddress, detailAddress,
-                website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo,
+                website, logoUrl, coverImageUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo,
                 pricingType, brandColor, visibility,
                 contacts, images, references, materialNames, equipmentNames, tagNames,
                 categoryIds, certificationIds, countryIds, domesticRegionIds, industryIds);

@@ -97,6 +97,8 @@ public class CompanyApiDocs {
                 fieldWithPath("detailAddress").type(JsonFieldType.STRING).optional().description("상세주소"),
                 fieldWithPath("website").type(JsonFieldType.STRING).optional().description("기업 홈페이지"),
                 fieldWithPath("logoUrl").type(JsonFieldType.STRING).optional().description("로고 이미지 URL"),
+                fieldWithPath("coverImageUrl").type(JsonFieldType.STRING).optional()
+                        .description("카드 커버 이미지 URL. 목록 카드 배경에 깔리는 와이드 사진으로, 로고와 다른 자리다 (등급 제한 없음)"),
                 fieldWithPath("introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약"),
                 fieldWithPath("content").type(JsonFieldType.STRING).optional().description("소개글"),
                 fieldWithPath("trlLevel").type(JsonFieldType.STRING).optional().description("기술성숙도: PROTOTYPE, MASS_PRODUCTION, GLOBAL_STANDARD"),
@@ -104,7 +106,7 @@ public class CompanyApiDocs {
                 fieldWithPath("leadTime").type(JsonFieldType.STRING).optional().description("예상 리드타임"),
                 fieldWithPath("asInfo").type(JsonFieldType.STRING).optional().description("유지보수/AS 정보"),
                 fieldWithPath("pricingType").type(JsonFieldType.STRING).optional().description("견적 산출 방식: FIXED, CONSULTATION, PROJECT_BASED"),
-                fieldWithPath("brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러 (커스텀 불가 등급은 기본값으로 고정)"),
+                fieldWithPath("brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러 #RRGGBB (형식 불일치 시 400, 커스텀 불가 등급은 기본값으로 고정)"),
                 fieldWithPath("visibility").type(JsonFieldType.STRING).optional().description("공개 범위: PUBLIC(공개), PRIVATE(비공개). 생략 시 PUBLIC"),
 
                 // ===== 자식(소유) 엔티티 =====
@@ -192,6 +194,7 @@ public class CompanyApiDocs {
                 fieldWithPath("detailAddress").type(JsonFieldType.STRING).optional().description("상세주소 (빈 문자열로 비울 수 없음)"),
                 fieldWithPath("website").type(JsonFieldType.STRING).optional().description("기업 홈페이지 (빈 문자열 = 비우기)"),
                 fieldWithPath("logoUrl").type(JsonFieldType.STRING).optional().description("로고 이미지 URL (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("coverImageUrl").type(JsonFieldType.STRING).optional().description("카드 커버 이미지 URL (빈 문자열 = 비우기)"),
                 fieldWithPath("introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약 (빈 문자열 = 비우기)"),
                 fieldWithPath("content").type(JsonFieldType.STRING).optional().description("소개글 (빈 문자열 = 비우기)"),
                 fieldWithPath("trlLevel").type(JsonFieldType.STRING).optional().description("기술성숙도: PROTOTYPE, MASS_PRODUCTION, GLOBAL_STANDARD (clear 미지원)"),
@@ -199,7 +202,7 @@ public class CompanyApiDocs {
                 fieldWithPath("leadTime").type(JsonFieldType.STRING).optional().description("예상 리드타임 (빈 문자열 = 비우기)"),
                 fieldWithPath("asInfo").type(JsonFieldType.STRING).optional().description("유지보수/AS 정보 (빈 문자열 = 비우기)"),
                 fieldWithPath("pricingType").type(JsonFieldType.STRING).optional().description("견적 산출 방식: FIXED, CONSULTATION, PROJECT_BASED (clear 미지원)"),
-                fieldWithPath("brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러 (커스텀 불가 등급은 무시, 빈 문자열 = 비우기)")
+                fieldWithPath("brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러 #RRGGBB (형식 불일치 시 400, 커스텀 불가 등급은 무시, 빈 문자열 = 비우기)")
         };
     }
 
@@ -267,6 +270,10 @@ public class CompanyApiDocs {
                 fieldWithPath(prefix + ".companyName").type(JsonFieldType.STRING).description("기업 이름"),
                 fieldWithPath(prefix + ".introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약 (없으면 null)"),
                 fieldWithPath(prefix + ".logoUrl").type(JsonFieldType.STRING).description("로고 이미지 URL"),
+                fieldWithPath(prefix + ".coverImageUrl").type(JsonFieldType.STRING).optional()
+                        .description("카드 커버 이미지 URL (없으면 null). 로고와 다른 자리다 — 로고는 정사각 배지, 커버는 카드 배경에 깔리는 와이드 사진"),
+                fieldWithPath(prefix + ".brandColor").type(JsonFieldType.STRING).optional()
+                        .description("브랜드 컬러 #RRGGBB (없으면 null). 메인 스팟라이트 배너 배경에 쓴다 — 없으면 화면 기본색으로 폴백"),
                 fieldWithPath(prefix + ".address").type(JsonFieldType.STRING).description("지역 (시도+시군구, 예: \"서울시 강남구\"). 전체 주소는 상세 조회 참고"),
                 fieldWithPath(prefix + ".verified").type(JsonFieldType.BOOLEAN).description("관리자 인증 여부"),
                 fieldWithPath(prefix + ".featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
@@ -426,6 +433,7 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "detailAddress").type(JsonFieldType.STRING).optional().description("상세주소"),
                 fieldWithPath(p + "website").type(JsonFieldType.STRING).optional().description("기업 홈페이지"),
                 fieldWithPath(p + "logoUrl").type(JsonFieldType.STRING).optional().description("로고 이미지 URL"),
+                fieldWithPath(p + "coverImageUrl").type(JsonFieldType.STRING).optional().description("카드 커버 이미지 URL (상세에서는 히어로 배경)"),
                 fieldWithPath(p + "introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약"),
                 fieldWithPath(p + "content").type(JsonFieldType.STRING).optional().description("소개글"),
                 fieldWithPath(p + "trlLevel").type(JsonFieldType.STRING).optional().description("기술성숙도"),

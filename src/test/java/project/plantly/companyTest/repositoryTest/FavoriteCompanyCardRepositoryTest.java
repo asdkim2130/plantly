@@ -90,7 +90,7 @@ class FavoriteCompanyCardRepositoryTest extends PostgresContainerTest {
     // 소유(company_member)와 무관하게 회사만 저장한다 — 즐겨찾기는 소유가 아니라 뷰어↔회사 관계다.
     private Company persistCompany(String name) {
         Company c = Company.createByUser(OTHER, null, name, "대표자", null,
-                Address.of("06236", "서울 강남구", null, "1층"), null, "logo-" + name,
+                Address.of("06236", "서울 강남구", null, "1층"), null, "logo-" + name, null,
                 null, null, null, null, null, null, null, null);
         em.persist(c);
         return c;

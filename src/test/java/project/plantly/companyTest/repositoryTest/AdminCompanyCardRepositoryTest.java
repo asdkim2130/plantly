@@ -119,7 +119,7 @@ class AdminCompanyCardRepositoryTest extends PostgresContainerTest {
     @DisplayName("카드에 운영 필드(deleted/소유자/출처/등록시각)와 연결 이름 목록을 담는다")
     void cardCarriesOperationalFieldsAndNames() {
         Company adminRegistered = persist(Company.createByAdmin(500L, null, "관리자등록회사", "대표", null,
-                Address.of("06236", "서울", null, "1층"), null, "logo", null, null, null, null, null, null, null, null));
+                Address.of("06236", "서울", null, "1층"), null, "logo", null, null, null, null, null, null, null, null, null));
         Company a = persistOwned(10L, "가가");
         Category root = Category.createRoot("제조", "MFG", null, null, 0);
         em.persist(root);
@@ -200,7 +200,7 @@ class AdminCompanyCardRepositoryTest extends PostgresContainerTest {
 
     private Company userCompany(Long ownerId, String name) {
         return Company.createByUser(ownerId, null, name, "대표자", null,
-                Address.of("06236", "서울 강남구", null, "1층"), null, "logo-" + name,
+                Address.of("06236", "서울 강남구", null, "1층"), null, "logo-" + name, null,
                 null, null, null, null, null, null, null, null);
     }
 

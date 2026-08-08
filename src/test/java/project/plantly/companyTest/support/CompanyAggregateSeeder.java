@@ -53,6 +53,8 @@ public class CompanyAggregateSeeder {
     public static final String BUSINESS_NUMBER = "1234567890";
     public static final LocalDate ESTABLISHMENT_DATE = LocalDate.of(2018, 3, 2);
     public static final String BRAND_COLOR = "#2E7D32";
+    // 로고와 다른 URL 이어야 한다 — 카드/상세가 두 자리를 뒤바꿔 채우면 단언이 잡아낸다.
+    public static final String COVER_IMAGE_URL = "https://cdn.plantly.test/cover.png";
 
     public static final String REP_CONTACT_NAME = "이담당";
     public static final String REP_REFERENCE_TITLE = "스마트팩토리 구축";
@@ -83,7 +85,7 @@ public class CompanyAggregateSeeder {
         Company company = Company.createByUser(
                 ownerUserId, BUSINESS_NUMBER, COMPANY_NAME, CEO_NAME,
                 ESTABLISHMENT_DATE, Address.of("06236", "서울 강남구 테헤란로 1", null, "10층"),
-                "https://plantly.test", "https://cdn.plantly.test/logo.png",
+                "https://plantly.test", "https://cdn.plantly.test/logo.png", COVER_IMAGE_URL,
                 "정밀 부품 전문", "정밀 가공 20년 경력의 부품 제조사입니다.",
                 TrlLevel.MASS_PRODUCTION, "https://youtu.be/demo", "2주", "유선 AS 지원",
                 PricingType.CONSULTATION, BRAND_COLOR);
@@ -104,7 +106,7 @@ public class CompanyAggregateSeeder {
         Company company = Company.createByUser(
                 ownerUserId, "9998887776", "삭제된회사", "박대표",
                 ESTABLISHMENT_DATE, Address.of("06236", "서울 강남구 봉은사로 2", null, "5층"),
-                null, "https://cdn.plantly.test/logo2.png",
+                null, "https://cdn.plantly.test/logo2.png", null,
                 null, null, null, null, null, null, null, null);
         company.delete();
         em.persist(company);
@@ -118,7 +120,7 @@ public class CompanyAggregateSeeder {
         Company company = Company.createByAdmin(
                 adminId, "5554443332", "관리자등록회사", "최대표",
                 ESTABLISHMENT_DATE, Address.of("06236", "서울 강남구 도산대로 3", null, "3층"),
-                null, "https://cdn.plantly.test/logo3.png",
+                null, "https://cdn.plantly.test/logo3.png", null,
                 null, null, null, null, null, null, null, null);
         em.persist(company);
         // 미연동: CompanyMember 를 만들지 않는다 (소유자 없음).

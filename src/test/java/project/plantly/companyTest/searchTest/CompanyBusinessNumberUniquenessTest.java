@@ -61,7 +61,7 @@ class CompanyBusinessNumberUniquenessTest extends PostgresContainerTest {
 
     private Company company(String businessNumber) {
         return Company.createByUser(1L, businessNumber, "회사", "대표", null,
-                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo",
+                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo", null,
                 "요약", "본문", null, null, null, null, null, null);
     }
 }

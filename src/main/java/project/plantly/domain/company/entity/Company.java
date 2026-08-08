@@ -63,6 +63,12 @@ public class Company {
     @Column(nullable = false)
     private String logoUrl;  // 기업 대표 이미지(단일·필수). 여러 장 이미지는 CompanyImage 로 분리 관리한다.
 
+    // 카드 커버 이미지(단일·선택). 로고와는 다른 축이다 — 로고는 정사각 배지, 커버는 카드 배경으로 깔리는 와이드 사진.
+    // CompanyImage 가 아니라 스칼라로 두는 이유는 '회사당 최대 1장'을 정책이 아니라 구조로 보장하기 위해서다
+    // (갤러리에 두면 최대 1장 정책 + 갤러리 전체교체 PUT 이 커버를 날리지 않게 하는 예외가 함께 필요해진다).
+    // 등급 게이트는 없다 — 커버는 카드가 비어 보이지 않게 하는 기본 요소라 전 등급이 올릴 수 있다.
+    private String coverImageUrl;
+
     private String introTitle;  // 한 줄 요약
 
     @Column(columnDefinition = "TEXT")
@@ -130,7 +136,7 @@ public class Company {
 
     // 비즈니스 필드만 받는다. 시스템 관리 플래그(verified/featured/spotlight/spotlightOrder/deleted/visibility)는
     // 생성 시 기본값(false/0/PUBLIC)으로 시작하고, 상태 전환은 도메인 행위 메서드로만 수행한다.
-    private Company(RegistrationSource registrationSource, Long registeredBy, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+    private Company(RegistrationSource registrationSource, Long registeredBy, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String coverImageUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
         this.registrationSource = registrationSource;
         this.registeredBy = registeredBy;
         this.businessNumber = businessNumber;
@@ -140,6 +146,7 @@ public class Company {
         this.address = address;
         this.website = website;
         this.logoUrl = logoUrl;
+        this.coverImageUrl = coverImageUrl;
         this.introTitle = introTitle;
         this.content = content;
         this.trlLevel = trlLevel;
@@ -151,13 +158,13 @@ public class Company {
     }
 
     // 유저 자가등록: registeredBy = 본인. 소유자 연동은 호출부가 CompanyMember(OWNER) 로 별도 기록한다.
-    public static Company createByUser(Long userId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
-        return new Company(RegistrationSource.USER, userId, businessNumber, companyName, ceoName, establishmentDate, address, website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
+    public static Company createByUser(Long userId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String coverImageUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+        return new Company(RegistrationSource.USER, userId, businessNumber, companyName, ceoName, establishmentDate, address, website, logoUrl, coverImageUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
     }
 
     // 관리자 등록: 소유자 미연동(멤버 0건) 상태로 시작. registeredBy 는 등록한 admin id.
-    public static Company createByAdmin(Long adminId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel,  String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
-        return new Company(RegistrationSource.ADMIN, adminId, businessNumber, companyName, ceoName, establishmentDate, address, website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
+    public static Company createByAdmin(Long adminId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String coverImageUrl, String introTitle, String content, TrlLevel trlLevel,  String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+        return new Company(RegistrationSource.ADMIN, adminId, businessNumber, companyName, ceoName, establishmentDate, address, website, logoUrl, coverImageUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
     }
 
     // ===== 기본 정보 부분 수정 =====
@@ -167,7 +174,7 @@ public class Company {
     // 시스템 플래그·사업자번호·등록 provenance(registrationSource/registeredBy) 는 이 경로로 바꾸지 않는다.
     public void updateBasicInfo(String companyName, String ceoName, LocalDate establishmentDate,
                                 String postalCode, String roadAddress, String jibunAddress, String detailAddress,
-                                String website, String logoUrl, String introTitle, String content,
+                                String website, String logoUrl, String coverImageUrl, String introTitle, String content,
                                 TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo,
                                 PricingType pricingType, String brandColor) {
         // 필수 필드: null = 미변경 (blank 는 DTO 에서 차단)
@@ -180,6 +187,8 @@ public class Company {
         if (logoUrl != null) this.logoUrl = logoUrl;
 
         // 선택 문자열 필드: null = 미변경, blank = 비움(null)
+        // 커버는 logoUrl 과 달리 선택 필드라 이쪽에 둔다 — 로고는 NOT NULL 이라 위에서 교체만 한다.
+        if (coverImageUrl != null) this.coverImageUrl = blankToNull(coverImageUrl);
         if (website != null) this.website = blankToNull(website);
         if (introTitle != null) this.introTitle = blankToNull(introTitle);
         if (content != null) this.content = blankToNull(content);

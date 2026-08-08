@@ -66,7 +66,7 @@ class CompanySearchApiTest extends PostgresContainerTest {
 
     private Company persistCompany(String name, String content) {
         Company c = Company.createByUser(1L, null, name, "대표자", null,
-                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo-" + name,
+                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo-" + name, null,
                 name + " 요약", content, null, null, null, null, null, null);
         em.persist(c);
         return c;
