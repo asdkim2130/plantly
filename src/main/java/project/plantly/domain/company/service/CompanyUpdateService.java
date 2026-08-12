@@ -59,7 +59,7 @@ public class CompanyUpdateService {
                             request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
                             request.pricingType(), request.brandColor());
                 },
-                (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl(), request.brandColor() != null));
+                (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl()));
     }
 
     // 국세청 검증을 통과한 회사는 대표자명·개업일자를 바꿀 수 없다.
@@ -186,7 +186,7 @@ public class CompanyUpdateService {
                             request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
                             request.pricingType(), request.brandColor());
                 },
-                (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl(), request.brandColor() != null));
+                (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl()));
     }
 
     // ===== 사업자 인증 회수 (관리자) =====

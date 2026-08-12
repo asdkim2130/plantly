@@ -79,7 +79,7 @@ public class SeedCompanyRequestBuilder {
         this.detailAddress = SeedVocabulary.detailAddress(index);
         this.website = SeedVocabulary.website(index);
         this.logoUrl = SeedVocabulary.logoUrl(index);
-        // 커버는 등급 무관(게이트 없음)이라 videoUrl/brandColor 와 달리 limitTo 를 기다리지 않고 여기서 채운다.
+        // 커버는 등급 무관(게이트 없음)이라 videoUrl 과 달리 limitTo 를 기다리지 않고 여기서 채운다.
         this.coverImageUrl = SeedVocabulary.coverImageUrl(index);
         this.introTitle = SeedVocabulary.introTitle(index);
         this.content = SeedVocabulary.content(index);
@@ -88,7 +88,9 @@ public class SeedCompanyRequestBuilder {
         this.leadTime = SeedVocabulary.leadTime(index);
         this.asInfo = SeedVocabulary.asInfo(index);
         this.pricingType = PricingType.values()[Math.floorMod(index, PricingType.values().length)];
-        this.brandColor = null; // 등급이 허용할 때만 limitTo 가 채운다
+        // brandColor 도 쓰기 게이트가 없어져 커버와 같은 자리로 왔다 — 전 등급이 값을 갖는다.
+        // 색이 없는 케이스는 withoutCoverStyling / withoutOptionalFields 가 의도적으로 만든다(프론트 폴백 확인용).
+        this.brandColor = SeedVocabulary.brandColor(index);
 
         this.contacts = List.of(new ContactRequest(
                 SeedVocabulary.contactName(index), "영업팀장",
@@ -118,7 +120,6 @@ public class SeedCompanyRequestBuilder {
         this.categoryIds = masters.categoryIds(index, policy.maxCompanyCategories());
         this.images = detailImages(Math.min(policy.maxDetailImages(), 6));
         this.videoUrl = policy.videoAllowed() ? SeedVocabulary.videoUrl(index) : null;
-        this.brandColor = policy.customBrandColorAllowed() ? SeedVocabulary.brandColor(index) : null;
         this.references = List.of(reference(Math.min(policy.maxReferenceImages(), 4)));
         return this;
     }

@@ -15,7 +15,6 @@ import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.policy.CompanyMutationPolicy;
 import project.plantly.domain.company.policy.GradePolicyRegistry;
-import project.plantly.domain.company.policy.rule.BrandColorPolicy;
 import project.plantly.domain.company.policy.rule.CategoryLimitPolicy;
 import project.plantly.domain.company.policy.rule.DetailImageLimitPolicy;
 import project.plantly.domain.company.policy.rule.ReferenceImagePolicy;
@@ -66,7 +65,6 @@ class CompanyUpdateServiceTest {
 
     private static final long COMPANY_ID = 1L;
     private static final long OWNER_ID = 7L;
-    private static final String DEFAULT_BRAND_COLOR = "#808080";
 
     private CompanyUpdateService service;
 
@@ -77,8 +75,7 @@ class CompanyUpdateServiceTest {
                 new CategoryLimitPolicy(registry),
                 new DetailImageLimitPolicy(registry),
                 new ReferenceImagePolicy(registry),
-                new VideoUrlPolicy(registry),
-                new BrandColorPolicy(registry));
+                new VideoUrlPolicy(registry));
         service = new CompanyUpdateService(companyRepository, companyMemberRepository, companySubscriptionRepository,
                 verificationRepository, childWriter, linkWriter, searchDocumentWriter, mutationPolicies);
     }
@@ -269,19 +266,22 @@ class CompanyUpdateServiceTest {
             verify(searchDocumentWriter, never()).write(any());
         }
 
+        // brandColor 에는 쓰기 등급 게이트가 없다. 등급이 낮아도 요청한 색을 그대로 저장한다 —
+        // 업그레이드 시 재입력을 강요하지 않고 다운그레이드가 원래 색을 파괴하지 않기 위해서다.
+        // 노출 자격은 이 값을 실제로 쓰는 스팟라이트 조회가 판단한다.
         @Test
-        @DisplayName("FREE 회사가 커스텀 brandColor 를 넣으면 거부가 아니라 기본값으로 고정(변형)하고 통과시킨다")
-        void free_brandColor_overriddenToDefault() {
+        @DisplayName("FREE 회사가 커스텀 brandColor 를 넣어도 덮어쓰지 않고 요청한 색을 그대로 저장한다")
+        void free_brandColor_storedAsRequested() {
             Company company = givenOwnedCompany(FREE);
 
             service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID, basicInfo(null, "#FF0000"));
 
-            assertThat(company.getBrandColor()).isEqualTo(DEFAULT_BRAND_COLOR);
+            assertThat(company.getBrandColor()).isEqualTo("#FF0000");
             verify(searchDocumentWriter).write(COMPANY_ID);
         }
 
         @Test
-        @DisplayName("커스텀 허용 등급(STANDARD)은 요청한 brandColor 를 유지하고 videoUrl 도 통과시킨다")
+        @DisplayName("상위 등급(STANDARD)도 요청한 brandColor 를 유지하고 videoUrl 도 통과시킨다")
         void standard_keepsColorAndAllowsVideo() {
             Company company = givenOwnedCompany(STANDARD);
 

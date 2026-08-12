@@ -12,13 +12,13 @@ import java.util.Map;
 @Component
 public class GradePolicyRegistry {
 
-    // 필드 순서: maxCompanyCategories, videoAllowed, maxReferenceImages, maxDetailImages, customBrandColorAllowed
+    // 필드 순서: maxCompanyCategories, videoAllowed, maxReferenceImages, maxDetailImages
     private final Map<CompanyGrade, GradePolicy> policies = Map.of(
-            CompanyGrade.FREE,       new GradePolicy(1,  false, 0,  3,  false),
-            CompanyGrade.BASIC,      new GradePolicy(2,  false, 0,  5,  false),
-            CompanyGrade.STANDARD,   new GradePolicy(5,  true,  0,  10, true),
-            CompanyGrade.PREMIUM,    new GradePolicy(10, true,  0,  20, true),
-            CompanyGrade.ENTERPRISE, new GradePolicy(10, true,  10, 30, true)
+            CompanyGrade.FREE,       new GradePolicy(1,  false, 0,  3),
+            CompanyGrade.BASIC,      new GradePolicy(2,  false, 0,  5),
+            CompanyGrade.STANDARD,   new GradePolicy(5,  true,  0,  10),
+            CompanyGrade.PREMIUM,    new GradePolicy(10, true,  0,  20),
+            CompanyGrade.ENTERPRISE, new GradePolicy(10, true,  10, 30)
     );
 
     public GradePolicy of(CompanyGrade grade) {

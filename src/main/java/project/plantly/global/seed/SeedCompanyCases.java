@@ -79,11 +79,11 @@ public class SeedCompanyCases {
         // ===== 등급 5종. 관리자등록으로 만든 뒤 구독을 교체한다(등록 시점엔 등급을 고를 수 없다). =====
 
         refs.add(gradeCase(adminId, 8, CompanyGrade.FREE, today,
-                "FREE 등급 표시. 카테고리 1개, 상세이미지 3장, 동영상·브랜드컬러 없음"));
+                "FREE 등급 표시. 카테고리 1개, 상세이미지 3장, 동영상 없음"));
         refs.add(gradeCase(adminId, 9, CompanyGrade.BASIC, today,
-                "BASIC 등급 표시. 카테고리 2개, 동영상·브랜드컬러 없음"));
+                "BASIC 등급 표시. 카테고리 2개, 동영상 없음"));
         refs.add(gradeCase(adminId, 10, CompanyGrade.STANDARD, today,
-                "STANDARD 등급 표시. 카테고리 5개, 동영상·브랜드컬러 허용"));
+                "STANDARD 등급 표시. 카테고리 5개, 동영상 허용"));
         refs.add(gradeCase(adminId, 11, CompanyGrade.PREMIUM, today,
                 "PREMIUM 등급 표시. 카테고리 10개, 스팟라이트 자격"));
         refs.add(gradeCase(adminId, 12, CompanyGrade.ENTERPRISE, today,

@@ -26,7 +26,6 @@ class GradePolicyRegistryTest {
         assertThat(policy.videoAllowed()).isFalse();
         assertThat(policy.maxReferenceImages()).isEqualTo(0);
         assertThat(policy.maxDetailImages()).isEqualTo(3);
-        assertThat(policy.customBrandColorAllowed()).isFalse();
     }
 
     @Test
@@ -38,7 +37,6 @@ class GradePolicyRegistryTest {
         assertThat(policy.videoAllowed()).isTrue();
         assertThat(policy.maxReferenceImages()).isEqualTo(0);
         assertThat(policy.maxDetailImages()).isEqualTo(20);
-        assertThat(policy.customBrandColorAllowed()).isTrue();
     }
 
     @Test
@@ -50,7 +48,6 @@ class GradePolicyRegistryTest {
         assertThat(policy.videoAllowed()).isTrue();
         assertThat(policy.maxReferenceImages()).isEqualTo(10);
         assertThat(policy.maxDetailImages()).isEqualTo(30);
-        assertThat(policy.customBrandColorAllowed()).isTrue();
     }
 
     @ParameterizedTest
