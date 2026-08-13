@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
+import project.plantly.domain.company.dto.CompanyAggregate;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
 import project.plantly.domain.company.dto.CompanyShowcaseResponse;
@@ -15,6 +16,7 @@ import project.plantly.domain.company.dto.CompanySubscriptionResponse;
 import project.plantly.domain.company.dto.OwnerSubscriptionSummary;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.MemberRole;
 import project.plantly.domain.company.exception.CompanyErrorCode;
@@ -56,6 +58,9 @@ public class CompanyQueryService {
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanySubscriptionRepository companySubscriptionRepository;
     private final CompanyAggregateLoader aggregateLoader;
+
+    // 등급 → 혜택 매핑의 단일 출처. 쓰기 정책과 같은 표를 조회 쪽에서도 읽는다(동영상 노출 자격).
+    private final GradePolicyRegistry gradePolicyRegistry;
     private final CompanySearchRepository companySearchRepository;
     private final OwnedCompanyCardRepository ownedCompanyCardRepository;
     private final FavoriteCompanyCardRepository favoriteCompanyCardRepository;
@@ -161,7 +166,17 @@ public class CompanyQueryService {
         boolean likedByMe = viewerId != null && companyLikeRepository.existsByUserIdAndCompanyId(viewerId, companyId);
         boolean favoritedByMe = viewerId != null && companyFavoriteRepository.existsByUserIdAndCompanyId(viewerId, companyId);
 
-        return CompanyPublicResponse.from(aggregateLoader.load(company), likedByMe, favoritedByMe);
+        CompanyAggregate aggregate = aggregateLoader.load(company);
+        return CompanyPublicResponse.from(aggregate, likedByMe, favoritedByMe, videoVisibleToPublic(aggregate));
+    }
+
+    // 동영상 공개 자격. 저장은 등급과 무관하게 열려 있고(등급이 올랐을 때 재입력을 강요하지 않기 위해),
+    // 노출만 지금 등급으로 판단한다 — 만료·강등되면 다음 조회부터 저절로 가려진다.
+    // 관리자 등록(ADMIN_EXEMPT)은 쓰기 한도와 마찬가지로 노출에서도 면제한다.
+    private boolean videoVisibleToPublic(CompanyAggregate aggregate) {
+        CompanySubscription subscription = aggregate.subscription();
+        return subscription.isExempt()
+                || gradePolicyRegistry.of(subscription.effectiveGrade()).videoAllowed();
     }
 
     // 소유자 전용 상세: 요청자가 해당 회사의 멤버여야 한다. 삭제된 회사도 소유자에게는 보인다.
@@ -173,7 +188,8 @@ public class CompanyQueryService {
             throw new BusinessException(CompanyErrorCode.COMPANY_ACCESS_DENIED);
         }
 
-        return CompanyDetailResponse.from(aggregateLoader.load(company));
+        CompanyAggregate aggregate = aggregateLoader.load(company);
+        return CompanyDetailResponse.from(aggregate, videoVisibleToPublic(aggregate));
     }
 
     // 관리자 상세: 상태(삭제/미연동 등) 무관하게 전체를 본다. (권한 검증은 컨트롤러 @PreAuthorize 가 담당)
@@ -181,7 +197,8 @@ public class CompanyQueryService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
 
-        return CompanyDetailResponse.from(aggregateLoader.load(company));
+        CompanyAggregate aggregate = aggregateLoader.load(company);
+        return CompanyDetailResponse.from(aggregate, videoVisibleToPublic(aggregate));
     }
 
     // 소유자 전용 구독 조회: 요청자가 해당 회사의 멤버여야 한다. 접근제어는 getOwnerView 와 동일하게 미러한다.
@@ -195,8 +212,7 @@ public class CompanyQueryService {
             throw new BusinessException(CompanyErrorCode.COMPANY_ACCESS_DENIED);
         }
 
-        CompanySubscription subscription = companySubscriptionRepository.findByCompanyId(companyId)
-                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+        CompanySubscription subscription = companySubscriptionRepository.getByCompanyId(companyId);
 
         return CompanySubscriptionResponse.from(subscription, company.getCompanyName());
     }
@@ -207,8 +223,7 @@ public class CompanyQueryService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
 
-        CompanySubscription subscription = companySubscriptionRepository.findByCompanyId(companyId)
-                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+        CompanySubscription subscription = companySubscriptionRepository.getByCompanyId(companyId);
 
         return AdminCompanySubscriptionResponse.from(subscription, company.getCompanyName());
     }

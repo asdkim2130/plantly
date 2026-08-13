@@ -17,11 +17,13 @@ public record CompanyDetailResponse(
         ManagementMeta meta
 ) {
 
-    public static CompanyDetailResponse from(CompanyAggregate aggregate) {
+    // videoVisibleToPublic = 이 회사의 등급이 동영상 공개를 허용하는지. 소유자/관리자 뷰는 이 값과 무관하게
+    // 저장된 videoUrl 을 그대로 받고(자기 데이터라 가릴 이유가 없다), 이 플래그는 meta 로만 내려간다.
+    public static CompanyDetailResponse from(CompanyAggregate aggregate, boolean videoVisibleToPublic) {
         return new CompanyDetailResponse(
                 // 소유자/관리자 뷰는 관리 목적이라 개인화(좋아요/즐겨찾기 상태)를 담지 않는다.
-                CompanyPublicResponse.from(aggregate, false, false),
-                ManagementMeta.from(aggregate));
+                CompanyPublicResponse.from(aggregate, false, false, true),
+                ManagementMeta.from(aggregate, videoVisibleToPublic));
     }
 
     // 소유자/관리자에게만 보이는 내부·운영 메타데이터.
@@ -39,10 +41,16 @@ public record CompanyDetailResponse(
             boolean spotlight,
             boolean deleted,
             CompanyVisibility visibility,   // 공개 범위(PUBLIC/PRIVATE). 소유자/관리자만 보는 운영 메타.
+
+            // 저장된 videoUrl 이 방문자에게도 보이는지. false = 저장은 돼 있지만 등급이 낮아 공개 뷰에서 가려진 상태.
+            // 이게 없으면 소유자는 자기 화면에서 동영상이 재생되니 잘 노출되고 있다고 오해한다.
+            // 화면은 자물쇠 배지 + 업그레이드 안내를 띄우는 자리로 쓴다. (등급 자체는 별도 구독 조회 API 가 내려준다)
+            boolean videoVisibleToPublic,
+
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {
-        public static ManagementMeta from(CompanyAggregate aggregate) {
+        public static ManagementMeta from(CompanyAggregate aggregate, boolean videoVisibleToPublic) {
             Company c = aggregate.company();
             Long ownerUserId = aggregate.ownerUserId();   // OWNER 멤버 없음(관리자 대신등록·미연동) → null
             return new ManagementMeta(
@@ -59,6 +67,7 @@ public record CompanyDetailResponse(
                     c.isSpotlight(),
                     c.isDeleted(),
                     c.getVisibility(),
+                    videoVisibleToPublic,
                     c.getCreatedAt(),
                     c.getUpdatedAt());
         }

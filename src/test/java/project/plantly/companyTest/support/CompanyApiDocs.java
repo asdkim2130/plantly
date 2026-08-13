@@ -526,6 +526,9 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "spotlight").type(JsonFieldType.BOOLEAN).description("스포트라이트 여부"),
                 fieldWithPath(p + "deleted").type(JsonFieldType.BOOLEAN).description("소프트 삭제 여부"),
                 fieldWithPath(p + "visibility").type(JsonFieldType.STRING).description("공개 범위 (PUBLIC / PRIVATE)"),
+                fieldWithPath(p + "videoVisibleToPublic").type(JsonFieldType.BOOLEAN)
+                        .description("저장된 동영상이 방문자에게도 보이는지. false = 저장은 돼 있으나 등급이 낮아 공개 뷰에서 가려진 상태"
+                                + " (소유자/관리자 뷰의 profile.videoUrl 은 이 값과 무관하게 항상 저장값)"),
                 fieldWithPath(p + "createdAt").type(JsonFieldType.STRING).description("생성 시각"),
                 fieldWithPath(p + "updatedAt").type(JsonFieldType.STRING).description("수정 시각")
         };

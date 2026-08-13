@@ -12,9 +12,6 @@ public enum CompanyErrorCode implements ErrorCode {
     // 등급별 카테고리 최대 저장 개수를 초과한 경우
     CATEGORY_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "현재 등급에서 선택 가능한 카테고리 개수를 초과했습니다."),
 
-    // 동영상(videoUrl) 사용이 허용되지 않는 등급인 경우
-    VIDEO_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "현재 등급에서는 동영상을 등록할 수 없습니다."),
-
     // 레퍼런스 이미지 업로드가 허용되지 않는 등급인 경우
     REFERENCE_IMAGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "현재 등급에서는 레퍼런스 이미지를 등록할 수 없습니다."),
 

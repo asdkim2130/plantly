@@ -18,7 +18,6 @@ import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.rule.CategoryLimitPolicy;
 import project.plantly.domain.company.policy.rule.DetailImageLimitPolicy;
 import project.plantly.domain.company.policy.rule.ReferenceImagePolicy;
-import project.plantly.domain.company.policy.rule.VideoUrlPolicy;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
 import project.plantly.domain.company.repository.CompanySubscriptionRepository;
@@ -74,8 +73,7 @@ class CompanyUpdateServiceTest {
         List<CompanyMutationPolicy> mutationPolicies = List.of(
                 new CategoryLimitPolicy(registry),
                 new DetailImageLimitPolicy(registry),
-                new ReferenceImagePolicy(registry),
-                new VideoUrlPolicy(registry));
+                new ReferenceImagePolicy(registry));
         service = new CompanyUpdateService(companyRepository, companyMemberRepository, companySubscriptionRepository,
                 verificationRepository, childWriter, linkWriter, searchDocumentWriter, mutationPolicies);
     }
@@ -85,7 +83,17 @@ class CompanyUpdateServiceTest {
         Company company = CompanyFixture.userCompany();
         given(companyRepository.findById(COMPANY_ID)).willReturn(Optional.of(company));
         given(companyMemberRepository.existsByCompanyIdAndUserId(COMPANY_ID, OWNER_ID)).willReturn(true);
-        given(companySubscriptionRepository.findByCompanyId(COMPANY_ID)).willReturn(Optional.of(subscription));
+        // 불변식 전제 조회(getByCompanyId)를 그대로 스텁한다 — mock 은 default 메서드도 가로채므로
+        // findByCompanyId 를 스텁해도 default 구현이 실행되지 않는다.
+        given(companySubscriptionRepository.getByCompanyId(COMPANY_ID)).willReturn(subscription);
+        return company;
+    }
+
+    // 등급 정책이 걸리지 않는 경로(기본정보 PATCH)용. 구독을 아예 읽지 않으므로 스텁하지 않는다.
+    private Company givenOwnedCompanyWithoutSubscription() {
+        Company company = CompanyFixture.userCompany();
+        given(companyRepository.findById(COMPANY_ID)).willReturn(Optional.of(company));
+        given(companyMemberRepository.existsByCompanyIdAndUserId(COMPANY_ID, OWNER_ID)).willReturn(true);
         return company;
     }
 
@@ -112,7 +120,7 @@ class CompanyUpdateServiceTest {
         @Test
         @DisplayName("인증받은 회사의 대표자명 변경은 막는다 — 통과 후 값만 바꿔 배지를 유지하는 우회 차단")
         void verifiedCompany_cannotChangeCeoName() {
-            Company company = givenOwnedCompany(FREE);
+            Company company = givenOwnedCompanyWithoutSubscription();
             company.markBusinessVerified(LocalDateTime.now());
 
             assertThatThrownBy(() -> service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID, identityInfo("다른대표", null)))
@@ -126,7 +134,7 @@ class CompanyUpdateServiceTest {
         @Test
         @DisplayName("인증받은 회사의 개업일자 변경도 막는다 — 업력 뻥튀기 차단")
         void verifiedCompany_cannotChangeEstablishmentDate() {
-            Company company = givenOwnedCompany(FREE);
+            Company company = givenOwnedCompanyWithoutSubscription();
             company.markBusinessVerified(LocalDateTime.now());
 
             assertThatThrownBy(() -> service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID,
@@ -138,7 +146,7 @@ class CompanyUpdateServiceTest {
         @Test
         @DisplayName("같은 값을 다시 보내는 건 변경이 아니므로 통과시킨다 (전체 폼 재전송 대응)")
         void verifiedCompany_sameValueIsNotAChange() {
-            Company company = givenOwnedCompany(FREE);
+            Company company = givenOwnedCompanyWithoutSubscription();
             company.markBusinessVerified(LocalDateTime.now());
 
             assertThatCode(() -> service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID,
@@ -149,7 +157,7 @@ class CompanyUpdateServiceTest {
         @Test
         @DisplayName("미인증 회사(관리자 등록 등)는 대표자명을 자유롭게 수정할 수 있다")
         void unverifiedCompany_canChangeCeoName() {
-            Company company = givenOwnedCompany(FREE);
+            Company company = givenOwnedCompanyWithoutSubscription();
 
             service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID, identityInfo("새대표", null));
 
@@ -238,7 +246,7 @@ class CompanyUpdateServiceTest {
         @DisplayName("관리자 경로도 '회사의 구독'을 기준으로 판정한다 — FREE 회사면 관리자 수정도 상한에 걸린다")
         void adminPath_boundByCompanySubscription() {
             given(companyRepository.findById(COMPANY_ID)).willReturn(Optional.of(CompanyFixture.userCompany()));
-            given(companySubscriptionRepository.findByCompanyId(COMPANY_ID)).willReturn(Optional.of(FREE));
+            given(companySubscriptionRepository.getByCompanyId(COMPANY_ID)).willReturn(FREE);
 
             assertThatThrownBy(() -> service.replaceCategoriesByAdmin(COMPANY_ID, List.of(1L, 2L)))
                     .isInstanceOf(BusinessException.class)
@@ -249,46 +257,34 @@ class CompanyUpdateServiceTest {
         }
     }
 
+    // 기본정보의 등급 파생 필드(videoUrl/brandColor)에는 쓰기 게이트가 없다. 요금제가 Company 에 붙어 있어
+    // 등록 시점엔 모든 회사가 FREE 라, 쓰기에서 막으면 입력 자체가 불가능하고 업그레이드 후 재입력을 강요하게 된다.
+    // 반대로 다운그레이드는 이미 저장된 값을 파괴한다. 노출 자격은 조회가 판단한다
+    // (videoUrl: CompanyQueryService, brandColor: 스팟라이트 쿼리).
     @Nested
-    @DisplayName("기본정보 수정 - 게이팅/변형")
+    @DisplayName("기본정보 수정 - 등급 게이트 없음")
     class BasicInfo {
 
         @Test
-        @DisplayName("FREE 회사가 videoUrl 을 넣어 수정하면 VIDEO_NOT_ALLOWED 로 막는다")
-        void free_video_blocked() {
-            givenOwnedCompany(FREE);
-
-            assertThatThrownBy(() -> service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID, basicInfo("https://youtu.be/x", null)))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(CompanyErrorCode.VIDEO_NOT_ALLOWED);
-
-            verify(searchDocumentWriter, never()).write(any());
-        }
-
-        // brandColor 에는 쓰기 등급 게이트가 없다. 등급이 낮아도 요청한 색을 그대로 저장한다 —
-        // 업그레이드 시 재입력을 강요하지 않고 다운그레이드가 원래 색을 파괴하지 않기 위해서다.
-        // 노출 자격은 이 값을 실제로 쓰는 스팟라이트 조회가 판단한다.
-        @Test
-        @DisplayName("FREE 회사가 커스텀 brandColor 를 넣어도 덮어쓰지 않고 요청한 색을 그대로 저장한다")
-        void free_brandColor_storedAsRequested() {
-            Company company = givenOwnedCompany(FREE);
-
-            service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID, basicInfo(null, "#FF0000"));
-
-            assertThat(company.getBrandColor()).isEqualTo("#FF0000");
-            verify(searchDocumentWriter).write(COMPANY_ID);
-        }
-
-        @Test
-        @DisplayName("상위 등급(STANDARD)도 요청한 brandColor 를 유지하고 videoUrl 도 통과시킨다")
-        void standard_keepsColorAndAllowsVideo() {
-            Company company = givenOwnedCompany(STANDARD);
+        @DisplayName("등급을 보지 않고 videoUrl·brandColor 를 요청한 대로 저장한다")
+        void basicInfo_storedWithoutGradeGate() {
+            Company company = givenOwnedCompanyWithoutSubscription();
 
             service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID, basicInfo("https://youtu.be/x", "#FF0000"));
 
+            assertThat(company.getVideoUrl()).isEqualTo("https://youtu.be/x");
             assertThat(company.getBrandColor()).isEqualTo("#FF0000");
             verify(searchDocumentWriter).write(COMPANY_ID);
+        }
+
+        @Test
+        @DisplayName("등급 정책이 없으므로 구독을 조회하지 않는다")
+        void basicInfo_doesNotLoadSubscription() {
+            givenOwnedCompanyWithoutSubscription();
+
+            service.updateBasicInfoByUser(COMPANY_ID, OWNER_ID, basicInfo("https://youtu.be/x", "#FF0000"));
+
+            verify(companySubscriptionRepository, never()).getByCompanyId(any());
         }
     }
 

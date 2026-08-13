@@ -14,39 +14,35 @@ import java.util.List;
 //  - create: 전체 요청이 대상이므로 모든 슬라이스를 채운다(forCreate).
 //  - update: 바뀐 컬렉션/필드 하나만 채운다(forXxxUpdate) → 그 슬라이스를 읽는 정책만 발화한다(delta 검증).
 //
-// brandColor 슬라이스는 없다 — 등급 게이트를 쓰기 시점에서 걷어내고 스팟라이트 조회 쪽으로 옮겼다(GradePolicy 주석 참고).
+// 스칼라 필드(brandColor·videoUrl) 슬라이스는 없다 — 등급 게이트를 쓰기 시점에서 걷어내고 조회 쪽으로 옮겼다.
+// 그래서 남은 정책은 전부 '컬렉션 개수 한도'다(개수는 저장 비용과 노출 순서 선택이 걸려 쓰기에서 막는 게 맞다).
+// 기본정보 PATCH 에는 적용될 정책이 없어 뷰 자체를 만들지 않는다(CompanyUpdateService 는 비등급 경로를 탄다).
 public record CompanyPolicyView(
         Company company,
         CompanySubscription subscription,
         List<Long> categoryIds,          // null = 스킵 (CategoryLimitPolicy)
         List<ImageRequest> galleryImages,// null = 스킵 (DetailImageLimitPolicy / GalleryImageTypePolicy)
-        List<ReferenceRequest> references,// null = 스킵 (ReferenceImagePolicy)
-        String videoUrl                  // null/blank = 스킵 (VideoUrlPolicy)
+        List<ReferenceRequest> references // null = 스킵 (ReferenceImagePolicy)
 ) {
 
     // 등록: 전체 요청이 대상.
     public static CompanyPolicyView forCreate(Company company, CompanyCreateRequest request, CompanySubscription subscription) {
         return new CompanyPolicyView(company, subscription,
-                request.categoryIds(), request.images(), request.references(), request.videoUrl());
-    }
-
-    // 수정(기본정보 PATCH): videoUrl 만 대상.
-    public static CompanyPolicyView forBasicInfoUpdate(Company company, CompanySubscription subscription, String videoUrl) {
-        return new CompanyPolicyView(company, subscription, null, null, null, videoUrl);
+                request.categoryIds(), request.images(), request.references());
     }
 
     // 수정(카테고리 PUT): 새 카테고리 목록만 대상.
     public static CompanyPolicyView forCategoryUpdate(Company company, CompanySubscription subscription, List<Long> categoryIds) {
-        return new CompanyPolicyView(company, subscription, categoryIds, null, null, null);
+        return new CompanyPolicyView(company, subscription, categoryIds, null, null);
     }
 
     // 수정(갤러리 PUT): 새 갤러리 이미지 목록만 대상.
     public static CompanyPolicyView forGalleryUpdate(Company company, CompanySubscription subscription, List<ImageRequest> galleryImages) {
-        return new CompanyPolicyView(company, subscription, null, galleryImages, null, null);
+        return new CompanyPolicyView(company, subscription, null, galleryImages, null);
     }
 
     // 수정(레퍼런스 PUT): 새 레퍼런스 목록만 대상.
     public static CompanyPolicyView forReferenceUpdate(Company company, CompanySubscription subscription, List<ReferenceRequest> references) {
-        return new CompanyPolicyView(company, subscription, null, null, references, null);
+        return new CompanyPolicyView(company, subscription, null, null, references);
     }
 }
