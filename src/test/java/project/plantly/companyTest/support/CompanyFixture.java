@@ -3,8 +3,8 @@ package project.plantly.companyTest.support;
 import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
 
-// 변형 정책(BrandColorPolicy / SpotlightPolicy) 테스트는 mutate 대상 Company 인스턴스가 필요하다.
-// 정책이 읽거나 바꾸는 필드(brandColor, spotlight)만 의미 있게 두고 나머지는 null 로 둔 유저 등록 회사를 만든다.
+// 등급 정책 테스트는 검증/변형 대상 Company 인스턴스가 필요하다.
+// 테스트가 관심 갖는 필드(brandColor 등)만 의미 있게 두고 나머지는 null 로 둔 유저 등록 회사를 만든다.
 public class CompanyFixture {
 
     public static Company userCompany() {
@@ -19,7 +19,7 @@ public class CompanyFixture {
                 "홍길동",          // ceoName
                 null,            // establishmentDate
                 Address.of(null, null, null, null),  // 주소(정책 테스트라 무해)
-                null, null, null, null, null,  // website ~ trlLevel
+                null, null, null, null, null, null,  // website ~ trlLevel (logoUrl 뒤 coverImageUrl 포함)
                 null,            // videoUrl
                 null, null, null,// leadTime, asInfo, pricingType
                 brandColor);

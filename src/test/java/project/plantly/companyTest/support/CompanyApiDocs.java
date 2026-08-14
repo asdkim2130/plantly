@@ -97,6 +97,8 @@ public class CompanyApiDocs {
                 fieldWithPath("detailAddress").type(JsonFieldType.STRING).optional().description("상세주소"),
                 fieldWithPath("website").type(JsonFieldType.STRING).optional().description("기업 홈페이지"),
                 fieldWithPath("logoUrl").type(JsonFieldType.STRING).optional().description("로고 이미지 URL"),
+                fieldWithPath("coverImageUrl").type(JsonFieldType.STRING).optional()
+                        .description("카드 커버 이미지 URL. 목록 카드 배경에 깔리는 와이드 사진으로, 로고와 다른 자리다 (등급 제한 없음)"),
                 fieldWithPath("introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약"),
                 fieldWithPath("content").type(JsonFieldType.STRING).optional().description("소개글"),
                 fieldWithPath("trlLevel").type(JsonFieldType.STRING).optional().description("기술성숙도: PROTOTYPE, MASS_PRODUCTION, GLOBAL_STANDARD"),
@@ -104,7 +106,7 @@ public class CompanyApiDocs {
                 fieldWithPath("leadTime").type(JsonFieldType.STRING).optional().description("예상 리드타임"),
                 fieldWithPath("asInfo").type(JsonFieldType.STRING).optional().description("유지보수/AS 정보"),
                 fieldWithPath("pricingType").type(JsonFieldType.STRING).optional().description("견적 산출 방식: FIXED, CONSULTATION, PROJECT_BASED"),
-                fieldWithPath("brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러 (커스텀 불가 등급은 기본값으로 고정)"),
+                fieldWithPath("brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러 #RRGGBB (형식 불일치 시 400, 커스텀 불가 등급은 기본값으로 고정)"),
                 fieldWithPath("visibility").type(JsonFieldType.STRING).optional().description("공개 범위: PUBLIC(공개), PRIVATE(비공개). 생략 시 PUBLIC"),
 
                 // ===== 자식(소유) 엔티티 =====
@@ -192,6 +194,7 @@ public class CompanyApiDocs {
                 fieldWithPath("detailAddress").type(JsonFieldType.STRING).optional().description("상세주소 (빈 문자열로 비울 수 없음)"),
                 fieldWithPath("website").type(JsonFieldType.STRING).optional().description("기업 홈페이지 (빈 문자열 = 비우기)"),
                 fieldWithPath("logoUrl").type(JsonFieldType.STRING).optional().description("로고 이미지 URL (빈 문자열로 비울 수 없음)"),
+                fieldWithPath("coverImageUrl").type(JsonFieldType.STRING).optional().description("카드 커버 이미지 URL (빈 문자열 = 비우기)"),
                 fieldWithPath("introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약 (빈 문자열 = 비우기)"),
                 fieldWithPath("content").type(JsonFieldType.STRING).optional().description("소개글 (빈 문자열 = 비우기)"),
                 fieldWithPath("trlLevel").type(JsonFieldType.STRING).optional().description("기술성숙도: PROTOTYPE, MASS_PRODUCTION, GLOBAL_STANDARD (clear 미지원)"),
@@ -199,7 +202,7 @@ public class CompanyApiDocs {
                 fieldWithPath("leadTime").type(JsonFieldType.STRING).optional().description("예상 리드타임 (빈 문자열 = 비우기)"),
                 fieldWithPath("asInfo").type(JsonFieldType.STRING).optional().description("유지보수/AS 정보 (빈 문자열 = 비우기)"),
                 fieldWithPath("pricingType").type(JsonFieldType.STRING).optional().description("견적 산출 방식: FIXED, CONSULTATION, PROJECT_BASED (clear 미지원)"),
-                fieldWithPath("brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러 (커스텀 불가 등급은 무시, 빈 문자열 = 비우기)")
+                fieldWithPath("brandColor").type(JsonFieldType.STRING).optional().description("브랜드 컬러 #RRGGBB (형식 불일치 시 400, 커스텀 불가 등급은 무시, 빈 문자열 = 비우기)")
         };
     }
 
@@ -259,29 +262,52 @@ public class CompanyApiDocs {
         };
     }
 
+    // 요약 카드(CompanySummary) 1건의 필드. 목록/검색·내 회사·즐겨찾기·메인 노출 레일이 모두 같은 카드를 쓰므로
+    // 배열 경로(prefix)만 갈아끼워 재사용한다 — 카드에 필드가 늘어도 여기 한 곳만 고치면 된다.
+    private static java.util.List<FieldDescriptor> summaryCardFields(String prefix) {
+        return java.util.List.of(
+                fieldWithPath(prefix + ".id").type(JsonFieldType.NUMBER).description("회사 ID"),
+                fieldWithPath(prefix + ".companyName").type(JsonFieldType.STRING).description("기업 이름"),
+                fieldWithPath(prefix + ".introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약 (없으면 null)"),
+                fieldWithPath(prefix + ".logoUrl").type(JsonFieldType.STRING).description("로고 이미지 URL"),
+                fieldWithPath(prefix + ".coverImageUrl").type(JsonFieldType.STRING).optional()
+                        .description("카드 커버 이미지 URL (없으면 null). 로고와 다른 자리다 — 로고는 정사각 배지, 커버는 카드 배경에 깔리는 와이드 사진"),
+                fieldWithPath(prefix + ".brandColor").type(JsonFieldType.STRING).optional()
+                        .description("브랜드 컬러 #RRGGBB (없으면 null). 메인 스팟라이트 배너 배경에 쓴다 — 없으면 화면 기본색으로 폴백"),
+                fieldWithPath(prefix + ".address").type(JsonFieldType.STRING).description("지역 (시도+시군구, 예: \"서울시 강남구\"). 전체 주소는 상세 조회 참고"),
+                fieldWithPath(prefix + ".verified").type(JsonFieldType.BOOLEAN).description("관리자 인증 여부"),
+                fieldWithPath(prefix + ".featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
+                fieldWithPath(prefix + ".spotlight").type(JsonFieldType.BOOLEAN)
+                        .description("스팟라이트 수동 고정(pin) 여부. 메인 노출 여부가 아니다 — 요금제 자격으로 노출되는 회사는 이 값이 false 다"),
+                fieldWithPath(prefix + ".likedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 좋아요 했는지 (익명·내 회사 목록은 false)"),
+                fieldWithPath(prefix + ".favoritedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 즐겨찾기 했는지 (익명·내 회사 목록은 false / 즐겨찾기 목록은 정의상 항상 true)"),
+                fieldWithPath(prefix + ".categoryNames").type(JsonFieldType.ARRAY).description("회사가 연결한 카테고리명 목록"),
+                fieldWithPath(prefix + ".tagNames").type(JsonFieldType.ARRAY).description("태그명 목록"),
+                fieldWithPath(prefix + ".industryNames").type(JsonFieldType.ARRAY).description("산업군명 목록"));
+    }
+
     // 목록/검색 응답(ApiResponse<PageResponse<CompanySummary>>). content[] = 요약 카드, pageInfo = 페이지 메타.
     // 내 회사 목록(/my)·내 즐겨찾기 목록(/favorites)도 동일한 요약 카드 페이지 구조라 이 디스크립터를 공유한다.
     public static FieldDescriptor[] companySearchResponseFields() {
-        return new FieldDescriptor[]{
-                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
-                fieldWithPath("data.content[].id").type(JsonFieldType.NUMBER).description("회사 ID"),
-                fieldWithPath("data.content[].companyName").type(JsonFieldType.STRING).description("기업 이름"),
-                fieldWithPath("data.content[].introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약 (없으면 null)"),
-                fieldWithPath("data.content[].logoUrl").type(JsonFieldType.STRING).description("로고 이미지 URL"),
-                fieldWithPath("data.content[].address").type(JsonFieldType.STRING).description("지역 (시도+시군구, 예: \"서울시 강남구\"). 전체 주소는 상세 조회 참고"),
-                fieldWithPath("data.content[].verified").type(JsonFieldType.BOOLEAN).description("관리자 인증 여부"),
-                fieldWithPath("data.content[].featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
-                fieldWithPath("data.content[].spotlight").type(JsonFieldType.BOOLEAN).description("스팟라이트 노출 여부"),
-                fieldWithPath("data.content[].likedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 좋아요 했는지 (익명·내 회사 목록은 false)"),
-                fieldWithPath("data.content[].favoritedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 즐겨찾기 했는지 (익명·내 회사 목록은 false / 즐겨찾기 목록은 정의상 항상 true)"),
-                fieldWithPath("data.content[].categoryNames").type(JsonFieldType.ARRAY).description("회사가 연결한 카테고리명 목록"),
-                fieldWithPath("data.content[].tagNames").type(JsonFieldType.ARRAY).description("태그명 목록"),
-                fieldWithPath("data.content[].industryNames").type(JsonFieldType.ARRAY).description("산업군명 목록"),
+        java.util.List<FieldDescriptor> fields = new java.util.ArrayList<>();
+        fields.add(fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"));
+        fields.addAll(summaryCardFields("data.content[]"));
+        fields.addAll(java.util.List.of(
                 fieldWithPath("data.pageInfo.pageNumber").type(JsonFieldType.NUMBER).description("현재 페이지 (1-base)"),
                 fieldWithPath("data.pageInfo.size").type(JsonFieldType.NUMBER).description("페이지 크기"),
                 fieldWithPath("data.pageInfo.totalElement").type(JsonFieldType.NUMBER).description("전체 건수"),
-                fieldWithPath("data.pageInfo.totalPage").type(JsonFieldType.NUMBER).description("전체 페이지 수")
-        };
+                fieldWithPath("data.pageInfo.totalPage").type(JsonFieldType.NUMBER).description("전체 페이지 수")));
+        return fields.toArray(new FieldDescriptor[0]);
+    }
+
+    // 메인 화면 노출 영역 응답(ApiResponse<CompanyShowcaseResponse>). 페이지가 아니라 자리 수만큼의 고정 리스트라
+    // pageInfo 가 없다. 두 레일에 같은 회사가 함께 나올 수 있다(고정 + 추천).
+    public static FieldDescriptor[] companyShowcaseResponseFields() {
+        java.util.List<FieldDescriptor> fields = new java.util.ArrayList<>();
+        fields.add(fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"));
+        fields.addAll(summaryCardFields("data.spotlight[]"));
+        fields.addAll(summaryCardFields("data.featured[]"));
+        return fields.toArray(new FieldDescriptor[0]);
     }
 
     // 관리자 목록 쿼리 파라미터(GET /api/v1/admin/companies). 전부 선택적, 지정된 것만 AND(교집합).
@@ -407,6 +433,7 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "detailAddress").type(JsonFieldType.STRING).optional().description("상세주소"),
                 fieldWithPath(p + "website").type(JsonFieldType.STRING).optional().description("기업 홈페이지"),
                 fieldWithPath(p + "logoUrl").type(JsonFieldType.STRING).optional().description("로고 이미지 URL"),
+                fieldWithPath(p + "coverImageUrl").type(JsonFieldType.STRING).optional().description("카드 커버 이미지 URL (상세에서는 히어로 배경)"),
                 fieldWithPath(p + "introTitle").type(JsonFieldType.STRING).optional().description("한 줄 요약"),
                 fieldWithPath(p + "content").type(JsonFieldType.STRING).optional().description("소개글"),
                 fieldWithPath(p + "trlLevel").type(JsonFieldType.STRING).optional().description("기술성숙도"),
@@ -499,6 +526,9 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "spotlight").type(JsonFieldType.BOOLEAN).description("스포트라이트 여부"),
                 fieldWithPath(p + "deleted").type(JsonFieldType.BOOLEAN).description("소프트 삭제 여부"),
                 fieldWithPath(p + "visibility").type(JsonFieldType.STRING).description("공개 범위 (PUBLIC / PRIVATE)"),
+                fieldWithPath(p + "videoVisibleToPublic").type(JsonFieldType.BOOLEAN)
+                        .description("저장된 동영상이 방문자에게도 보이는지. false = 저장은 돼 있으나 등급이 낮아 공개 뷰에서 가려진 상태"
+                                + " (소유자/관리자 뷰의 profile.videoUrl 은 이 값과 무관하게 항상 저장값)"),
                 fieldWithPath(p + "createdAt").type(JsonFieldType.STRING).description("생성 시각"),
                 fieldWithPath(p + "updatedAt").type(JsonFieldType.STRING).description("수정 시각")
         };

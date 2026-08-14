@@ -178,10 +178,10 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
     }
 
     @Test
-    @DisplayName("기본 정렬: 스팟라이트 → 추천 → 최신 (플래그가 생성시간을 이긴다)")
+    @DisplayName("기본 정렬: 스팟라이트 고정 → 추천 → 최신 (플래그가 생성시간을 이긴다)")
     void defaultSort() {
         Company spot = persistCompany("스팟", "x");   // 가장 먼저 생성(가장 오래됨)
-        spot.activateSpotlight();
+        spot.turnOnSpotlight(1);
         index(spot);
         Company feat = persistCompany("추천", "y");
         feat.feature();
@@ -242,7 +242,7 @@ class PostgresTrigramCompanySearchTest extends PostgresContainerTest {
 
     private Company persistCompany(String name, String content) {
         Company c = Company.createByUser(1L, null, name, "대표자", null,
-                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo-" + name,
+                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo-" + name, null,
                 name + " 요약", content, null, null, null, null, null, null);
         em.persist(c);
         return c;

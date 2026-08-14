@@ -144,7 +144,7 @@ public class SeedDraftCases {
         return new MyCompanyCreateRequest(
                 verificationId, null,
                 null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null);
     }
@@ -160,6 +160,8 @@ public class SeedDraftCases {
                 SeedVocabulary.detailAddress(index),
                 null,
                 SeedVocabulary.logoUrl(index),
+                // 커버는 아직 안 올린 중간 상태 — 로고만 있고 커버가 없는 초안이 복원되는지 확인한다.
+                null,
                 SeedVocabulary.introTitle(index),
                 null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null,

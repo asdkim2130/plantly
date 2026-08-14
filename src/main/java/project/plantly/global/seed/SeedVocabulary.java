@@ -138,6 +138,15 @@ public final class SeedVocabulary {
         return "https://picsum.photos/seed/plantly-" + index + "-" + slot + "/800/600";
     }
 
+    /**
+     * 카드 커버. 로고와 다른 그림이어야 두 자리가 같은 이미지로 채워지는 실수가 화면에서 바로 드러나므로
+     * seed 접두어를 분리한다. 16:9 로 뽑는 이유는 커버가 스팟라이트(거의 정사각)와 추천 카드(가로로 긴 띠)
+     * 양쪽에서 서로 다른 비율로 잘리기 때문이다 — 한 장으로 두 크롭을 감당하는지 시드로 확인된다.
+     */
+    public static String coverImageUrl(int index) {
+        return "https://picsum.photos/seed/plantly-cover-" + index + "/1200/675";
+    }
+
     public static String videoUrl(int index) {
         return "https://www.youtube.com/watch?v=plantly" + String.format("%03d", index);
     }

@@ -18,6 +18,11 @@ import java.util.Objects;
  * 회사 스칼라 + 회사가 연결한 카테고리/태그/산업군 이름을 회사당 array_agg 로 집계한다. 카테고리는 직접 링크
  * (company_category)만 — closure 조상은 제외. 셋 다 회사가 등록 시 고른 순서(링크/태그의 display_order)로 정렬한다.
  *
+ * <p>{@code brand_color} 는 메인 스팟라이트 배너 배경에만 쓰이지만 이 공유 프로젝션에 둔다 — company 행의 스칼라라
+ * 조인이 늘지 않는 반면, 레일 전용 프로젝션을 따로 파면 다섯 읽기 경로가 공유하던 카드 매퍼가 갈라진다.
+ * 나머지 경로는 이 값을 안 읽으면 그만이다. {@code cover_image_url} 도 같은 이유로 스칼라다 — 갤러리
+ * ({@code company_image})에 두면 '회사당 최대 1장'을 정책으로 세우고 서브쿼리로 뽑아야 한다.
+ *
  * <p>주소는 {@code road_address} 원본을 뽑아 오지만 카드에는 시도+시군구까지만 나간다 — 자르는 규칙
  * ({@link RegionLabels})은 SQL 이 아니라 RowMapper 에 둔다. 세종처럼 시군구 단계가 없는 예외가 있어
  * 규칙에 분기가 생기는데, 이를 SQL 문자열 함수로 옮기면 이 공유 프로젝션에 박혀 테스트가 어려워진다.
@@ -28,7 +33,8 @@ public final class CompanyCardSql {
     }
 
     public static final String CARD_COLUMNS = """
-            c.id, c.company_name, c.intro_title, c.logo_url, c.road_address AS address,
+            c.id, c.company_name, c.intro_title, c.logo_url, c.cover_image_url, c.brand_color,
+            c.road_address AS address,
             c.verified, c.featured, c.spotlight,
             (SELECT array_agg(cat.category_name ORDER BY cc.display_order)
                FROM company_category cc JOIN category cat ON cat.id = cc.category_id
@@ -45,6 +51,8 @@ public final class CompanyCardSql {
             rs.getString("company_name"),
             rs.getString("intro_title"),
             rs.getString("logo_url"),
+            rs.getString("cover_image_url"),
+            rs.getString("brand_color"),
             // 카드는 전체 도로명이 아니라 시도+시군구까지만 보여준다("서울시 강남구"). 파생은 읽기 시점 1회.
             RegionLabels.fromRoadAddress(rs.getString("address")),
             rs.getBoolean("verified"),

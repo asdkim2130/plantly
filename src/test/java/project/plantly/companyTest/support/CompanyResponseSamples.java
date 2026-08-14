@@ -34,6 +34,7 @@ public class CompanyResponseSamples {
                 1L, "플랜틀리테크", "김대표", LocalDate.of(2018, 3, 2),
                 "서울 강남구 테헤란로 1", "서울 강남구 역삼동 736-1", "10층",   // 우편번호는 공개 응답에서 제외
                 "https://plantly.test", "https://cdn.plantly.test/logo.png",
+                "https://cdn.plantly.test/cover.png",
                 "정밀 부품 전문", "정밀 가공 20년 경력의 부품 제조사입니다.",
                 TrlLevel.MASS_PRODUCTION, "https://youtu.be/demo", "2주", "유선 AS 지원",
                 PricingType.CONSULTATION, "#2E7D32",
@@ -65,6 +66,7 @@ public class CompanyResponseSamples {
                         true, LocalDateTime.of(2024, 1, 2, 3, 4, 5),   // businessVerified, businessVerifiedAt
                         true, false, false,                            // featured, spotlight, deleted
                         CompanyVisibility.PUBLIC,
+                        true,                                          // videoVisibleToPublic (등급이 동영상 공개를 허용)
                         LocalDateTime.of(2024, 1, 2, 3, 4, 5),
                         LocalDateTime.of(2024, 1, 2, 3, 4, 5)));
     }

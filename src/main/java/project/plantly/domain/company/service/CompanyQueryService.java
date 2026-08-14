@@ -1,17 +1,22 @@
 package project.plantly.domain.company.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
+import project.plantly.domain.company.dto.CompanyAggregate;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
+import project.plantly.domain.company.dto.CompanyShowcaseResponse;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
 import project.plantly.domain.company.dto.OwnerSubscriptionSummary;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.MemberRole;
 import project.plantly.domain.company.exception.CompanyErrorCode;
@@ -21,6 +26,8 @@ import project.plantly.domain.company.repository.CompanyRepository;
 import project.plantly.domain.company.repository.CompanySubscriptionRepository;
 import project.plantly.domain.company.repository.FavoriteCompanyCardRepository;
 import project.plantly.domain.company.repository.OwnedCompanyCardRepository;
+import project.plantly.domain.company.repository.ShowcaseCardRepository;
+import project.plantly.domain.company.repository.ShowcaseCardRepository.ShowcaseRail;
 import project.plantly.domain.company.search.AdminCompanySearchCriteria;
 import project.plantly.domain.company.search.CompanySearchCriteria;
 import project.plantly.domain.company.search.CompanySearchRepository;
@@ -31,6 +38,7 @@ import project.plantly.domain.company.stat.CompanyLikeRepository;
 import project.plantly.global.PageResponse;
 import project.plantly.global.exception.BusinessException;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +49,7 @@ import java.util.stream.Collectors;
 // 세 진입점(공개 / 소유자 / 관리자)은 '누가 무엇을 볼 수 있는가'(접근 제어 + 응답 형태)만 다르다.
 // 원자료 적재(부속 fan-out)는 CompanyAggregateLoader 가 전담하고, 여기선 접근제어 + 위임 + 응답 매핑만 한다.
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CompanyQueryService {
@@ -49,12 +58,24 @@ public class CompanyQueryService {
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanySubscriptionRepository companySubscriptionRepository;
     private final CompanyAggregateLoader aggregateLoader;
+
+    // 등급 → 혜택 매핑의 단일 출처. 쓰기 정책과 같은 표를 조회 쪽에서도 읽는다(동영상 노출 자격).
+    private final GradePolicyRegistry gradePolicyRegistry;
     private final CompanySearchRepository companySearchRepository;
     private final OwnedCompanyCardRepository ownedCompanyCardRepository;
     private final FavoriteCompanyCardRepository favoriteCompanyCardRepository;
     private final AdminCompanyCardRepository adminCompanyCardRepository;
     private final CompanyLikeRepository companyLikeRepository;
     private final CompanyFavoriteRepository companyFavoriteRepository;
+    private final ShowcaseCardRepository showcaseCardRepository;
+
+    // 메인 화면 노출 자리 수. 상수가 아니라 설정값인 이유는 "자리를 늘린다"가 후보 초과에 대한
+    // 가장 흔하고 가장 싼 대응이기 때문이다 — 코드 수정 없이 값만 바꿔 대응할 수 있어야 한다.
+    @Value("${app.showcase.spotlight-slots}")
+    private int spotlightSlots;
+
+    @Value("${app.showcase.featured-slots}")
+    private int featuredSlots;
 
     // 공개 회사 목록/검색: 통합 키워드 + 고급 + 패싯(인증/산업군/카테고리 서브트리). 색인된·비삭제 회사만,
     // 기본 정렬(spotlight→featured→최신). 엔진 교체(PG↔ES)는 CompanySearchRepository 뒤에서만 일어난다.
@@ -77,6 +98,37 @@ public class CompanyQueryService {
         return cards.stream()
                 .map(c -> c.withViewerFlags(liked.contains(c.id()), favorited.contains(c.id())))
                 .toList();
+    }
+
+    // 메인 화면 노출 영역: 스팟라이트·추천 두 레일을 자리 수만큼 잘라서 함께 내려준다.
+    // 노출 자격 판단은 전부 ShowcaseCardRepository 안에 있다 — 여기선 자리 수 적용과 개인화만 한다.
+    //
+    // 두 레일을 이어 붙여 enrich 를 한 번만 태운다. 레일별로 따로 태우면 배치 조회가 2회 → 4회로 늘고,
+    // 두 레일에 같은 회사가 있으면 같은 회사를 두 번 조회하게 된다.
+    public CompanyShowcaseResponse getShowcase(Long viewerId) {
+        ShowcaseRail spotlightRail = showcaseCardRepository.findSpotlight(spotlightSlots);
+        ShowcaseRail featuredRail = showcaseCardRepository.findFeatured(featuredSlots);
+
+        warnIfOverflow("스팟라이트", spotlightRail, spotlightSlots);
+        warnIfOverflow("추천", featuredRail, featuredSlots);
+
+        List<CompanySummary> combined = new ArrayList<>(spotlightRail.cards());
+        combined.addAll(featuredRail.cards());
+        List<CompanySummary> enriched = enrichViewerFlags(combined, viewerId);
+
+        int split = spotlightRail.cards().size();
+        return new CompanyShowcaseResponse(
+                List.copyOf(enriched.subList(0, split)),
+                List.copyOf(enriched.subList(split, enriched.size())));
+    }
+
+    // 후보가 자리보다 많아지면 초과분은 조용히 잘린다 — 돈을 받고도 노출되지 않는 고객이 생기는데
+    // 에러가 나지 않아 아무도 모른다. 이 로그가 "로테이션을 붙일 때가 됐다"를 알리는 유일한 신호다.
+    private void warnIfOverflow(String railName, ShowcaseRail rail, int slots) {
+        if (rail.candidateCount() > slots) {
+            log.warn("{} 레일 후보 {}건이 자리 {}칸을 초과했습니다 — {}건이 노출되지 않습니다. 로테이션 도입 검토 필요.",
+                    railName, rail.candidateCount(), slots, rail.candidateCount() - slots);
+        }
     }
 
     // 내 회사 목록: 로그인 유저가 소유(userId=본인)한 미삭제 회사를 요약 카드로, 최신 등록순 페이징. 검색/패싯 없음.
@@ -114,7 +166,17 @@ public class CompanyQueryService {
         boolean likedByMe = viewerId != null && companyLikeRepository.existsByUserIdAndCompanyId(viewerId, companyId);
         boolean favoritedByMe = viewerId != null && companyFavoriteRepository.existsByUserIdAndCompanyId(viewerId, companyId);
 
-        return CompanyPublicResponse.from(aggregateLoader.load(company), likedByMe, favoritedByMe);
+        CompanyAggregate aggregate = aggregateLoader.load(company);
+        return CompanyPublicResponse.from(aggregate, likedByMe, favoritedByMe, videoVisibleToPublic(aggregate));
+    }
+
+    // 동영상 공개 자격. 저장은 등급과 무관하게 열려 있고(등급이 올랐을 때 재입력을 강요하지 않기 위해),
+    // 노출만 지금 등급으로 판단한다 — 만료·강등되면 다음 조회부터 저절로 가려진다.
+    // 관리자 등록(ADMIN_EXEMPT)은 쓰기 한도와 마찬가지로 노출에서도 면제한다.
+    private boolean videoVisibleToPublic(CompanyAggregate aggregate) {
+        CompanySubscription subscription = aggregate.subscription();
+        return subscription.isExempt()
+                || gradePolicyRegistry.of(subscription.effectiveGrade()).videoAllowed();
     }
 
     // 소유자 전용 상세: 요청자가 해당 회사의 멤버여야 한다. 삭제된 회사도 소유자에게는 보인다.
@@ -126,7 +188,8 @@ public class CompanyQueryService {
             throw new BusinessException(CompanyErrorCode.COMPANY_ACCESS_DENIED);
         }
 
-        return CompanyDetailResponse.from(aggregateLoader.load(company));
+        CompanyAggregate aggregate = aggregateLoader.load(company);
+        return CompanyDetailResponse.from(aggregate, videoVisibleToPublic(aggregate));
     }
 
     // 관리자 상세: 상태(삭제/미연동 등) 무관하게 전체를 본다. (권한 검증은 컨트롤러 @PreAuthorize 가 담당)
@@ -134,7 +197,8 @@ public class CompanyQueryService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
 
-        return CompanyDetailResponse.from(aggregateLoader.load(company));
+        CompanyAggregate aggregate = aggregateLoader.load(company);
+        return CompanyDetailResponse.from(aggregate, videoVisibleToPublic(aggregate));
     }
 
     // 소유자 전용 구독 조회: 요청자가 해당 회사의 멤버여야 한다. 접근제어는 getOwnerView 와 동일하게 미러한다.
@@ -148,8 +212,7 @@ public class CompanyQueryService {
             throw new BusinessException(CompanyErrorCode.COMPANY_ACCESS_DENIED);
         }
 
-        CompanySubscription subscription = companySubscriptionRepository.findByCompanyId(companyId)
-                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+        CompanySubscription subscription = companySubscriptionRepository.getByCompanyId(companyId);
 
         return CompanySubscriptionResponse.from(subscription, company.getCompanyName());
     }
@@ -160,8 +223,7 @@ public class CompanyQueryService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
 
-        CompanySubscription subscription = companySubscriptionRepository.findByCompanyId(companyId)
-                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
+        CompanySubscription subscription = companySubscriptionRepository.getByCompanyId(companyId);
 
         return AdminCompanySubscriptionResponse.from(subscription, company.getCompanyName());
     }

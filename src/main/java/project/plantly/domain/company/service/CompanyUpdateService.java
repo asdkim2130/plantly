@@ -48,18 +48,19 @@ public class CompanyUpdateService {
 
     // ===== 기본 정보 부분 수정 =====
 
+    // 등급 정책이 걸리지 않는 경로다 — 기본정보의 등급 파생 필드(videoUrl/brandColor)는 저장을 막지 않고
+    // 조회 시점에 노출만 가린다. 그래서 구독을 읽지 않는 mutateOwned 를 탄다.
     public void updateBasicInfoByUser(Long companyId, Long userId, CompanyUpdateRequest request) {
-        mutateOwnedGraded(companyId, userId,
+        mutateOwned(companyId, userId,
                 company -> {
                     assertVerifiedIdentityUnchanged(company, request);
                     company.updateBasicInfo(
                             request.companyName(), request.ceoName(), request.establishmentDate(),
                             request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress(),
-                            request.website(), request.logoUrl(), request.introTitle(), request.content(),
+                            request.website(), request.logoUrl(), request.coverImageUrl(), request.introTitle(), request.content(),
                             request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
                             request.pricingType(), request.brandColor());
-                },
-                (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl(), request.brandColor() != null));
+                });
     }
 
     // 국세청 검증을 통과한 회사는 대표자명·개업일자를 바꿀 수 없다.
@@ -176,17 +177,16 @@ public class CompanyUpdateService {
     // 관리자에게도 같은 가드를 적용한다. 관리자가 값을 고쳐야 한다면 인증을 먼저 회수하고 고치면 된다 —
     // 그래야 "businessVerified=true 인 회사의 대표자명·개업일자는 국세청 검증본"이라는 불변식이 예외 없이 유지된다.
     public void updateBasicInfoByAdmin(Long companyId, CompanyUpdateRequest request) {
-        mutateAsAdminGraded(companyId,
+        mutateAsAdmin(companyId,
                 company -> {
                     assertVerifiedIdentityUnchanged(company, request);
                     company.updateBasicInfo(
                             request.companyName(), request.ceoName(), request.establishmentDate(),
                             request.postalCode(), request.roadAddress(), request.jibunAddress(), request.detailAddress(),
-                            request.website(), request.logoUrl(), request.introTitle(), request.content(),
+                            request.website(), request.logoUrl(), request.coverImageUrl(), request.introTitle(), request.content(),
                             request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(),
                             request.pricingType(), request.brandColor());
-                },
-                (company, sub) -> CompanyPolicyView.forBasicInfoUpdate(company, sub, request.videoUrl(), request.brandColor() != null));
+                });
     }
 
     // ===== 사업자 인증 회수 (관리자) =====
@@ -338,7 +338,6 @@ public class CompanyUpdateService {
 
     // 등급 정책이 참조할 회사 구독(1:1). 모든 회사는 등록 시 구독을 1건 갖는 불변식이라, 없으면 데이터 정합성 오류다.
     private CompanySubscription loadSubscription(Long companyId) {
-        return companySubscriptionRepository.findByCompanyId(companyId)
-                .orElseThrow(() -> new IllegalStateException("회사 구독이 존재하지 않습니다(불변식 위반): companyId=" + companyId));
+        return companySubscriptionRepository.getByCompanyId(companyId);
     }
 }

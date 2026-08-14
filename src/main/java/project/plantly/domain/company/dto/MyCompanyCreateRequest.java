@@ -42,6 +42,7 @@ public record MyCompanyCreateRequest(
         String detailAddress,
         String website,
         String logoUrl,
+        String coverImageUrl,
         String introTitle,
         String content,
         TrlLevel trlLevel,
@@ -49,6 +50,9 @@ public record MyCompanyCreateRequest(
         String leadTime,
         String asInfo,
         PricingType pricingType,
+        // 자동저장(PUT /drafts/{id})은 @Valid 를 붙이지 않으므로, 이 검증은 발행(POST /companies) 시점에만 발화한다.
+        // 작성 중 초안에 반쯤 입력된 색이 담겨도 저장은 막히지 않는다.
+        @Pattern(regexp = CompanyCreateRequest.BRAND_COLOR_PATTERN, message = CompanyCreateRequest.BRAND_COLOR_MESSAGE)
         String brandColor,
         CompanyVisibility visibility,
 
@@ -87,7 +91,7 @@ public record MyCompanyCreateRequest(
                 verification.getCeoName(),
                 verification.getBusinessStartDate(),
                 postalCode, roadAddress, jibunAddress, detailAddress,
-                website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo,
+                website, logoUrl, coverImageUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo,
                 pricingType, brandColor, visibility,
                 contacts, images, references, materialNames, equipmentNames, tagNames,
                 categoryIds, certificationIds, countryIds, domesticRegionIds, industryIds);

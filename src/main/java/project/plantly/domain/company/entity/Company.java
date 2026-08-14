@@ -63,6 +63,12 @@ public class Company {
     @Column(nullable = false)
     private String logoUrl;  // 기업 대표 이미지(단일·필수). 여러 장 이미지는 CompanyImage 로 분리 관리한다.
 
+    // 카드 커버 이미지(단일·선택). 로고와는 다른 축이다 — 로고는 정사각 배지, 커버는 카드 배경으로 깔리는 와이드 사진.
+    // CompanyImage 가 아니라 스칼라로 두는 이유는 '회사당 최대 1장'을 정책이 아니라 구조로 보장하기 위해서다
+    // (갤러리에 두면 최대 1장 정책 + 갤러리 전체교체 PUT 이 커버를 날리지 않게 하는 예외가 함께 필요해진다).
+    // 등급 게이트는 없다 — 커버는 카드가 비어 보이지 않게 하는 기본 요소라 전 등급이 올릴 수 있다.
+    private String coverImageUrl;
+
     private String introTitle;  // 한 줄 요약
 
     @Column(columnDefinition = "TEXT")
@@ -100,9 +106,14 @@ public class Company {
     @Column(nullable = false)
     private boolean featured = false;
 
+    // 스팟라이트 '관리자 수동 고정(pin)' 여부. 이름과 달리 "메인에 노출 중"이라는 뜻이 아니다 —
+    // 요금제 자격으로 노출되는 회사는 이 값이 false 인 채로 메인에 뜬다(자격은 구독에서 조회 시점에 파생).
+    // 이 플래그는 요금제 밖에서 노출해야 하는 회사(제휴·이벤트 등)를 관리자가 꽂는 통로다.
+    // 노출 여부의 최종 판단은 ShowcaseCardRepository 한 곳에 있다.
     @Column(nullable = false)
     private boolean spotlight = false;
 
+    // pin 된 회사들 사이의 노출 순서(작을수록 앞). pin 이 아닌 회사에는 의미가 없다.
     private int spotlightOrder;
 
     @Column(nullable = false)
@@ -125,7 +136,7 @@ public class Company {
 
     // 비즈니스 필드만 받는다. 시스템 관리 플래그(verified/featured/spotlight/spotlightOrder/deleted/visibility)는
     // 생성 시 기본값(false/0/PUBLIC)으로 시작하고, 상태 전환은 도메인 행위 메서드로만 수행한다.
-    private Company(RegistrationSource registrationSource, Long registeredBy, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+    private Company(RegistrationSource registrationSource, Long registeredBy, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String coverImageUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
         this.registrationSource = registrationSource;
         this.registeredBy = registeredBy;
         this.businessNumber = businessNumber;
@@ -135,6 +146,7 @@ public class Company {
         this.address = address;
         this.website = website;
         this.logoUrl = logoUrl;
+        this.coverImageUrl = coverImageUrl;
         this.introTitle = introTitle;
         this.content = content;
         this.trlLevel = trlLevel;
@@ -146,13 +158,13 @@ public class Company {
     }
 
     // 유저 자가등록: registeredBy = 본인. 소유자 연동은 호출부가 CompanyMember(OWNER) 로 별도 기록한다.
-    public static Company createByUser(Long userId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
-        return new Company(RegistrationSource.USER, userId, businessNumber, companyName, ceoName, establishmentDate, address, website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
+    public static Company createByUser(Long userId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String coverImageUrl, String introTitle, String content, TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+        return new Company(RegistrationSource.USER, userId, businessNumber, companyName, ceoName, establishmentDate, address, website, logoUrl, coverImageUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
     }
 
     // 관리자 등록: 소유자 미연동(멤버 0건) 상태로 시작. registeredBy 는 등록한 admin id.
-    public static Company createByAdmin(Long adminId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String introTitle, String content, TrlLevel trlLevel,  String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
-        return new Company(RegistrationSource.ADMIN, adminId, businessNumber, companyName, ceoName, establishmentDate, address, website, logoUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
+    public static Company createByAdmin(Long adminId, String businessNumber, String companyName, String ceoName, LocalDate establishmentDate, Address address, String website, String logoUrl, String coverImageUrl, String introTitle, String content, TrlLevel trlLevel,  String videoUrl, String leadTime, String asInfo, PricingType pricingType, String brandColor) {
+        return new Company(RegistrationSource.ADMIN, adminId, businessNumber, companyName, ceoName, establishmentDate, address, website, logoUrl, coverImageUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo, pricingType, brandColor);
     }
 
     // ===== 기본 정보 부분 수정 =====
@@ -162,7 +174,7 @@ public class Company {
     // 시스템 플래그·사업자번호·등록 provenance(registrationSource/registeredBy) 는 이 경로로 바꾸지 않는다.
     public void updateBasicInfo(String companyName, String ceoName, LocalDate establishmentDate,
                                 String postalCode, String roadAddress, String jibunAddress, String detailAddress,
-                                String website, String logoUrl, String introTitle, String content,
+                                String website, String logoUrl, String coverImageUrl, String introTitle, String content,
                                 TrlLevel trlLevel, String videoUrl, String leadTime, String asInfo,
                                 PricingType pricingType, String brandColor) {
         // 필수 필드: null = 미변경 (blank 는 DTO 에서 차단)
@@ -175,6 +187,8 @@ public class Company {
         if (logoUrl != null) this.logoUrl = logoUrl;
 
         // 선택 문자열 필드: null = 미변경, blank = 비움(null)
+        // 커버는 logoUrl 과 달리 선택 필드라 이쪽에 둔다 — 로고는 NOT NULL 이라 위에서 교체만 한다.
+        if (coverImageUrl != null) this.coverImageUrl = blankToNull(coverImageUrl);
         if (website != null) this.website = blankToNull(website);
         if (introTitle != null) this.introTitle = blankToNull(introTitle);
         if (content != null) this.content = blankToNull(content);
@@ -240,26 +254,21 @@ public class Company {
         this.featured = false;
     }
 
-    // 스팟라이트 노출. 노출 순서를 함께 지정한다.
+    // 스팟라이트 수동 고정(pin). 고정된 회사들 사이의 노출 순서를 함께 지정한다.
     public void turnOnSpotlight(int spotlightOrder) {
         this.spotlight = true;
         this.spotlightOrder = spotlightOrder;
     }
 
-    // 스팟라이트 해제. 순서값도 초기화한다.
+    // 수동 고정 해제. 순서값도 초기화한다. (요금제 자격으로 노출되던 회사라면 해제 후에도 계속 노출된다)
     public void turnOffSpotlight() {
         this.spotlight = false;
         this.spotlightOrder = 0;
     }
 
-    // 스팟라이트 노출 중 순서만 변경
+    // 고정 유지한 채 순서만 변경
     public void changeSpotlightOrder(int spotlightOrder) {
         this.spotlightOrder = spotlightOrder;
-    }
-
-    // 등급 정책에 따라 등록 시점 spotlight 를 활성화한다. (노출 순서는 별도 큐레이션 전까지 기본값 유지)
-    public void activateSpotlight() {
-        this.spotlight = true;
     }
 
     // 등급 정책에 따라 브랜드 컬러를 강제 지정한다. (커스텀 불가 등급의 기본값 고정 등)
@@ -269,7 +278,7 @@ public class Company {
 
     // ===== 관리자 운영 플래그 직접 지정 (set-to-state) =====
     // 등록 시 전부 false 로 시작하며, 관리자가 목표값(true/false)을 그대로 지정한다 — 토글 아님, 멱등.
-    // verify()/feature()/activateSpotlight() 등 방향별 행위 메서드와 달리 불리언을 받아 켜고 끄는 통합 전환이다.
+    // verify()/feature()/turnOnSpotlight() 등 방향별 행위 메서드와 달리 불리언을 받아 켜고 끄는 통합 전환이다.
     // (spotlight 는 노출 순서 spotlightOrder 와 별개로 on/off 만 다룬다 — 순서 큐레이션은 별도 경로)
     public void changeVerified(boolean verified) {
         this.verified = verified;

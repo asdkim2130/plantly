@@ -41,6 +41,8 @@ public class SeedPadding {
     private static final int ADMIN_COUNT = 12;
 
     // 패딩에도 등급을 섞어야 목록 카드가 한 가지 모양으로만 보이지 않는다.
+    // 부수 효과: PREMIUM/ENTERPRISE 로 배정되는 절반(6건)은 유료 활성 구독이라 메인 스팟라이트 후보가 된다.
+    // 자리(5칸)를 훨씬 넘기므로 초과 상황이 시드만 올려도 재현된다(SeedCompanyCases 의 C18/C19 근처 주석 참고).
     private static final List<CompanyGrade> ADMIN_GRADES = List.of(
             CompanyGrade.BASIC, CompanyGrade.STANDARD, CompanyGrade.PREMIUM, CompanyGrade.ENTERPRISE);
 

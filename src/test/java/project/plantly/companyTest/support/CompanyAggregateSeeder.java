@@ -53,6 +53,10 @@ public class CompanyAggregateSeeder {
     public static final String BUSINESS_NUMBER = "1234567890";
     public static final LocalDate ESTABLISHMENT_DATE = LocalDate.of(2018, 3, 2);
     public static final String BRAND_COLOR = "#2E7D32";
+    // 시드 회사는 FREE 인데도 동영상을 갖고 있다 — 저장은 등급 무관, 노출만 등급이 정한다는 계약을 데이터로 세운다.
+    public static final String VIDEO_URL = "https://youtu.be/demo";
+    // 로고와 다른 URL 이어야 한다 — 카드/상세가 두 자리를 뒤바꿔 채우면 단언이 잡아낸다.
+    public static final String COVER_IMAGE_URL = "https://cdn.plantly.test/cover.png";
 
     public static final String REP_CONTACT_NAME = "이담당";
     public static final String REP_REFERENCE_TITLE = "스마트팩토리 구축";
@@ -83,9 +87,9 @@ public class CompanyAggregateSeeder {
         Company company = Company.createByUser(
                 ownerUserId, BUSINESS_NUMBER, COMPANY_NAME, CEO_NAME,
                 ESTABLISHMENT_DATE, Address.of("06236", "서울 강남구 테헤란로 1", null, "10층"),
-                "https://plantly.test", "https://cdn.plantly.test/logo.png",
+                "https://plantly.test", "https://cdn.plantly.test/logo.png", COVER_IMAGE_URL,
                 "정밀 부품 전문", "정밀 가공 20년 경력의 부품 제조사입니다.",
-                TrlLevel.MASS_PRODUCTION, "https://youtu.be/demo", "2주", "유선 AS 지원",
+                TrlLevel.MASS_PRODUCTION, VIDEO_URL, "2주", "유선 AS 지원",
                 PricingType.CONSULTATION, BRAND_COLOR);
         company.verify();
         company.feature();
@@ -104,11 +108,12 @@ public class CompanyAggregateSeeder {
         Company company = Company.createByUser(
                 ownerUserId, "9998887776", "삭제된회사", "박대표",
                 ESTABLISHMENT_DATE, Address.of("06236", "서울 강남구 봉은사로 2", null, "5층"),
-                null, "https://cdn.plantly.test/logo2.png",
+                null, "https://cdn.plantly.test/logo2.png", null,
                 null, null, null, null, null, null, null, null);
         company.delete();
         em.persist(company);
         attachOwner(company, ownerUserId);
+        attachSubscription(company);
         return company.getId();
     }
 
@@ -118,10 +123,11 @@ public class CompanyAggregateSeeder {
         Company company = Company.createByAdmin(
                 adminId, "5554443332", "관리자등록회사", "최대표",
                 ESTABLISHMENT_DATE, Address.of("06236", "서울 강남구 도산대로 3", null, "3층"),
-                null, "https://cdn.plantly.test/logo3.png",
+                null, "https://cdn.plantly.test/logo3.png", null,
                 null, null, null, null, null, null, null, null);
         em.persist(company);
         // 미연동: CompanyMember 를 만들지 않는다 (소유자 없음).
+        attachSubscription(company, CompanySubscription.adminExempt(SUBSCRIPTION_STARTED_AT));
         return company.getId();
     }
 
@@ -151,8 +157,14 @@ public class CompanyAggregateSeeder {
     }
 
     // 등록 트랜잭션에서 회사당 1건 생기는 구독을 재현한다(유저 자가등록 = FREE 무기한).
+    // 이 시더로 만드는 모든 회사가 구독을 갖는다 — 실제 등록 경로(CompanyService)가 예외 없이 1건을 남기므로,
+    // 구독 없는 회사는 프로덕션에 존재할 수 없는 형태다. 상세 조회가 등급 파생 노출을 판단하려면 이 행이 필요하다.
     private void attachSubscription(Company company) {
-        CompanySubscription subscription = CompanySubscription.freeForUser(SUBSCRIPTION_STARTED_AT);
+        attachSubscription(company, CompanySubscription.freeForUser(SUBSCRIPTION_STARTED_AT));
+    }
+
+    // 관리자 대신등록 회사는 등급 한도 면제(ADMIN_EXEMPT)로 시작한다 — createByAdmin 과 동일하게 재현한다.
+    private void attachSubscription(Company company, CompanySubscription subscription) {
         subscription.assignCompany(company.getId());
         em.persist(subscription);
     }

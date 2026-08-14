@@ -37,9 +37,13 @@ public record CompanyPublicResponse(
         String detailAddress,
         String website,
         String logoUrl,
+        // 카드 커버(선택). 상세에서는 히어로 배경으로 쓴다 — 갤러리(galleryImages)와 다른 자리다.
+        String coverImageUrl,
         String introTitle,
         String content,
         TrlLevel trlLevel,
+        // 동영상(선택). 공개 뷰에서는 회사 등급이 허용하지 않으면 저장값이 있어도 null 로 나간다(아래 from 의 videoVisible).
+        // 소유자/관리자 뷰는 항상 저장값을 받고, 공개 여부는 meta.videoVisibleToPublic 으로 따로 안다.
         String videoUrl,
         String leadTime,
         String asInfo,
@@ -76,7 +80,11 @@ public record CompanyPublicResponse(
 
     // likedByMe/favoritedByMe 는 aggregate(원자료)에 없는 viewer 별 상태라 호출부(조회 서비스)가 계산해 주입한다.
     // 개인화가 무의미한 경로(소유자/관리자 뷰, 익명)는 false 를 넘긴다.
-    public static CompanyPublicResponse from(CompanyAggregate aggregate, boolean likedByMe, boolean favoritedByMe) {
+    // videoVisible = 이 응답에 videoUrl 을 실을지. 등급을 여기서 판단하지 않고 이미 끝난 판정만 받는다
+    // (DTO 가 등급 정책을 알기 시작하면 정책이 응답 계층까지 번진다). 호출자마다 답이 다르다 —
+    // 공개 조회는 회사 구독 등급으로 계산하고, 소유자/관리자 뷰는 자기 데이터라 항상 true 다.
+    public static CompanyPublicResponse from(CompanyAggregate aggregate, boolean likedByMe, boolean favoritedByMe,
+                                             boolean videoVisible) {
         Company c = aggregate.company();
         return new CompanyPublicResponse(
                 c.getId(),
@@ -88,10 +96,12 @@ public record CompanyPublicResponse(
                 c.getAddress().getDetailAddress(),
                 c.getWebsite(),
                 c.getLogoUrl(),
+                c.getCoverImageUrl(),
                 c.getIntroTitle(),
                 c.getContent(),
                 c.getTrlLevel(),
-                c.getVideoUrl(),
+                // 저장값은 등급과 무관하게 보존하고, 노출만 여기서 가린다 — 등급이 오르면 다음 조회부터 저절로 보인다.
+                videoVisible ? c.getVideoUrl() : null,
                 c.getLeadTime(),
                 c.getAsInfo(),
                 c.getPricingType(),

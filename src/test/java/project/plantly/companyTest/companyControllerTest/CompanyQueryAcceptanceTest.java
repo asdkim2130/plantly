@@ -98,6 +98,75 @@ class CompanyQueryAcceptanceTest extends AcceptanceTest {
         }
     }
 
+    // 동영상은 저장을 등급으로 막지 않고 노출만 등급으로 가린다. 등록 시점엔 모든 회사가 FREE 라
+    // 쓰기에서 막으면 입력 자체가 불가능하고, 업그레이드 후 재입력·다운그레이드 시 값 파괴가 따라온다.
+    // 시드 회사는 FREE 인데도 videoUrl 을 갖고 있어, 이 세 테스트가 "저장은 남고 노출만 바뀐다"를 실제 DB 로 증명한다.
+    @Nested
+    @DisplayName("동영상 노출의 등급 파생")
+    class VideoGrading {
+
+        @Test
+        @DisplayName("FREE 회사의 공개 조회는 저장된 videoUrl 을 가리고 내려준다")
+        void freeCompany_hidesVideoFromPublic() {
+            CookieFilter owner = new CookieFilter();
+            long ownerId = signUpMember(owner, "owner-video-free@example.com");
+            long companyId = seeder.seedPublishedCompany(ownerId);
+
+            given()
+                    .when()
+                    .get("/api/v1/companies/{id}", companyId)
+                    .then()
+                    .statusCode(200)
+                    .body("data.videoUrl", nullValue());
+        }
+
+        @Test
+        @DisplayName("소유자 조회는 가려진 동영상도 그대로 보되 meta 로 비공개 상태임을 안다")
+        void owner_seesVideoWithLockFlag() {
+            CookieFilter owner = new CookieFilter();
+            long ownerId = signUpMember(owner, "owner-video-lock@example.com");
+            long companyId = seeder.seedPublishedCompany(ownerId);
+
+            given()
+                    .filter(owner)
+                    .when()
+                    .get("/api/v1/companies/{id}/private", companyId)
+                    .then()
+                    .statusCode(200)
+                    // 자기 데이터는 가리지 않는다 — 가렸다면 소유자가 "저장이 안 됐다"고 오해한다.
+                    .body("data.profile.videoUrl", equalTo(CompanyAggregateSeeder.VIDEO_URL))
+                    .body("data.meta.videoVisibleToPublic", equalTo(false));
+        }
+
+        @Test
+        @DisplayName("등급을 올리면 재입력 없이 같은 videoUrl 이 공개 조회에 나타난다")
+        void upgrade_revealsStoredVideo() {
+            CookieFilter admin = new CookieFilter();
+            String csrf = loginAdminForCsrf(admin, "admin-video-up@example.com");
+            CookieFilter owner = new CookieFilter();
+            long ownerId = signUpMember(owner, "owner-video-up@example.com");
+            long companyId = seeder.seedPublishedCompany(ownerId);
+
+            given()
+                    .filter(admin)
+                    .header("X-XSRF-TOKEN", csrf)
+                    .contentType(ContentType.JSON)
+                    .body("{\"grade\":\"STANDARD\",\"status\":\"ACTIVE\",\"expiresAt\":\"2030-12-31\"}")
+                    .when()
+                    .patch("/api/v1/admin/companies/{id}/subscription", companyId)
+                    .then()
+                    .statusCode(200);
+
+            // 회사 데이터는 하나도 건드리지 않았다. 구독 등급만 바뀌었는데 노출이 열린다.
+            given()
+                    .when()
+                    .get("/api/v1/companies/{id}", companyId)
+                    .then()
+                    .statusCode(200)
+                    .body("data.videoUrl", equalTo(CompanyAggregateSeeder.VIDEO_URL));
+        }
+    }
+
     @Nested
     @DisplayName("소유자 전용 조회 GET /api/v1/companies/{id}/private")
     class OwnerView {
@@ -458,6 +527,11 @@ class CompanyQueryAcceptanceTest extends AcceptanceTest {
                     .statusCode(401);
         }
     }
+
+    // 메인 화면 노출 영역(GET /companies/showcase)은 여기서 다루지 않는다 — 카드 프로젝션이
+    // Postgres 전용 SQL(array_agg)이라 H2 인수 환경에서 실행되지 않는다. 'my'/'favorites' 와 같은 분업으로,
+    // 노출 자격 판정은 ShowcaseCardRepositoryTest(Testcontainers PG)가, HTTP 계약은 슬라이스 테스트가 맡는다.
+    // 익명 허용은 permitAll 이라 여기서 검증할 상태 차이(401)가 없다.
 
     // ---- helpers ----
 
