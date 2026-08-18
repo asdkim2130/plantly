@@ -77,6 +77,11 @@ public class CompanyQueryService {
     @Value("${app.showcase.featured-slots}")
     private int featuredSlots;
 
+    // 최근 등록 레일의 자리 수. 위 둘과 성격이 다르다 — 저쪽은 "노출 자격을 몇 명에게 줄 것인가"라 늘리면
+    // 공급이 늘지만, 이쪽은 순수한 화면 분량이다. 더 보려면 목록 화면으로 넘어가므로 여기서 늘릴 이유가 없다.
+    @Value("${app.showcase.latest-slots}")
+    private int latestSlots;
+
     // 공개 회사 목록/검색: 통합 키워드 + 고급 + 패싯(인증/산업군/카테고리 서브트리). 색인된·비삭제 회사만,
     // 기본 정렬(spotlight→featured→최신). 엔진 교체(PG↔ES)는 CompanySearchRepository 뒤에서만 일어난다.
     // viewerId = 로그인 유저 id(익명이면 null). 좋아요/즐겨찾기 여부는 검색 결과를 뷰어 기준으로 후처리(enrich)해 채운다.
@@ -100,26 +105,32 @@ public class CompanyQueryService {
                 .toList();
     }
 
-    // 메인 화면 노출 영역: 스팟라이트·추천 두 레일을 자리 수만큼 잘라서 함께 내려준다.
+    // 메인 화면 노출 영역: 스팟라이트·추천·최근 등록 세 레일을 자리 수만큼 잘라서 함께 내려준다.
     // 노출 자격 판단은 전부 ShowcaseCardRepository 안에 있다 — 여기선 자리 수 적용과 개인화만 한다.
     //
-    // 두 레일을 이어 붙여 enrich 를 한 번만 태운다. 레일별로 따로 태우면 배치 조회가 2회 → 4회로 늘고,
-    // 두 레일에 같은 회사가 있으면 같은 회사를 두 번 조회하게 된다.
+    // 세 레일을 이어 붙여 enrich 를 한 번만 태운다. 레일별로 따로 태우면 배치 조회가 2회 → 6회로 늘고,
+    // 여러 레일에 같은 회사가 있으면 같은 회사를 반복 조회하게 된다.
     public CompanyShowcaseResponse getShowcase(Long viewerId) {
         ShowcaseRail spotlightRail = showcaseCardRepository.findSpotlight(spotlightSlots);
         ShowcaseRail featuredRail = showcaseCardRepository.findFeatured(featuredSlots);
+        // 최근 등록만 반환 타입이 다르다 — 후보 초과가 정상 상태라 셀 이유가 없어 총수를 싣지 않는다.
+        // 그래서 아래 초과 경고도 이 레일에는 없다(붙일 값 자체가 없고, 붙였다면 매 호출 로그가 찍혔을 것이다).
+        List<CompanySummary> latestCards = showcaseCardRepository.findLatest(latestSlots);
 
         warnIfOverflow("스팟라이트", spotlightRail, spotlightSlots);
         warnIfOverflow("추천", featuredRail, featuredSlots);
 
         List<CompanySummary> combined = new ArrayList<>(spotlightRail.cards());
         combined.addAll(featuredRail.cards());
+        combined.addAll(latestCards);
         List<CompanySummary> enriched = enrichViewerFlags(combined, viewerId);
 
-        int split = spotlightRail.cards().size();
+        int spotlightEnd = spotlightRail.cards().size();
+        int featuredEnd = spotlightEnd + featuredRail.cards().size();
         return new CompanyShowcaseResponse(
-                List.copyOf(enriched.subList(0, split)),
-                List.copyOf(enriched.subList(split, enriched.size())));
+                List.copyOf(enriched.subList(0, spotlightEnd)),
+                List.copyOf(enriched.subList(spotlightEnd, featuredEnd)),
+                List.copyOf(enriched.subList(featuredEnd, enriched.size())));
     }
 
     // 후보가 자리보다 많아지면 초과분은 조용히 잘린다 — 돈을 받고도 노출되지 않는 고객이 생기는데

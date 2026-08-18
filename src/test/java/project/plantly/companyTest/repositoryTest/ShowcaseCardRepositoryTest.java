@@ -16,6 +16,7 @@ import project.plantly.domain.company.repository.ShowcaseCardRepository.Showcase
 import project.plantly.domain.company.search.dto.CompanySummary;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -165,6 +166,69 @@ class ShowcaseCardRepositoryTest extends PostgresContainerTest {
         assertThat(ids(repository.findFeatured(SLOTS))).containsExactly(featured.getId());
     }
 
+    // ===== 최근 등록 레일 =====
+    // 앞의 두 레일과 정반대 성격이다. 저쪽은 '누구를 띄울 자격이 있는가'를 파생하지만, 이쪽은 자격을 일절
+    // 보지 않는다 — 요금제 계약(유료 상위 노출)은 목록/검색 화면이 지고, 이 지면은 시간순만 한다.
+
+    @Test
+    @DisplayName("최근 등록 레일은 등록 역순으로 온다")
+    void latestRail_ordersByRegistrationDesc() {
+        Company first = withSubscription("먼저", CompanySubscription.freeForUser(TODAY));
+        Company second = withSubscription("나중", CompanySubscription.freeForUser(TODAY));
+        Company third = withSubscription("마지막", CompanySubscription.freeForUser(TODAY));
+        em.flush();
+
+        assertThat(idsOf(repository.findLatest(SLOTS)))
+                .containsExactly(third.getId(), second.getId(), first.getId());
+    }
+
+    @Test
+    @DisplayName("최근 등록 레일은 요금제·큐레이션을 보지 않는다 — 스팟라이트에서 빠지는 회사도 전부 들어온다")
+    void latestRail_ignoresEligibility() {
+        // 스팟라이트 자격 판정에서 각각 다른 이유로 탈락하는 회사들. 여기서는 셋 다 나와야 한다.
+        Company free = withSubscription("무료", CompanySubscription.freeForUser(TODAY));
+        Company trial = withSubscription("체험",
+                CompanySubscription.trial(CompanyGrade.ENTERPRISE, TODAY, TODAY.plusDays(30)));
+        Company expired = withSubscription("만료",
+                CompanySubscription.active(CompanyGrade.ENTERPRISE, TODAY.minusDays(100), TODAY.minusDays(1)));
+        em.flush();
+
+        assertThat(repository.findSpotlight(SLOTS).cards()).isEmpty();   // 자격은 아무도 없는데
+        assertThat(idsOf(repository.findLatest(SLOTS)))                    // 최근 등록에는 전원 등장한다
+                .containsExactlyInAnyOrder(free.getId(), trial.getId(), expired.getId());
+    }
+
+    @Test
+    @DisplayName("최근 등록 레일도 삭제·비공개 회사는 제외한다 — 가시성 규칙은 세 레일이 공유한다")
+    void latestRail_excludesDeletedAndPrivate() {
+        Company visible = withSubscription("공개", CompanySubscription.freeForUser(TODAY));
+        Company deleted = withSubscription("삭제", CompanySubscription.freeForUser(TODAY));
+        deleted.delete();
+        Company priv = withSubscription("비공개", CompanySubscription.freeForUser(TODAY));
+        priv.changeVisibility(CompanyVisibility.PRIVATE);
+        em.flush();
+
+        assertThat(idsOf(repository.findLatest(SLOTS))).containsExactly(visible.getId());
+    }
+
+    @Test
+    @DisplayName("최근 등록 레일은 자리 수만큼만 자르고 후보 총수는 세지 않는다")
+    void latestRail_truncatesWithoutCountingCandidates() {
+        List<Company> registered = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            registered.add(withSubscription("회사" + i, CompanySubscription.freeForUser(TODAY)));
+        }
+        em.flush();
+
+        // 반환 타입이 ShowcaseRail 이 아니라 카드 목록이라는 것 자체가 계약이다 — 이 레일은 초과가
+        // 정상이라 셀 이유가 없고, 세면 공개 회사 전체를 훑는 비용만 남는다.
+        List<CompanySummary> cards = repository.findLatest(2);
+
+        // 잘려도 '가장 최근 둘'이 남는다(자르기가 정렬 뒤에 일어난다는 뜻).
+        assertThat(cards).extracting(CompanySummary::id)
+                .containsExactly(registered.get(4).getId(), registered.get(3).getId());
+    }
+
     @Test
     @DisplayName("후보가 없으면 빈 레일과 총수 0 을 반환한다")
     void noCandidates_returnsEmptyRail() {
@@ -177,7 +241,12 @@ class ShowcaseCardRepositoryTest extends PostgresContainerTest {
     // ===== helpers =====
 
     private List<Long> ids(ShowcaseRail rail) {
-        return rail.cards().stream().map(CompanySummary::id).toList();
+        return idsOf(rail.cards());
+    }
+
+    // 최근 등록 레일은 ShowcaseRail 을 쓰지 않는다(후보 총수를 세지 않으므로) — 카드 목록을 그대로 받는다.
+    private List<Long> idsOf(List<CompanySummary> cards) {
+        return cards.stream().map(CompanySummary::id).toList();
     }
 
     // 회사 + 구독 1:1 을 함께 저장한다. 구독은 회사당 반드시 1건 존재하므로(등록 트랜잭션 불변식) 테스트도 같이 만든다.

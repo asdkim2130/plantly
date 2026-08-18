@@ -587,7 +587,8 @@ class CompanyQueryAcceptanceTest extends AcceptanceTest {
 
     // 메인 화면 노출 영역(GET /companies/showcase)은 여기서 다루지 않는다 — 카드 프로젝션이
     // Postgres 전용 SQL(array_agg)이라 H2 인수 환경에서 실행되지 않는다. 'my'/'favorites' 와 같은 분업으로,
-    // 노출 자격 판정은 ShowcaseCardRepositoryTest(Testcontainers PG)가, HTTP 계약은 슬라이스 테스트가 맡는다.
+    // 노출 자격 판정과 최근 등록 레일의 정렬·가시성은 ShowcaseCardRepositoryTest(Testcontainers PG)가,
+    // 세 레일의 조립(자리 수·경계 가르기·개인화)은 CompanyShowcaseQueryTest 가, HTTP 계약은 슬라이스 테스트가 맡는다.
     // 익명 허용은 permitAll 이라 여기서 검증할 상태 차이(401)가 없다.
 
     // ---- helpers ----
