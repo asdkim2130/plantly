@@ -62,8 +62,11 @@ public class CompanySubscription {
         this.expiresAt = expiresAt;
     }
 
-    // 유저 자가등록 회사: FREE, 무기한. (상위 혜택은 추후 구독/보상으로 부여)
-    // companyId 는 회사 저장 후 assignCompany() 로 채운다.
+    // FREE, 무기한. companyId 는 회사 저장 후 assignCompany() 로 채운다.
+    //
+    // 현재 프로덕션 호출자가 없다. 자가등록은 국세청 인증을 직접 통과하므로 전부 체험 등급으로 시작하고
+    // (InitialSubscriptionPolicy), 관리자 등록은 adminExempt() 를 쓴다. 이 팩토리가 다시 쓰이는 자리는
+    // 정해져 있다 — 삭제 후 재등록(체험 미부여) 분기이며, 정식 요금제와 함께 붙는다.
     public static CompanySubscription freeForUser(LocalDate startedAt) {
         return active(CompanyGrade.FREE, startedAt, null);
     }

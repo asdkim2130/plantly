@@ -15,6 +15,7 @@ import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.global.exception.BusinessException;
 import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
+import project.plantly.domain.company.policy.InitialSubscriptionPolicy;
 import project.plantly.domain.company.repository.CompanyDraftRepository;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
@@ -55,8 +56,13 @@ public class CompanyService {
     // 새 정책은 CompanyRegistrationPolicy 구현 @Component 추가만으로 자동 합류한다.
     private final List<CompanyRegistrationPolicy> registrationPolicies;
 
+    // 자가등록 회사의 초기 등급/구독 결정. 인증 발급 경로도 같은 정책을 읽어 폼에 한도를 안내하므로,
+    // 여기서 등급을 직접 만들지 않고 정책에 물어본다(폼이 안내한 한도와 서버 검증이 어긋날 수 없게).
+    private final InitialSubscriptionPolicy initialSubscriptionPolicy;
+
     // 유저 자가등록: 선행 인증을 소비해 신원 3종을 채우고, 등록 즉시 소유자 = 본인 + 사업자 인증 완료 상태가 된다.
-    // 회사는 FREE 구독으로 시작하며 그 한도로 정책이 적용된다.
+    // 초기 구독(등급)은 InitialSubscriptionPolicy 가 인증을 보고 결정하며, 그 한도로 등록 정책이 적용된다.
+    // 인증 발급 응답이 같은 정책으로 계산한 한도를 이미 폼에 내려주므로, 여기서 거부되는 건 폼을 우회한 요청뿐이다.
     //
     // 관리자 등록과 달리 이 경로만 인증을 요구하는 이유: 자가등록은 사용자가 레코드를 직접 작성하므로
     // 사업자번호와 회사명이 어긋날 수 없다. 반면 관리자가 대신 등록한 회사는 대조할 앵커가 없어
@@ -74,7 +80,8 @@ public class CompanyService {
                 request.introTitle(), request.content(), request.trlLevel(), request.videoUrl(), request.leadTime(), request.asInfo(), request.pricingType(), request.brandColor());
         company.markBusinessVerified(verification.getVerifiedAt());
 
-        Long companyId = persist(company, request, CompanySubscription.freeForUser(LocalDate.now()));
+        Long companyId = persist(company, request,
+                initialSubscriptionPolicy.initialSubscription(verification, LocalDate.now()));
 
         // 인증을 소비 처리해 재사용을 막는다. 같은 인증으로 여러 회사를 만들 수 없다.
         verification.consume(companyId);

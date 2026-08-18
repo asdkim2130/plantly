@@ -49,6 +49,17 @@ public class CompanyApiDocs {
                 fieldWithPath("data.businessStartDate").type(JsonFieldType.STRING).description("국세청 검증을 통과한 개업일자"),
                 fieldWithPath("data.expiresAt").type(JsonFieldType.STRING)
                         .description("인증 만료 시각. 이 시각을 넘기면 재인증이 필요하다"),
+                // 등급을 인증 응답에 실는 이유: 컬렉션 입력은 회사가 생기기 전에 끝나므로, 폼이 한도를 알 방법이 여기뿐이다.
+                fieldWithPath("data.initialGrade").type(JsonFieldType.STRING)
+                        .description("이 인증으로 회사를 만들면 받게 될 등급. 국세청 인증을 직접 통과한 자가등록은 체험 최고등급으로 시작한다"),
+                fieldWithPath("data.limits.maxCategories").type(JsonFieldType.NUMBER)
+                        .description("선택 가능한 카테고리 최대 개수"),
+                fieldWithPath("data.limits.maxDetailImages").type(JsonFieldType.NUMBER)
+                        .description("갤러리 상세 이미지 최대 장수"),
+                fieldWithPath("data.limits.maxReferenceImages").type(JsonFieldType.NUMBER)
+                        .description("레퍼런스 1건당 이미지 최대 장수 (0 = 업로드 비활성)"),
+                fieldWithPath("data.limits.videoAllowed").type(JsonFieldType.BOOLEAN)
+                        .description("동영상 공개 노출 가능 여부. 저장은 등급과 무관하게 허용되므로, false 면 입력란을 감추거나 자물쇠 안내를 붙인다"),
                 fieldWithPath("error").type(JsonFieldType.STRING).optional().description("오류 메시지 (성공 시 null)")
         };
     }

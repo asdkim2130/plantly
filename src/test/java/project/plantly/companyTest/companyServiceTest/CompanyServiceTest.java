@@ -22,6 +22,7 @@ import project.plantly.domain.company.enums.VerificationStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.policy.CompanyPolicyView;
 import project.plantly.domain.company.policy.CompanyRegistrationPolicy;
+import project.plantly.domain.company.policy.InitialSubscriptionPolicy;
 import project.plantly.domain.company.repository.CompanyDraftRepository;
 import project.plantly.domain.company.repository.CompanyMemberRepository;
 import project.plantly.domain.company.repository.CompanyRepository;
@@ -73,7 +74,7 @@ class CompanyServiceTest {
     private CompanyService service(CompanyRegistrationPolicy... policies) {
         return new CompanyService(companyRepository, childWriter, linkWriter, companyMemberRepository,
                 verificationRepository, draftRepository, companySubscriptionRepository, searchDocumentWriter,
-                List.of(policies));
+                List.of(policies), new InitialSubscriptionPolicy());
     }
 
     // 자가등록은 선행 인증을 소비하므로, 사용 가능한 인증이 조회된다고 가정한다.
@@ -133,8 +134,8 @@ class CompanyServiceTest {
     }
 
     @Test
-    @DisplayName("유저 자가등록: 주입된 모든 정책을 FREE 구독으로 실행한다")
-    void createByUser_appliesAllPoliciesWithFreeSubscription() {
+    @DisplayName("유저 자가등록: 주입된 모든 정책을 체험 구독(TRIAL/무기한)으로 실행한다")
+    void createByUser_appliesAllPoliciesWithTrialSubscription() {
         givenSaveAssignsId(10L);
         CompanyRegistrationPolicy policyA = mock(CompanyRegistrationPolicy.class);
         CompanyRegistrationPolicy policyB = mock(CompanyRegistrationPolicy.class);
@@ -143,13 +144,18 @@ class CompanyServiceTest {
 
         service.createByUser(USER_ID, myRequest);
 
-        // 정책은 이제 CompanyPolicyView 를 받는다. 뷰가 실은 구독(FREE, 미면제)을 담고 전 정책이 실행됨을 본다.
+        // 정책은 이제 CompanyPolicyView 를 받는다. 뷰가 실은 구독(체험 최고등급, 미면제)을 담고 전 정책이 실행됨을 본다.
         ArgumentCaptor<CompanyPolicyView> viewCaptor = ArgumentCaptor.forClass(CompanyPolicyView.class);
         verify(policyA).apply(viewCaptor.capture());
         verify(policyB).apply(any(CompanyPolicyView.class));
         CompanySubscription captured = viewCaptor.getValue().subscription();
-        assertThat(captured.effectiveGrade()).isEqualTo(CompanyGrade.FREE);
+        assertThat(captured.effectiveGrade()).isEqualTo(CompanyGrade.ENTERPRISE);
+        assertThat(captured.getStatus()).isEqualTo(SubscriptionStatus.TRIAL);
+        // 면제가 아니라 '체험'이다 — 정책은 정상적으로 발화하되 한도가 최상위라 걸리지 않는다.
         assertThat(captured.isExempt()).isFalse();
+        // 만료일을 비워 두는 것이 이번 단계의 핵심 결정이다. 재조정 배치가 없는 상태에서 만료일을 채우면
+        // effectiveGrade 가 파생값이라 배치 없이도 등급이 떨어져, 초과 컬렉션을 정리할 주체 없이 반쪽 강등이 된다.
+        assertThat(captured.getExpiresAt()).isNull();
     }
 
     @Test

@@ -35,19 +35,24 @@ public class SeedCompanyCases {
     private final SeedMasterCatalog masters;
     private final GradePolicyRegistry gradePolicyRegistry;
 
+    // 자가등록이 실제로 받는 등급. InitialSubscriptionPolicy 와 같은 값을 시드가 알아야 요청을 그 한도로 채울 수 있다.
+    // (정책을 주입해 물어보지 않는 이유: 정책은 CompanyVerification 을 받는데, 시드는 요청을 만드는 시점에 아직 없다)
+    private static final CompanyGrade SELF_REGISTRATION_GRADE = CompanyGrade.ENTERPRISE;
+
     public List<SeedCompanyRef> create(SeedAccounts accounts) {
         List<SeedCompanyRef> refs = new ArrayList<>();
         Long adminId = accounts.admin().userId();
         LocalDate today = LocalDate.now();
 
-        // ===== 자가등록(USER). 소유자 멤버십 + businessVerified 가 실제 경로로 채워진다. 구독은 FREE 로 시작. =====
+        // ===== 자가등록(USER). 소유자 멤버십 + businessVerified 가 실제 경로로 채워진다.
+        //       국세청 인증을 직접 통과한 등록이라 구독은 체험 ENTERPRISE 로 시작한다. =====
 
         refs.add(userCase(accounts.owner1(), 1, "기본공개",
                 "기준선. 공개 + 자가등록 + 사업자 인증 완료 상태의 카드·상세·소유자 뷰", b -> b));
 
         Long privateUserCompany = userCompany(accounts.owner1(), 2, "비공개",
                 b -> b.visibility(CompanyVisibility.PRIVATE));
-        // 자가등록은 FREE 로만 시작한다. 유료 등급을 쓰는 유저 회사를 보려면 등록 후 구독을 올려야 한다.
+        // 자가등록은 체험 ENTERPRISE 로만 시작한다. 다른 등급의 유저 회사를 보려면 등록 후 구독을 바꿔야 한다.
         companies.changeSubscription(privateUserCompany, CompanyGrade.STANDARD, SubscriptionStatus.ACTIVE, today.plusYears(1));
         refs.add(new SeedCompanyRef("C02", privateUserCompany, accounts.owner1().code(),
                 "비공개 회사. 익명·타인에게는 목록/상세에서 빠지고 소유자와 관리자에게만 보여야 한다 (구독 STANDARD)"));
@@ -211,8 +216,9 @@ public class SeedCompanyCases {
      * 자가등록. 선행 인증을 먼저 발급하고 그것을 소비해 만든다 — 인증 소비, 초안 삭제, OWNER 멤버십,
      * businessVerified 가 전부 실제 등록 트랜잭션 안에서 일어난다.
      *
-     * <p>구독이 FREE 라 등급 정책이 실제로 발화한다. {@code limitTo} 로 FREE 한도(카테고리 1, 상세이미지 3,
-     * 동영상 불가)에 맞추지 않으면 등록 자체가 거부된다.
+     * <p>국세청 인증을 직접 통과한 등록이라 구독은 체험 등급(ENTERPRISE)으로 시작한다
+     * ({@code InitialSubscriptionPolicy}). {@code limitTo} 로 그 한도에 맞추는 것은 여전히 필요하다 —
+     * 최상위 등급이라 실제로 걸릴 일은 없지만, 시드가 등급 표를 읽어 채우면 표를 조정했을 때 시드도 따라온다.
      */
     private Long userCompany(SeedAccount owner, int caseNo, String label,
                              UnaryOperator<SeedCompanyRequestBuilder> customize) {
@@ -225,7 +231,7 @@ public class SeedCompanyCases {
 
         SeedCompanyRequestBuilder builder = SeedCompanyRequestBuilder.of(index, masters)
                 .companyName(named(caseNo, label, index))
-                .limitTo(gradePolicyRegistry.of(CompanyGrade.FREE), masters);
+                .limitTo(gradePolicyRegistry.of(SELF_REGISTRATION_GRADE), masters);
 
         return companies.createByUser(owner.userId(), customize.apply(builder).buildMy(verificationId));
     }

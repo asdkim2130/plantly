@@ -48,7 +48,7 @@ public class SeedCompanyFactory {
     /**
      * 구독 교체. 관리자 구독 변경 API 와 같은 경로({@code changeByAdmin})다.
      *
-     * <p>등록 시점에는 등급을 고를 수 없다 — 자가등록은 항상 FREE, 관리자 등록은 항상 ADMIN_EXEMPT 다.
+     * <p>등록 시점에는 등급을 고를 수 없다 — 자가등록은 항상 체험 ENTERPRISE, 관리자 등록은 항상 ADMIN_EXEMPT 다.
      * 등급별 화면 차이와 만료 강등을 보려면 등록 후에 바꾸는 이 경로가 유일하다.
      */
     @Transactional
