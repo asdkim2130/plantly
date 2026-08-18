@@ -312,12 +312,16 @@ public class CompanyApiDocs {
     }
 
     // 메인 화면 노출 영역 응답(ApiResponse<CompanyShowcaseResponse>). 페이지가 아니라 자리 수만큼의 고정 리스트라
-    // pageInfo 가 없다. 두 레일에 같은 회사가 함께 나올 수 있다(고정 + 추천).
+    // pageInfo 가 없다. 레일끼리 같은 회사가 함께 나올 수 있다(고정 + 추천, 유료 고객이 최근 등록에도).
+    //
+    // latest 는 목록이 아니라 레일이다 — '더보기'는 여기서 더 받아오는 게 아니라 목록 화면
+    // (GET /api/v1/companies)으로 넘어간다. 카테고리 패싯을 고른 뒤의 목록도 그 API 가 담당한다.
     public static FieldDescriptor[] companyShowcaseResponseFields() {
         java.util.List<FieldDescriptor> fields = new java.util.ArrayList<>();
         fields.add(fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"));
         fields.addAll(summaryCardFields("data.spotlight[]"));
         fields.addAll(summaryCardFields("data.featured[]"));
+        fields.addAll(summaryCardFields("data.latest[]"));
         return fields.toArray(new FieldDescriptor[0]);
     }
 

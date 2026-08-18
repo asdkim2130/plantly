@@ -509,7 +509,7 @@ public class CompanyControllerTest {
     }
 
     @Test
-    @DisplayName("메인 화면 노출 영역은 인증 없이 스팟라이트·추천 두 레일을 반환한다 (페이지가 아니라 고정 리스트)")
+    @DisplayName("메인 화면 노출 영역은 인증 없이 스팟라이트·추천·최근 등록 세 레일을 반환한다 (페이지가 아니라 고정 리스트)")
     void getShowcase_public_success() throws Exception {
         // 스팟라이트 카드의 spotlight=false 가 핵심 — 요금제 자격으로 노출되는 회사는 pin 플래그가 꺼져 있다.
         CompanySummary paid = new CompanySummary(1L, "유료노출사", "정밀 부품",
@@ -522,8 +522,14 @@ public class CompanyControllerTest {
                 "https://cdn/logo2.png", null, null, "경기 화성시", true, true, false,
                 List.of("농업"), List.of("IoT"), List.of("농업기술"),
                 true, false);
+        // 최근 등록 레일은 자격도 큐레이션도 보지 않는다 — verified/featured/spotlight 가 전부 꺼진 평범한
+        // 회사가 올라오는 것이 정상이고, 그게 이 레일이 위 둘과 다른 지면이라는 표시다.
+        CompanySummary newcomer = new CompanySummary(3L, "신규등록사", "금형 설계",
+                "https://cdn/logo3.png", null, null, "인천 남동구", false, false, false,
+                List.of("제조"), List.of("금형"), List.of("기계"),
+                false, false);
         given(companyQueryService.getShowcase(isNull()))
-                .willReturn(new CompanyShowcaseResponse(List.of(paid), List.of(recommended)));
+                .willReturn(new CompanyShowcaseResponse(List.of(paid), List.of(recommended), List.of(newcomer)));
 
         mockMvc.perform(get("/api/v1/companies/showcase"))
                 .andExpect(status().isOk())
@@ -539,6 +545,11 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.data.featured[0].featured").value(true))
                 .andExpect(jsonPath("$.data.featured[0].coverImageUrl").doesNotExist())
                 .andExpect(jsonPath("$.data.featured[0].brandColor").doesNotExist())
+                .andExpect(jsonPath("$.data.latest[0].id").value(3L))
+                // 최근 등록은 플래그가 전부 꺼진 회사도 오른다 — 여기엔 노출 자격 개념이 없다.
+                .andExpect(jsonPath("$.data.latest[0].verified").value(false))
+                .andExpect(jsonPath("$.data.latest[0].featured").value(false))
+                .andExpect(jsonPath("$.data.latest[0].spotlight").value(false))
                 .andDo(document("company-showcase",
                         responseFields(CompanyApiDocs.companyShowcaseResponseFields())));
     }

@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 메인 화면 노출 레일(스팟라이트 / 추천) 읽기 전용 리포지토리. 검색·내 회사 목록과 동일한 카드 프로젝션
+ * 메인 화면 노출 레일(스팟라이트 / 추천 / 최근 등록) 읽기 전용 리포지토리. 검색·내 회사 목록과 동일한 카드 프로젝션
  * ({@link CompanyCardSql})을 재사용하되, 페이징이 아니라 '자리 수(slots)만큼 잘라 오는' 조회다.
  *
  * <p><b>이 클래스가 스팟라이트 노출 여부를 판단하는 유일한 곳이다.</b> 회사에 저장된 플래그를 읽는 게 아니라
@@ -44,9 +44,10 @@ public class ShowcaseCardRepository {
     public record ShowcaseRail(List<CompanySummary> cards, int candidateCount) {
     }
 
-    // 두 레일 공통: 삭제되지 않고 공개된 회사만. 공개 검색과 같은 가시성 규칙을 미러한다.
+    // 세 레일 공통: 삭제되지 않고 공개된 회사만. 공개 검색과 같은 가시성 규칙을 미러한다.
     // 검색과 달리 company_search_document 는 조인하지 않는다 — 색인이 밀렸다는 이유로
-    // 유료 고객이 메인에서 사라지면 안 된다.
+    // 유료 고객이 메인에서 사라지면 안 된다. 최신 레일에도 같은 근거가 적용된다:
+    // 방금 등록한 회사가 색인 지연으로 '최근 등록'에서 빠지면 그 지면의 의미가 사라진다.
     private static final String VISIBLE = " c.deleted = false AND c.visibility = 'PUBLIC' ";
 
     // 자르기 전 후보 총수를 같은 쿼리에서 얻는다(윈도우 함수). 초과 감지 때문에 count 쿼리를 한 번 더
@@ -68,6 +69,21 @@ public class ShowcaseCardRepository {
                       c.spotlight_order ASC,
                       s.started_at DESC NULLS LAST,
                       c.id DESC
+             LIMIT :slots
+            """.formatted(CompanyCardSql.CARD_COLUMNS, CANDIDATE_COUNT, VISIBLE);
+
+    // 최근 등록 레일. 자격도 큐레이션도 보지 않는 순수 시간순이라 조건이 가시성뿐이다.
+    //
+    // 이 레일이 공개 목록/검색(CompanySearchRepository)을 재사용하지 않는 이유는 정렬 때문이다. 그쪽 기본
+    // 정렬(spotlight → featured → 최신)은 "어떤 검색어·패싯을 넣어도 유료 고객을 상위로"라는 요금제 계약이라
+    // 끌 수 있는 옵션이 아니다. 그런데 메인 상단은 이미 스팟라이트·추천 레일이 그 노출을 끝낸 자리여서,
+    // 같은 정렬을 바로 아래에 한 번 더 적용하면 방금 본 회사가 같은 순서로 재등장한다.
+    // 정렬 파라미터로 끄는 대신 지면을 나눈다 — 계약은 목록/검색 화면에 그대로 남고, 여기는 최신순만 한다.
+    private static final String LATEST_SQL = """
+            SELECT %s %s
+              FROM company c
+             WHERE %s
+             ORDER BY c.created_at DESC, c.id DESC
              LIMIT :slots
             """.formatted(CompanyCardSql.CARD_COLUMNS, CANDIDATE_COUNT, VISIBLE);
 
@@ -97,6 +113,18 @@ public class ShowcaseCardRepository {
      */
     public ShowcaseRail findFeatured(int slots) {
         return queryRail(FEATURED_SQL, slots);
+    }
+
+    /**
+     * 최근 등록 레일. 앞의 두 레일과 달리 <b>후보 초과가 정상 상태</b>다 — 후보가 공개 회사 전체라
+     * 회사가 자리 수보다 많아지는 순간부터 항상 초과이고, 그게 이 레일이 의도한 동작이다.
+     * 그래서 호출부는 이 레일에 초과 경고를 붙이지 않는다(붙이면 매 호출 경고가 찍힌다).
+     *
+     * <p>{@code candidateCount} 는 여전히 실려 온다. 경고용은 아니고, 자리 수를 넘는 회사가 있는지 =
+     * '더보기'가 의미 있는지를 프론트가 알 수 있는 값이라 버리지 않는다.
+     */
+    public ShowcaseRail findLatest(int slots) {
+        return queryRail(LATEST_SQL, slots);
     }
 
     private ShowcaseRail queryRail(String sql, int slots) {

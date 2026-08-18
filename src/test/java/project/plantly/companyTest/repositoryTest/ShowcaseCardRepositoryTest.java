@@ -165,6 +165,67 @@ class ShowcaseCardRepositoryTest extends PostgresContainerTest {
         assertThat(ids(repository.findFeatured(SLOTS))).containsExactly(featured.getId());
     }
 
+    // ===== 최근 등록 레일 =====
+    // 앞의 두 레일과 정반대 성격이다. 저쪽은 '누구를 띄울 자격이 있는가'를 파생하지만, 이쪽은 자격을 일절
+    // 보지 않는다 — 요금제 계약(유료 상위 노출)은 목록/검색 화면이 지고, 이 지면은 시간순만 한다.
+
+    @Test
+    @DisplayName("최근 등록 레일은 등록 역순으로 온다")
+    void latestRail_ordersByRegistrationDesc() {
+        Company first = withSubscription("먼저", CompanySubscription.freeForUser(TODAY));
+        Company second = withSubscription("나중", CompanySubscription.freeForUser(TODAY));
+        Company third = withSubscription("마지막", CompanySubscription.freeForUser(TODAY));
+        em.flush();
+
+        assertThat(ids(repository.findLatest(SLOTS)))
+                .containsExactly(third.getId(), second.getId(), first.getId());
+    }
+
+    @Test
+    @DisplayName("최근 등록 레일은 요금제·큐레이션을 보지 않는다 — 스팟라이트에서 빠지는 회사도 전부 들어온다")
+    void latestRail_ignoresEligibility() {
+        // 스팟라이트 자격 판정에서 각각 다른 이유로 탈락하는 회사들. 여기서는 셋 다 나와야 한다.
+        Company free = withSubscription("무료", CompanySubscription.freeForUser(TODAY));
+        Company trial = withSubscription("체험",
+                CompanySubscription.trial(CompanyGrade.ENTERPRISE, TODAY, TODAY.plusDays(30)));
+        Company expired = withSubscription("만료",
+                CompanySubscription.active(CompanyGrade.ENTERPRISE, TODAY.minusDays(100), TODAY.minusDays(1)));
+        em.flush();
+
+        assertThat(repository.findSpotlight(SLOTS).cards()).isEmpty();   // 자격은 아무도 없는데
+        assertThat(ids(repository.findLatest(SLOTS)))                    // 최근 등록에는 전원 등장한다
+                .containsExactlyInAnyOrder(free.getId(), trial.getId(), expired.getId());
+    }
+
+    @Test
+    @DisplayName("최근 등록 레일도 삭제·비공개 회사는 제외한다 — 가시성 규칙은 세 레일이 공유한다")
+    void latestRail_excludesDeletedAndPrivate() {
+        Company visible = withSubscription("공개", CompanySubscription.freeForUser(TODAY));
+        Company deleted = withSubscription("삭제", CompanySubscription.freeForUser(TODAY));
+        deleted.delete();
+        Company priv = withSubscription("비공개", CompanySubscription.freeForUser(TODAY));
+        priv.changeVisibility(CompanyVisibility.PRIVATE);
+        em.flush();
+
+        assertThat(ids(repository.findLatest(SLOTS))).containsExactly(visible.getId());
+    }
+
+    @Test
+    @DisplayName("최근 등록 레일은 후보 초과가 정상이다 — 자르되 총수로 '더보기'가 의미 있는지 알려준다")
+    void latestRail_truncatesWithoutTreatingOverflowAsAnomaly() {
+        for (int i = 0; i < 5; i++) {
+            withSubscription("회사" + i, CompanySubscription.freeForUser(TODAY));
+        }
+        em.flush();
+
+        ShowcaseRail rail = repository.findLatest(2);
+
+        // 초과는 경고 대상이 아니다(호출부가 이 레일에는 경고를 붙이지 않는다). candidateCount 는
+        // 자리 밖에 더 있다는 사실 = 더보기를 띄울 근거로만 쓴다.
+        assertThat(rail.cards()).hasSize(2);
+        assertThat(rail.candidateCount()).isEqualTo(5);
+    }
+
     @Test
     @DisplayName("후보가 없으면 빈 레일과 총수 0 을 반환한다")
     void noCandidates_returnsEmptyRail() {
