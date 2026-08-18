@@ -94,6 +94,8 @@ public class SecurityConfig {
                         // 메인 화면 노출 영역(스팟라이트/추천)도 공개. /{id} permitAll 로도 통과하지만,
                         // 'my'/'favorites' 와 나란히 두어 단일 세그먼트 경로의 의도를 한 곳에서 읽히게 한다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/companies/showcase").permitAll()
+                        // 현황 지표도 공개. 로그인 여부와 무관한 집계 숫자만 나간다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/companies/stats").permitAll()
                         // 내 회사 목록은 인증 필수. /{id} permitAll 이 'my' 도 단일 세그먼트로 잡으므로 반드시 그 앞에 둔다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/companies/my").authenticated()
                         // 내 즐겨찾기 목록도 인증 필수. 'my' 와 같은 이유로 /{id} permitAll 앞에 둔다.

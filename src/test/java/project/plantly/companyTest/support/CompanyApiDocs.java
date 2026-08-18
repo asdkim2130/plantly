@@ -316,6 +316,23 @@ public class CompanyApiDocs {
     //
     // latest 는 목록이 아니라 레일이다 — '더보기'는 여기서 더 받아오는 게 아니라 목록 화면
     // (GET /api/v1/companies)으로 넘어간다. 카테고리 패싯을 고른 뒤의 목록도 그 API 가 담당한다.
+    // 메인 화면 현황 지표(ApiResponse<CompanyStatsResponse>). 집계 숫자만 — 목록도 pageInfo 도 없다.
+    // 각 숫자는 대응하는 공개 목록과 같은 기준으로 세므로, 현황과 선택지 개수가 어긋나지 않는다.
+    public static FieldDescriptor[] companyStatsResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
+                fieldWithPath("data.companyCount").type(JsonFieldType.NUMBER)
+                        .description("공개 노출 중인 기업 수 (비공개·삭제 제외)"),
+                fieldWithPath("data.categoryCount").type(JsonFieldType.NUMBER)
+                        .description("공개 카테고리 트리의 전체 노드 수(대+중+소). 대분류 개수가 아니다"),
+                fieldWithPath("data.industryCount").type(JsonFieldType.NUMBER)
+                        .description("공개 옵션으로 제공되는 업종 수"),
+                fieldWithPath("data.certificationCount").type(JsonFieldType.NUMBER)
+                        .description("공개 옵션으로 제공되는 인증 항목 수"),
+                fieldWithPath("error").type(JsonFieldType.STRING).optional().description("오류 메시지 (성공 시 null)")
+        };
+    }
+
     public static FieldDescriptor[] companyShowcaseResponseFields() {
         java.util.List<FieldDescriptor> fields = new java.util.ArrayList<>();
         fields.add(fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"));

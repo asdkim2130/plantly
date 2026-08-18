@@ -103,6 +103,54 @@ public class CategoryServiceTest {
         assertThat(categoryService.getPublicTree()).isEmpty();
     }
 
+    @Test
+    @DisplayName("공개 트리 노드 수는 3단 전체를 센다 — 대분류 개수가 아니다")
+    public void countPublicTree_countsEveryDepth (){
+        CategoryNode root = node(1L, null, "mach", "기계", 1, true);
+        CategoryNode child = node(2L, 1L, "mach-cnc", "CNC", 2, true);
+        CategoryNode grandChild = node(3L, 2L, "mach-cnc-lathe", "CNC 선반", 3, true);
+        addChild(root, child);
+        addChild(child, grandChild);
+
+        given(treeService.getRoots()).willReturn(List.of(root));
+
+        assertThat(categoryService.countPublicTree()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("비활성 조상 아래의 활성 자식은 세지 않는다 — 평면 count(active) 와 답이 갈리는 지점")
+    public void countPublicTree_excludesActiveChildrenUnderInactiveAncestor (){
+        // active = true 인 노드는 셋(살아있는 중분류, 기계, CNC)이지만 공개 트리에 실리는 건 둘뿐이다.
+        // 조건을 다시 적는 대신 공개 트리를 그대로 세기 때문에 이 차이가 자동으로 반영된다.
+        CategoryNode retiredRoot = node(1L, null, "retired", "폐기된 대분류", 1, false);
+        CategoryNode activeChild = node(2L, 1L, "retired-child", "살아있는 중분류", 2, true);
+        addChild(retiredRoot, activeChild);
+
+        CategoryNode aliveRoot = node(3L, null, "mach", "기계", 1, true);
+        CategoryNode aliveChild = node(4L, 3L, "cnc", "CNC", 2, true);
+        addChild(aliveRoot, aliveChild);
+
+        given(treeService.getRoots()).willReturn(List.of(retiredRoot, aliveRoot));
+
+        assertThat(categoryService.countPublicTree()).isEqualTo(2);
+        // 현황 숫자와 실제 선택지가 어긋나면 안 된다 — 같은 트리를 보고 있음을 함께 잠근다.
+        assertThat(categoryService.countPublicTree())
+                .isEqualTo(flatten(categoryService.getPublicTree()));
+    }
+
+    @Test
+    @DisplayName("공개 트리가 비면 0")
+    public void countPublicTree_empty (){
+        given(treeService.getRoots()).willReturn(List.of());
+
+        assertThat(categoryService.countPublicTree()).isZero();
+    }
+
+    /** 프론트가 화면에서 세는 방식(트리를 평탄화해 길이). 서버 카운트가 이것과 같아야 한다. */
+    private long flatten (List<CategoryPublicResponse> nodes){
+        return nodes.stream().mapToLong(node -> 1 + flatten(node.children())).sum();
+    }
+
     // 테스트 헬퍼 — CategoryAdminServiceTest 와 동일한 방식(addChild 가 패키지 전용이라 리플렉션)
     private CategoryNode node (Long id, Long parentId, String slug, String name, int depth, boolean active){
         return new CategoryNode(id, parentId, slug, name, "icon-" + slug, "desc-" + slug, depth, 0, active);

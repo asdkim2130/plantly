@@ -31,6 +31,7 @@ import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyDraftService;
+import project.plantly.domain.company.service.CompanyStatsService;
 import project.plantly.domain.company.service.CompanyVerificationService;
 import project.plantly.domain.company.service.CompanyService;
 import project.plantly.domain.company.service.CompanyUpdateService;
@@ -89,6 +90,11 @@ public class CompanyUpdateControllerTest {
 
     @MockitoBean
     private CompanyDraftService companyDraftService;
+
+    // 이 테스트는 수정 경로만 보지만 슬라이스가 CompanyController 전체를 띄우므로,
+    // 컨트롤러가 주입받는 협력 객체는 쓰지 않아도 전부 모킹해야 컨텍스트가 뜬다.
+    @MockitoBean
+    private CompanyStatsService companyStatsService;
 
     private MockMvc mockMvc;
 
