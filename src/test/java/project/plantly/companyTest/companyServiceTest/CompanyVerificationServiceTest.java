@@ -6,7 +6,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
+import project.plantly.domain.company.policy.InitialSubscriptionPolicy;
 import project.plantly.companyTest.support.CompanyVerificationFixture;
 import project.plantly.domain.company.dto.CompanyReverificationRequest;
 import project.plantly.domain.company.dto.CompanyReverificationResponse;
@@ -44,6 +47,11 @@ class CompanyVerificationServiceTest {
 
     @Mock NtsClient ntsClient;
     @Mock CompanyVerificationWriter writer;
+
+    // 등급 쪽은 외부 의존이 없는 순수 계산이라 mock 이 아니라 실물을 넣는다 — 발급 응답이 실어 내리는
+    // 초기 등급·한도가 실제 정책 표와 같은 값인지까지 이 테스트가 함께 보게 된다.
+    @Spy InitialSubscriptionPolicy initialSubscriptionPolicy = new InitialSubscriptionPolicy();
+    @Spy GradePolicyRegistry gradePolicyRegistry = new GradePolicyRegistry();
 
     @InjectMocks CompanyVerificationService service;
 

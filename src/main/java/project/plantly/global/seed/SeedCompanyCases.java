@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.function.UnaryOperator;
 
 /**
- * 계약 케이스 회사 C01~C24.
+ * 계약 케이스 회사 C01~C25.
  *
  * <p>이 목록이 시드의 본체다. 각 행은 채우기 위한 데이터가 아니라 <b>프론트-백엔드 계약의 한 갈래를
  * 증명하기 위한 표본</b>이고, 회사명 앞의 케이스 코드가 그 표본의 안정 키다(id 는 시드할 때마다 바뀐다).
@@ -35,19 +35,24 @@ public class SeedCompanyCases {
     private final SeedMasterCatalog masters;
     private final GradePolicyRegistry gradePolicyRegistry;
 
+    // 자가등록이 실제로 받는 등급. InitialSubscriptionPolicy 와 같은 값을 시드가 알아야 요청을 그 한도로 채울 수 있다.
+    // (정책을 주입해 물어보지 않는 이유: 정책은 CompanyVerification 을 받는데, 시드는 요청을 만드는 시점에 아직 없다)
+    private static final CompanyGrade SELF_REGISTRATION_GRADE = CompanyGrade.ENTERPRISE;
+
     public List<SeedCompanyRef> create(SeedAccounts accounts) {
         List<SeedCompanyRef> refs = new ArrayList<>();
         Long adminId = accounts.admin().userId();
         LocalDate today = LocalDate.now();
 
-        // ===== 자가등록(USER). 소유자 멤버십 + businessVerified 가 실제 경로로 채워진다. 구독은 FREE 로 시작. =====
+        // ===== 자가등록(USER). 소유자 멤버십 + businessVerified 가 실제 경로로 채워진다.
+        //       국세청 인증을 직접 통과한 등록이라 구독은 체험 ENTERPRISE 로 시작한다. =====
 
         refs.add(userCase(accounts.owner1(), 1, "기본공개",
                 "기준선. 공개 + 자가등록 + 사업자 인증 완료 상태의 카드·상세·소유자 뷰", b -> b));
 
         Long privateUserCompany = userCompany(accounts.owner1(), 2, "비공개",
                 b -> b.visibility(CompanyVisibility.PRIVATE));
-        // 자가등록은 FREE 로만 시작한다. 유료 등급을 쓰는 유저 회사를 보려면 등록 후 구독을 올려야 한다.
+        // 자가등록은 체험 ENTERPRISE 로만 시작한다. 다른 등급의 유저 회사를 보려면 등록 후 구독을 바꿔야 한다.
         companies.changeSubscription(privateUserCompany, CompanyGrade.STANDARD, SubscriptionStatus.ACTIVE, today.plusYears(1));
         refs.add(new SeedCompanyRef("C02", privateUserCompany, accounts.owner1().code(),
                 "비공개 회사. 익명·타인에게는 목록/상세에서 빠지고 소유자와 관리자에게만 보여야 한다 (구독 STANDARD)"));
@@ -192,6 +197,20 @@ public class SeedCompanyCases {
                 "'" + EQUIPMENT_ONLY_TOKEN + "' 토큰이 장비명에만 있고 회사명·소개글에는 없다."
                         + " 이 키워드로 검색해 잡히면 자식 텍스트(equipment_text)까지 색인된 것이다"));
 
+        // ===== 등급 재조정(비활성 항목) =====
+        // 저장은 살아 있지만 공개에서 빠진 항목이 있는 회사. 다운그레이드·체험 만료 후의 상태를 미리 만들어 둔 것이다.
+        // 프로덕션 경로로는 아직 이 상태가 만들어지지 않는다(자가등록은 최상위 등급이고 재조정 배치가 없다) —
+        // 이 케이스가 없으면 조회·카드·색인에 넣은 active 필터가 한 번도 발동하지 않아 동작을 확인할 수 없다.
+        Long downgraded = adminCompany(adminId, 25, "강등후초과", CompanyGrade.FREE,
+                b -> b.categoryIds(masters.categoryIds(SeedIndexes.forCase(25), 5))
+                        .detailImageCount(6));
+        companies.changeSubscription(downgraded, CompanyGrade.FREE, SubscriptionStatus.ACTIVE, null);
+        // FREE 한도(카테고리 1, 상세이미지 3)만 남기고 나머지는 끈다.
+        companies.deactivateOverflow(downgraded, 1, 3);
+        refs.add(new SeedCompanyRef("C25", downgraded, null,
+                "카테고리 5건 중 1건, 상세이미지 6장 중 3장만 활성. 공개 상세·카드·패싯 검색에서는 꺼진 항목이"
+                        + " 아예 빠지고, 관리자/소유자 상세에서는 전부 내려오되 active=false 로 구분돼야 한다"));
+
         log.info("[seed] 계약 케이스 회사 {}건 생성", refs.size());
         return refs;
     }
@@ -211,8 +230,9 @@ public class SeedCompanyCases {
      * 자가등록. 선행 인증을 먼저 발급하고 그것을 소비해 만든다 — 인증 소비, 초안 삭제, OWNER 멤버십,
      * businessVerified 가 전부 실제 등록 트랜잭션 안에서 일어난다.
      *
-     * <p>구독이 FREE 라 등급 정책이 실제로 발화한다. {@code limitTo} 로 FREE 한도(카테고리 1, 상세이미지 3,
-     * 동영상 불가)에 맞추지 않으면 등록 자체가 거부된다.
+     * <p>국세청 인증을 직접 통과한 등록이라 구독은 체험 등급(ENTERPRISE)으로 시작한다
+     * ({@code InitialSubscriptionPolicy}). {@code limitTo} 로 그 한도에 맞추는 것은 여전히 필요하다 —
+     * 최상위 등급이라 실제로 걸릴 일은 없지만, 시드가 등급 표를 읽어 채우면 표를 조정했을 때 시드도 따라온다.
      */
     private Long userCompany(SeedAccount owner, int caseNo, String label,
                              UnaryOperator<SeedCompanyRequestBuilder> customize) {
@@ -225,7 +245,7 @@ public class SeedCompanyCases {
 
         SeedCompanyRequestBuilder builder = SeedCompanyRequestBuilder.of(index, masters)
                 .companyName(named(caseNo, label, index))
-                .limitTo(gradePolicyRegistry.of(CompanyGrade.FREE), masters);
+                .limitTo(gradePolicyRegistry.of(SELF_REGISTRATION_GRADE), masters);
 
         return companies.createByUser(owner.userId(), customize.apply(builder).buildMy(verificationId));
     }

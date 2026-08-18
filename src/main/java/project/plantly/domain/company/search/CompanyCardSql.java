@@ -18,6 +18,11 @@ import java.util.Objects;
  * 회사 스칼라 + 회사가 연결한 카테고리/태그/산업군 이름을 회사당 array_agg 로 집계한다. 카테고리는 직접 링크
  * (company_category)만 — closure 조상은 제외. 셋 다 회사가 등록 시 고른 순서(링크/태그의 display_order)로 정렬한다.
  *
+ * <p>카테고리는 꺼진 링크({@code cc.active = false})를 제외한다. 검색 색인(closure)도 같은 조건으로 만들어지므로
+ * "패싯으로는 잡히는데 카드에는 안 보이는" 어긋남이 생기지 않는다. 관리자 목록({@link AdminCompanyCardSql})도 이
+ * 컬럼을 그대로 재사용해 같은 기준으로 본다 — 관리자 카드의 용도가 '사용자에게 어떻게 보이는지' 확인이라서다.
+ * 저장돼 있지만 꺼진 항목까지 봐야 하는 건 목록이 아니라 상세이고, 그쪽은 CompanyDetailResponse 가 전부 싣는다.
+ *
  * <p>{@code brand_color} 는 메인 스팟라이트 배너 배경에만 쓰이지만 이 공유 프로젝션에 둔다 — company 행의 스칼라라
  * 조인이 늘지 않는 반면, 레일 전용 프로젝션을 따로 파면 다섯 읽기 경로가 공유하던 카드 매퍼가 갈라진다.
  * 나머지 경로는 이 값을 안 읽으면 그만이다. {@code cover_image_url} 도 같은 이유로 스칼라다 — 갤러리
@@ -38,7 +43,7 @@ public final class CompanyCardSql {
             c.verified, c.featured, c.spotlight,
             (SELECT array_agg(cat.category_name ORDER BY cc.display_order)
                FROM company_category cc JOIN category cat ON cat.id = cc.category_id
-               WHERE cc.company_id = c.id) AS category_names,
+               WHERE cc.company_id = c.id AND cc.active) AS category_names,
             (SELECT array_agg(t.tag_name ORDER BY t.display_order)
                FROM company_tag t WHERE t.company_id = c.id) AS tag_names,
             (SELECT array_agg(ind.industry_name ORDER BY ci.display_order)

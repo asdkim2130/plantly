@@ -11,6 +11,7 @@ import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanyContact;
 import project.plantly.domain.company.entity.CompanyImage;
 import project.plantly.domain.company.entity.CompanyProjectReference;
+import project.plantly.domain.company.entity.link.CompanyCategory;
 import project.plantly.domain.company.enums.ImageType;
 import project.plantly.domain.company.enums.PricingType;
 import project.plantly.domain.company.enums.TrlLevel;
@@ -83,8 +84,12 @@ public record CompanyPublicResponse(
     // videoVisible = 이 응답에 videoUrl 을 실을지. 등급을 여기서 판단하지 않고 이미 끝난 판정만 받는다
     // (DTO 가 등급 정책을 알기 시작하면 정책이 응답 계층까지 번진다). 호출자마다 답이 다르다 —
     // 공개 조회는 회사 구독 등급으로 계산하고, 소유자/관리자 뷰는 자기 데이터라 항상 true 다.
+    //
+    // includeHidden = 꺼진(active=false) 컬렉션 항목을 실을지. 공개 조회는 false(아예 빠진다),
+    // 소유자/관리자 뷰는 true(전부 싣고 active 플래그로 회색 처리한다). videoVisible 과 축이 다르다 —
+    // 저쪽은 등급으로 매번 판정하는 스칼라고, 이쪽은 이미 저장돼 있는 상태를 그대로 읽는 것뿐이다.
     public static CompanyPublicResponse from(CompanyAggregate aggregate, boolean likedByMe, boolean favoritedByMe,
-                                             boolean videoVisible) {
+                                             boolean videoVisible, boolean includeHidden) {
         Company c = aggregate.company();
         return new CompanyPublicResponse(
                 c.getId(),
@@ -114,14 +119,18 @@ public record CompanyPublicResponse(
                 favoritedByMe,
                 aggregate.representativeContact() == null ? null
                         : ContactResponse.from(aggregate.representativeContact()),
-                aggregate.galleryImages().stream().map(GalleryImageResponse::from).toList(),
+                aggregate.galleryImages().stream()
+                        .filter(image -> includeHidden || image.isActive())
+                        .map(GalleryImageResponse::from).toList(),
                 aggregate.representativeReference() == null ? null
                         : ProjectReferenceResponse.from(aggregate.representativeReference(),
                                 aggregate.representativeReferenceThumbnail()),
                 aggregate.materials().stream().map(m -> m.getMaterialName()).toList(),
                 aggregate.equipment().stream().map(e -> e.getEquipmentName()).toList(),
                 aggregate.tags().stream().map(t -> t.getTagName()).toList(),
-                aggregate.categories().stream().map(CategoryResponse::from).toList(),
+                aggregate.categories().stream()
+                        .filter(link -> includeHidden || link.isActive())
+                        .map(CategoryResponse::from).toList(),
                 aggregate.certifications().stream().map(CertificationResponse::from).toList(),
                 aggregate.countries().stream().map(CountryResponse::from).toList(),
                 aggregate.regions().stream().map(RegionResponse::from).toList(),
@@ -135,9 +144,12 @@ public record CompanyPublicResponse(
         }
     }
 
-    public record GalleryImageResponse(String imageUrl, ImageType imageType, int displayOrder) {
+    // active 는 공개 뷰에선 언제나 true 다(꺼진 건 애초에 빠진다). 값이 갈리는 건 소유자/관리자 뷰뿐이며,
+    // 그쪽 화면이 "저장돼 있지만 지금은 공개되지 않는 항목"을 회색으로 구분하는 근거가 된다.
+    public record GalleryImageResponse(String imageUrl, ImageType imageType, int displayOrder, boolean active) {
         public static GalleryImageResponse from(CompanyImage image) {
-            return new GalleryImageResponse(image.getImageUrl(), image.getImageType(), image.getDisplayOrder());
+            return new GalleryImageResponse(image.getImageUrl(), image.getImageType(), image.getDisplayOrder(),
+                    image.isActive());
         }
     }
 
@@ -160,10 +172,13 @@ public record CompanyPublicResponse(
         }
     }
 
-    public record CategoryResponse(Long id, String categoryName, String slug, int depth, String iconUrl) {
-        public static CategoryResponse from(Category category) {
+    // GalleryImageResponse.active 와 같은 규약. 노출 여부는 마스터가 아니라 링크의 상태라 링크에서 읽는다.
+    public record CategoryResponse(Long id, String categoryName, String slug, int depth, String iconUrl,
+                                   boolean active) {
+        public static CategoryResponse from(CompanyCategory link) {
+            Category category = link.getCategory();
             return new CategoryResponse(category.getId(), category.getCategoryName(),
-                    category.getSlug(), category.getDepth(), category.getIconUrl());
+                    category.getSlug(), category.getDepth(), category.getIconUrl(), link.isActive());
         }
     }
 

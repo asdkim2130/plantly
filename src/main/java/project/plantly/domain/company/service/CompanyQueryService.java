@@ -167,7 +167,9 @@ public class CompanyQueryService {
         boolean favoritedByMe = viewerId != null && companyFavoriteRepository.existsByUserIdAndCompanyId(viewerId, companyId);
 
         CompanyAggregate aggregate = aggregateLoader.load(company);
-        return CompanyPublicResponse.from(aggregate, likedByMe, favoritedByMe, videoVisibleToPublic(aggregate));
+        // 마지막 false = 꺼진(active=false) 컬렉션 항목은 응답에서 아예 뺀다. 등급을 여기서 다시 읽지 않는다 —
+        // "왜 꺼졌는가"는 쓰기·재조정 쪽이 이미 판단해 저장해 둔 상태이고, 조회는 그 상태만 읽는다.
+        return CompanyPublicResponse.from(aggregate, likedByMe, favoritedByMe, videoVisibleToPublic(aggregate), false);
     }
 
     // 동영상 공개 자격. 저장은 등급과 무관하게 열려 있고(등급이 올랐을 때 재입력을 강요하지 않기 위해),

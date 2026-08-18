@@ -135,7 +135,10 @@ public class CompanyControllerTest {
         CompanyVerificationRequest request = CompanyCreateRequestSamples.verificationRequest();
         given(companyVerificationService.verify(eq(7L), any(CompanyVerificationRequest.class)))
                 .willReturn(new CompanyVerificationResponse(99L, "1234567890", "김대표",
-                        LocalDate.of(2020, 1, 15), LocalDateTime.of(2026, 7, 19, 12, 30)));
+                        LocalDate.of(2020, 1, 15), LocalDateTime.of(2026, 7, 19, 12, 30),
+                        // 인증에 성공한 자가등록은 체험 최고등급으로 시작하고, 등록 폼은 그 한도로 입력을 연다.
+                        CompanyGrade.ENTERPRISE,
+                        new CompanyVerificationResponse.InitialLimits(10, 30, 10, true)));
         authenticate(7L, UserRole.MEMBER);
 
         mockMvc.perform(post("/api/v1/companies/verification")
