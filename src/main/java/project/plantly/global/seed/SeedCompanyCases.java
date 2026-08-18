@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.function.UnaryOperator;
 
 /**
- * 계약 케이스 회사 C01~C24.
+ * 계약 케이스 회사 C01~C25.
  *
  * <p>이 목록이 시드의 본체다. 각 행은 채우기 위한 데이터가 아니라 <b>프론트-백엔드 계약의 한 갈래를
  * 증명하기 위한 표본</b>이고, 회사명 앞의 케이스 코드가 그 표본의 안정 키다(id 는 시드할 때마다 바뀐다).
@@ -196,6 +196,20 @@ public class SeedCompanyCases {
         refs.add(new SeedCompanyRef("C24", equipmentOnly, null,
                 "'" + EQUIPMENT_ONLY_TOKEN + "' 토큰이 장비명에만 있고 회사명·소개글에는 없다."
                         + " 이 키워드로 검색해 잡히면 자식 텍스트(equipment_text)까지 색인된 것이다"));
+
+        // ===== 등급 재조정(비활성 항목) =====
+        // 저장은 살아 있지만 공개에서 빠진 항목이 있는 회사. 다운그레이드·체험 만료 후의 상태를 미리 만들어 둔 것이다.
+        // 프로덕션 경로로는 아직 이 상태가 만들어지지 않는다(자가등록은 최상위 등급이고 재조정 배치가 없다) —
+        // 이 케이스가 없으면 조회·카드·색인에 넣은 active 필터가 한 번도 발동하지 않아 동작을 확인할 수 없다.
+        Long downgraded = adminCompany(adminId, 25, "강등후초과", CompanyGrade.FREE,
+                b -> b.categoryIds(masters.categoryIds(SeedIndexes.forCase(25), 5))
+                        .detailImageCount(6));
+        companies.changeSubscription(downgraded, CompanyGrade.FREE, SubscriptionStatus.ACTIVE, null);
+        // FREE 한도(카테고리 1, 상세이미지 3)만 남기고 나머지는 끈다.
+        companies.deactivateOverflow(downgraded, 1, 3);
+        refs.add(new SeedCompanyRef("C25", downgraded, null,
+                "카테고리 5건 중 1건, 상세이미지 6장 중 3장만 활성. 공개 상세·카드·패싯 검색에서는 꺼진 항목이"
+                        + " 아예 빠지고, 관리자/소유자 상세에서는 전부 내려오되 active=false 로 구분돼야 한다"));
 
         log.info("[seed] 계약 케이스 회사 {}건 생성", refs.size());
         return refs;

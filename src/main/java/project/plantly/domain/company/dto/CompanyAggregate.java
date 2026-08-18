@@ -1,6 +1,5 @@
 package project.plantly.domain.company.dto;
 
-import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.certification.Certification;
 import project.plantly.domain.company.country.Country;
 import project.plantly.domain.company.domesticRegion.DomesticRegion;
@@ -12,6 +11,7 @@ import project.plantly.domain.company.entity.CompanyMaterial;
 import project.plantly.domain.company.entity.CompanyProjectReference;
 import project.plantly.domain.company.entity.CompanySubscription;
 import project.plantly.domain.company.entity.CompanyTag;
+import project.plantly.domain.company.entity.link.CompanyCategory;
 import project.plantly.domain.company.industry.Industry;
 
 import java.util.List;
@@ -38,7 +38,9 @@ public record CompanyAggregate(
         List<CompanyMaterial> materials,
         List<CompanyEquipment> equipment,
         List<CompanyTag> tags,
-        List<Category> categories,
+        // 카테고리는 마스터가 아니라 '링크'로 담는다 — 노출 여부(active)가 링크의 상태라서, 마스터만 담으면
+        // 공개 뷰가 무엇을 가려야 하는지 알 수 없다. 마스터는 link.getCategory() 로 꺼낸다.
+        List<CompanyCategory> categories,
         List<Certification> certifications,
         List<Country> countries,
         List<DomesticRegion> regions,

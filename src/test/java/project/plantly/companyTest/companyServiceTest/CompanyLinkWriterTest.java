@@ -61,8 +61,8 @@ class CompanyLinkWriterTest {
         assertThat(orderedCategoryIds).containsExactly(c3.getId(), c1.getId(), c2.getId());
 
         // 상세 조회(CompanyAggregateLoader)가 쓰는 프로젝션도 displayOrder(=선택 순서) 순으로 반환한다.
-        List<Long> projectedCategoryIds = companyCategoryRepository.findCategoriesByCompanyId(company.getId())
-                .stream().map(Category::getId).toList();
+        List<Long> projectedCategoryIds = companyCategoryRepository.findLinksByCompanyId(company.getId())
+                .stream().map(link -> link.getCategory().getId()).toList();
         assertThat(projectedCategoryIds).containsExactly(c3.getId(), c1.getId(), c2.getId());
     }
 

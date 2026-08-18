@@ -472,6 +472,9 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "galleryImages[].imageUrl").type(JsonFieldType.STRING).description("이미지 URL"),
                 fieldWithPath(p + "galleryImages[].imageType").type(JsonFieldType.STRING).description("이미지 타입"),
                 fieldWithPath(p + "galleryImages[].displayOrder").type(JsonFieldType.NUMBER).description("표시 순서"),
+                fieldWithPath(p + "galleryImages[].active").type(JsonFieldType.BOOLEAN)
+                        .description("공개 노출 여부. 공개 조회에서는 꺼진 이미지가 아예 빠지므로 항상 true 이고,"
+                                + " 소유자/관리자 조회에서만 false 가 나타난다(저장은 살아 있으나 등급 한도로 가려진 상태 → 회색 처리)"),
 
                 // 대표 레퍼런스 1건 + 표지 썸네일 (없으면 null)
                 fieldWithPath(p + "representativeReference").type(JsonFieldType.OBJECT).optional().description("대표 프로젝트 레퍼런스 (없으면 null)"),
@@ -491,6 +494,9 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "categories[].slug").type(JsonFieldType.STRING).description("카테고리 슬러그(URL slug)"),
                 fieldWithPath(p + "categories[].depth").type(JsonFieldType.NUMBER).description("계층 깊이"),
                 fieldWithPath(p + "categories[].iconUrl").type(JsonFieldType.STRING).optional().description("아이콘 URL"),
+                fieldWithPath(p + "categories[].active").type(JsonFieldType.BOOLEAN)
+                        .description("공개 노출 여부. galleryImages[].active 와 같은 규약 —"
+                                + " 공개 조회에서는 항상 true, 소유자/관리자 조회에서만 false 가 나타난다"),
 
                 fieldWithPath(p + "certifications").type(JsonFieldType.ARRAY).description("인증 목록"),
                 fieldWithPath(p + "certifications[].id").type(JsonFieldType.NUMBER).description("인증 ID"),
