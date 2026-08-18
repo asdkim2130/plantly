@@ -59,7 +59,7 @@ class CompanyShowcaseQueryTest {
         given(showcaseCardRepository.findFeatured(FEATURED_SLOTS))
                 .willReturn(new ShowcaseRail(List.of(card(3L)), 1));
         given(showcaseCardRepository.findLatest(LATEST_SLOTS))
-                .willReturn(new ShowcaseRail(List.of(card(4L), card(5L)), 40));
+                .willReturn(List.of(card(4L), card(5L)));
 
         CompanyShowcaseResponse response = service.getShowcase(null);
 
@@ -69,15 +69,16 @@ class CompanyShowcaseQueryTest {
     }
 
     @Test
-    @DisplayName("최근 등록 레일의 후보 초과는 경고 없이 통과한다 — 이 레일에선 초과가 정상이다")
-    void latestRailOverflow_isNotTreatedAsAnomaly() {
+    @DisplayName("최근 등록 레일은 후보 총수를 세지 않고도 조립된다")
+    void latestRail_needsNoCandidateCount() {
         given(showcaseCardRepository.findSpotlight(SPOTLIGHT_SLOTS))
                 .willReturn(new ShowcaseRail(List.of(), 0));
         given(showcaseCardRepository.findFeatured(FEATURED_SLOTS))
                 .willReturn(new ShowcaseRail(List.of(), 0));
-        // 후보 500 건 vs 자리 12 칸. 스팟라이트였다면 경고 대상이지만 여기선 정상 동작이다.
+        // 후보가 자리보다 많아도 셀 값 자체가 없다 — 스팟라이트였다면 경고 대상이지만 여기선 정상 동작이라
+        // 반환 타입부터 ShowcaseRail 이 아니라 카드 목록이다.
         given(showcaseCardRepository.findLatest(LATEST_SLOTS))
-                .willReturn(new ShowcaseRail(List.of(card(9L)), 500));
+                .willReturn(List.of(card(9L)));
 
         CompanyShowcaseResponse response = service.getShowcase(null);
 
@@ -92,7 +93,7 @@ class CompanyShowcaseQueryTest {
         given(showcaseCardRepository.findFeatured(FEATURED_SLOTS))
                 .willReturn(new ShowcaseRail(List.of(card(3L)), 1));
         given(showcaseCardRepository.findLatest(LATEST_SLOTS))
-                .willReturn(new ShowcaseRail(List.of(card(4L)), 1));
+                .willReturn(List.of(card(4L)));
         // 배치 조회는 세 레일을 합친 id 목록으로 각 1회만 일어난다(레일별로 나눠 부르면 2회씩 6회가 된다).
         given(companyLikeRepository.findLikedCompanyIds(eq(7L), anyList())).willReturn(List.of(2L));
         given(companyFavoriteRepository.findFavoritedCompanyIds(eq(7L), anyList())).willReturn(List.of(3L, 4L));
@@ -113,7 +114,7 @@ class CompanyShowcaseQueryTest {
         given(showcaseCardRepository.findFeatured(FEATURED_SLOTS))
                 .willReturn(new ShowcaseRail(List.of(), 0));
         given(showcaseCardRepository.findLatest(LATEST_SLOTS))
-                .willReturn(new ShowcaseRail(List.of(card(3L)), 1));
+                .willReturn(List.of(card(3L)));
 
         CompanyShowcaseResponse response = service.getShowcase(null);
 
@@ -130,7 +131,7 @@ class CompanyShowcaseQueryTest {
         given(showcaseCardRepository.findFeatured(FEATURED_SLOTS))
                 .willReturn(new ShowcaseRail(List.of(), 0));
         given(showcaseCardRepository.findLatest(LATEST_SLOTS))
-                .willReturn(new ShowcaseRail(List.of(), 0));
+                .willReturn(List.of());
 
         CompanyShowcaseResponse response = service.getShowcase(null);
 

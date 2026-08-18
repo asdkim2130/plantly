@@ -16,6 +16,7 @@ import project.plantly.domain.company.repository.ShowcaseCardRepository.Showcase
 import project.plantly.domain.company.search.dto.CompanySummary;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -177,7 +178,7 @@ class ShowcaseCardRepositoryTest extends PostgresContainerTest {
         Company third = withSubscription("마지막", CompanySubscription.freeForUser(TODAY));
         em.flush();
 
-        assertThat(ids(repository.findLatest(SLOTS)))
+        assertThat(idsOf(repository.findLatest(SLOTS)))
                 .containsExactly(third.getId(), second.getId(), first.getId());
     }
 
@@ -193,7 +194,7 @@ class ShowcaseCardRepositoryTest extends PostgresContainerTest {
         em.flush();
 
         assertThat(repository.findSpotlight(SLOTS).cards()).isEmpty();   // 자격은 아무도 없는데
-        assertThat(ids(repository.findLatest(SLOTS)))                    // 최근 등록에는 전원 등장한다
+        assertThat(idsOf(repository.findLatest(SLOTS)))                    // 최근 등록에는 전원 등장한다
                 .containsExactlyInAnyOrder(free.getId(), trial.getId(), expired.getId());
     }
 
@@ -207,23 +208,25 @@ class ShowcaseCardRepositoryTest extends PostgresContainerTest {
         priv.changeVisibility(CompanyVisibility.PRIVATE);
         em.flush();
 
-        assertThat(ids(repository.findLatest(SLOTS))).containsExactly(visible.getId());
+        assertThat(idsOf(repository.findLatest(SLOTS))).containsExactly(visible.getId());
     }
 
     @Test
-    @DisplayName("최근 등록 레일은 후보 초과가 정상이다 — 자르되 총수로 '더보기'가 의미 있는지 알려준다")
-    void latestRail_truncatesWithoutTreatingOverflowAsAnomaly() {
+    @DisplayName("최근 등록 레일은 자리 수만큼만 자르고 후보 총수는 세지 않는다")
+    void latestRail_truncatesWithoutCountingCandidates() {
+        List<Company> registered = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            withSubscription("회사" + i, CompanySubscription.freeForUser(TODAY));
+            registered.add(withSubscription("회사" + i, CompanySubscription.freeForUser(TODAY)));
         }
         em.flush();
 
-        ShowcaseRail rail = repository.findLatest(2);
+        // 반환 타입이 ShowcaseRail 이 아니라 카드 목록이라는 것 자체가 계약이다 — 이 레일은 초과가
+        // 정상이라 셀 이유가 없고, 세면 공개 회사 전체를 훑는 비용만 남는다.
+        List<CompanySummary> cards = repository.findLatest(2);
 
-        // 초과는 경고 대상이 아니다(호출부가 이 레일에는 경고를 붙이지 않는다). candidateCount 는
-        // 자리 밖에 더 있다는 사실 = 더보기를 띄울 근거로만 쓴다.
-        assertThat(rail.cards()).hasSize(2);
-        assertThat(rail.candidateCount()).isEqualTo(5);
+        // 잘려도 '가장 최근 둘'이 남는다(자르기가 정렬 뒤에 일어난다는 뜻).
+        assertThat(cards).extracting(CompanySummary::id)
+                .containsExactly(registered.get(4).getId(), registered.get(3).getId());
     }
 
     @Test
@@ -238,7 +241,12 @@ class ShowcaseCardRepositoryTest extends PostgresContainerTest {
     // ===== helpers =====
 
     private List<Long> ids(ShowcaseRail rail) {
-        return rail.cards().stream().map(CompanySummary::id).toList();
+        return idsOf(rail.cards());
+    }
+
+    // 최근 등록 레일은 ShowcaseRail 을 쓰지 않는다(후보 총수를 세지 않으므로) — 카드 목록을 그대로 받는다.
+    private List<Long> idsOf(List<CompanySummary> cards) {
+        return cards.stream().map(CompanySummary::id).toList();
     }
 
     // 회사 + 구독 1:1 을 함께 저장한다. 구독은 회사당 반드시 1건 존재하므로(등록 트랜잭션 불변식) 테스트도 같이 만든다.

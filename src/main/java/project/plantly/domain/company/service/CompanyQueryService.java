@@ -113,16 +113,16 @@ public class CompanyQueryService {
     public CompanyShowcaseResponse getShowcase(Long viewerId) {
         ShowcaseRail spotlightRail = showcaseCardRepository.findSpotlight(spotlightSlots);
         ShowcaseRail featuredRail = showcaseCardRepository.findFeatured(featuredSlots);
-        ShowcaseRail latestRail = showcaseCardRepository.findLatest(latestSlots);
+        // 최근 등록만 반환 타입이 다르다 — 후보 초과가 정상 상태라 셀 이유가 없어 총수를 싣지 않는다.
+        // 그래서 아래 초과 경고도 이 레일에는 없다(붙일 값 자체가 없고, 붙였다면 매 호출 로그가 찍혔을 것이다).
+        List<CompanySummary> latestCards = showcaseCardRepository.findLatest(latestSlots);
 
         warnIfOverflow("스팟라이트", spotlightRail, spotlightSlots);
         warnIfOverflow("추천", featuredRail, featuredSlots);
-        // 최근 등록 레일은 일부러 뺀다. 후보가 공개 회사 전체라 회사가 자리 수를 넘는 순간부터 항상 초과이고,
-        // 그건 이상 신호가 아니라 의도한 동작이다 — 경고를 붙이면 매 호출 로그가 찍힌다.
 
         List<CompanySummary> combined = new ArrayList<>(spotlightRail.cards());
         combined.addAll(featuredRail.cards());
-        combined.addAll(latestRail.cards());
+        combined.addAll(latestCards);
         List<CompanySummary> enriched = enrichViewerFlags(combined, viewerId);
 
         int spotlightEnd = spotlightRail.cards().size();
