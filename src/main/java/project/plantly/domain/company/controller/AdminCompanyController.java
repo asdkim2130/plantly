@@ -1,6 +1,7 @@
 package project.plantly.domain.company.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -176,21 +177,21 @@ public class AdminCompanyController {
 
     @PutMapping("/api/v1/admin/companies/{id}/images")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceGalleryImagesByAdmin(@PathVariable Long id, @Valid @RequestBody List<ImageRequest> images) {
+    public ApiResponse<Void> replaceGalleryImagesByAdmin(@PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "이미지 항목은 비어 있을 수 없습니다.") ImageRequest> images) {
         companyUpdateService.replaceGalleryImagesByAdmin(id, images);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/admin/companies/{id}/contacts")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceContactsByAdmin(@PathVariable Long id, @Valid @RequestBody List<ContactRequest> contacts) {
+    public ApiResponse<Void> replaceContactsByAdmin(@PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "연락처 항목은 비어 있을 수 없습니다.") ContactRequest> contacts) {
         companyUpdateService.replaceContactsByAdmin(id, contacts);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/admin/companies/{id}/references")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceReferencesByAdmin(@PathVariable Long id, @Valid @RequestBody List<ReferenceRequest> references) {
+    public ApiResponse<Void> replaceReferencesByAdmin(@PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "레퍼런스 항목은 비어 있을 수 없습니다.") ReferenceRequest> references) {
         companyUpdateService.replaceReferencesByAdmin(id, references);
         return ApiResponse.ok();
     }
@@ -212,7 +213,7 @@ public class AdminCompanyController {
     @PutMapping("/api/v1/admin/companies/{id}/certifications")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> replaceCertificationsByAdmin(@PathVariable Long id,
-                                                         @RequestBody List<CertificationRequest> certifications) {
+                                                         @Valid @RequestBody List<@NotNull(message = "인증 항목은 비어 있을 수 없습니다.") CertificationRequest> certifications) {
         companyUpdateService.replaceCertificationsByAdmin(id, certifications);
         return ApiResponse.ok();
     }

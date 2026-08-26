@@ -1,6 +1,7 @@
 package project.plantly.domain.company.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -247,21 +248,21 @@ public class CompanyController {
 
     @PutMapping("/api/v1/companies/{id}/images")
     public ApiResponse<Void> replaceGalleryImages(@AuthenticationPrincipal UserPrincipal principal,
-                                                  @PathVariable Long id, @Valid @RequestBody List<ImageRequest> images) {
+                                                  @PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "이미지 항목은 비어 있을 수 없습니다.") ImageRequest> images) {
         companyUpdateService.replaceGalleryImagesByUser(id, principal.getUser().getId(), images);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/contacts")
     public ApiResponse<Void> replaceContacts(@AuthenticationPrincipal UserPrincipal principal,
-                                             @PathVariable Long id, @Valid @RequestBody List<ContactRequest> contacts) {
+                                             @PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "연락처 항목은 비어 있을 수 없습니다.") ContactRequest> contacts) {
         companyUpdateService.replaceContactsByUser(id, principal.getUser().getId(), contacts);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/references")
     public ApiResponse<Void> replaceReferences(@AuthenticationPrincipal UserPrincipal principal,
-                                               @PathVariable Long id, @Valid @RequestBody List<ReferenceRequest> references) {
+                                               @PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "레퍼런스 항목은 비어 있을 수 없습니다.") ReferenceRequest> references) {
         companyUpdateService.replaceReferencesByUser(id, principal.getUser().getId(), references);
         return ApiResponse.ok();
     }
@@ -283,7 +284,7 @@ public class CompanyController {
     @PutMapping("/api/v1/companies/{id}/certifications")
     public ApiResponse<Void> replaceCertifications(@AuthenticationPrincipal UserPrincipal principal,
                                                    @PathVariable Long id,
-                                                   @RequestBody List<CertificationRequest> certifications) {
+                                                   @Valid @RequestBody List<@NotNull(message = "인증 항목은 비어 있을 수 없습니다.") CertificationRequest> certifications) {
         companyUpdateService.replaceCertificationsByUser(id, principal.getUser().getId(), certifications);
         return ApiResponse.ok();
     }

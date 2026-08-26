@@ -22,6 +22,7 @@ import project.plantly.domain.company.repository.CompanyCertificationRepository;
 import project.plantly.domain.company.service.CompanyLinkWriter;
 import project.plantly.global.exception.BusinessException;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -169,6 +170,21 @@ class CompanyLinkWriterTest {
                 .extracting(CompanyCertification::displayName)
                 .containsExactly("ISO 9001", "KC 인증");
         assertThat(companyCategoryRepository.findLinksByCompanyId(company.getId())).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("null 원소가 들어와도 NPE 가 아니라 비즈니스 예외(400)로 끊는다")
+    void rejectsNullElementWithoutNpe() {
+        Company company = persistCompany();
+
+        // 컨트롤러 앞단 검증을 뚫고 들어오는 경우(내부 호출·검증 누락)까지 대비한 방어선.
+        CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
+                .certifications(Collections.singletonList(null))
+                .build();
+
+        assertThatThrownBy(() -> linkWriter.write(company, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.CERTIFICATION_NOT_FOUND);
     }
 
     private Certification persistCertification(String name, String slug, CertificationType type) {

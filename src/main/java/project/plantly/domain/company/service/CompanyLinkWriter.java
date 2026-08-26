@@ -114,16 +114,20 @@ public class CompanyLinkWriter {
             return List.of();
         }
 
+        // 원소 자체의 null 을 역참조 전에 먼저 막는다. @Valid 는 null 원소를 거부하지 않기 때문이다 —
+        // non-null 원소 안으로는 중첩 검증이 들어가 certificationId 의 @NotNull 까지 잡아주지만,
+        // 원소가 null 이면 검증할 대상이 없어 그대로 통과한다(그 자리는 List<@NotNull ...> 가 막는다).
+        // 여기 가드는 컨트롤러 검증을 거치지 않는 내부 호출까지 덮는 방어선이다 —
+        // 없으면 {"certifications":[null]} 이 NPE(500)로 나간다.
+        if (requests.stream().anyMatch(r -> r == null || r.certificationId() == null)) {
+            throw new BusinessException(CompanyErrorCode.CERTIFICATION_NOT_FOUND);
+        }
+
         // 정규화(공백 제거 → 빈 문자열은 null)를 먼저 해야 " ISO" 와 "ISO" 가 같은 중복으로 걸린다.
         List<CertificationRequest> distinct = requests.stream()
                 .map(r -> new CertificationRequest(r.certificationId(), CompanyCertification.normalizeCustomName(r.customName())))
                 .distinct()
                 .toList();
-
-        // 마스터 조회 전에 ID 가 비었는지 먼저 막는다.
-        if (distinct.stream().anyMatch(r -> r.certificationId() == null)) {
-            throw new BusinessException(CompanyErrorCode.CERTIFICATION_NOT_FOUND);
-        }
 
         List<Long> masterIds = distinct.stream().map(CertificationRequest::certificationId).distinct().toList();
         List<Certification> masters = certificationRepository.findAllById(masterIds);
