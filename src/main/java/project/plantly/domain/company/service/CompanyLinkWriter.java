@@ -66,32 +66,41 @@ public class CompanyLinkWriter {
     // ===== 링크 전체 교체(PUT) 진입점 =====
     // 각 메서드는 "기존 링크 삭제 → 새 id 리스트로 재생성(displayOrder 재부여)" 하며, create 경로와 검증·저장 로직을 공유한다.
     // null/빈 리스트를 넘기면 삭제만 수행(= 전부 비우기)된다.
+    //
+    // 삭제 뒤에 flush 를 거는 이유 — 파생 delete 는 em.remove 만 걸어두고 실제 DELETE 는 flush 시점에 나가는데,
+    // 링크 PK 가 IDENTITY 라 saveAll 의 INSERT 는 persist 즉시 나간다. 그대로 두면 "기존 항목을 그대로 둔 채
+    // 하나만 추가하는" 흔한 교체 요청이 INSERT 가 DELETE 를 앞질러 유일성 제약에 걸린다.
 
     public void replaceCategories(Company company, List<Long> categoryIds) {
         companyCategoryRepository.deleteByCompanyId(company.getId());
+        companyCategoryRepository.flush();
         companyCategoryRepository.saveAll(
                 buildLinks(categoryIds, categoryRepository, Category::getId, company, CompanyCategory::new, CompanyErrorCode.CATEGORY_NOT_FOUND));
     }
 
     public void replaceCertifications(Company company, List<CertificationRequest> certifications) {
         companyCertificationRepository.deleteByCompanyId(company.getId());
+        companyCertificationRepository.flush();
         companyCertificationRepository.saveAll(buildCertificationLinks(company, certifications));
     }
 
     public void replaceCountries(Company company, List<Long> countryIds) {
         companyCountryRepository.deleteByCompanyId(company.getId());
+        companyCountryRepository.flush();
         companyCountryRepository.saveAll(
                 buildLinks(countryIds, countryRepository, Country::getId, company, CompanyCountry::new, CompanyErrorCode.COUNTRY_NOT_FOUND));
     }
 
     public void replaceRegions(Company company, List<Long> domesticRegionIds) {
         companyDomesticRegionRepository.deleteByCompanyId(company.getId());
+        companyDomesticRegionRepository.flush();
         companyDomesticRegionRepository.saveAll(
                 buildLinks(domesticRegionIds, domesticRegionRepository, DomesticRegion::getId, company, CompanyDomesticRegion::new, CompanyErrorCode.DOMESTIC_REGION_NOT_FOUND));
     }
 
     public void replaceIndustries(Company company, List<Long> industryIds) {
         companyIndustryRepository.deleteByCompanyId(company.getId());
+        companyIndustryRepository.flush();
         companyIndustryRepository.saveAll(
                 buildLinks(industryIds, industryRepository, Industry::getId, company, CompanyIndustry::new, CompanyErrorCode.INDUSTRY_NOT_FOUND));
     }

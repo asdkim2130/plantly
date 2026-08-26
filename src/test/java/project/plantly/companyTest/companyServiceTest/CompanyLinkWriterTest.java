@@ -144,6 +144,33 @@ class CompanyLinkWriterTest {
                 .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.CERTIFICATION_CUSTOM_NAME_NOT_ALLOWED);
     }
 
+    @Test
+    @DisplayName("이미 붙어 있는 항목을 그대로 둔 채 교체해도 유일성 제약에 걸리지 않는다")
+    void replaceKeepingExistingLink() {
+        Certification iso = persistCertification("ISO 9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM);
+        Certification kc = persistCertification("KC 인증", "kc", CertificationType.MARKET_ACCESS);
+        Category category = persistRoot("A", "CAT-A");
+        Company company = persistCompany();
+
+        linkWriter.write(company, CompanyCreateRequestBuilder.aRequest()
+                .categoryIds(List.of(category.getId()))
+                .certifications(List.of(new CertificationRequest(iso.getId(), null)))
+                .build());
+        em.flush();
+
+        // ISO 는 그대로 두고 KC 만 추가하는, 화면에서 가장 흔한 교체.
+        // 삭제가 flush 되기 전에 INSERT 가 나가면 여기서 제약 위반으로 터진다.
+        linkWriter.replaceCertifications(company, List.of(
+                new CertificationRequest(iso.getId(), null), new CertificationRequest(kc.getId(), null)));
+        linkWriter.replaceCategories(company, List.of(category.getId()));
+        em.flush();
+
+        assertThat(companyCertificationRepository.findLinksByCompanyId(company.getId()))
+                .extracting(CompanyCertification::displayName)
+                .containsExactly("ISO 9001", "KC 인증");
+        assertThat(companyCategoryRepository.findLinksByCompanyId(company.getId())).hasSize(1);
+    }
+
     private Certification persistCertification(String name, String slug, CertificationType type) {
         Certification certification = Certification.create(name, slug, type, 0);
         em.persist(certification);
