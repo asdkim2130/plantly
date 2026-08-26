@@ -1,6 +1,7 @@
 package project.plantly.companyTest.support;
 
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
 import project.plantly.domain.company.dto.MyCompanyCreateRequest;
@@ -22,6 +23,7 @@ public class CompanyCreateRequestBuilder {
     private List<ImageRequest> images;
     private List<ReferenceRequest> references;
     private List<Long> categoryIds;
+    private List<CertificationRequest> certifications;
 
     public static CompanyCreateRequestBuilder aRequest() {
         return new CompanyCreateRequestBuilder();
@@ -39,6 +41,11 @@ public class CompanyCreateRequestBuilder {
 
     public CompanyCreateRequestBuilder categoryIds(List<Long> categoryIds) {
         this.categoryIds = categoryIds;
+        return this;
+    }
+
+    public CompanyCreateRequestBuilder certifications(List<CertificationRequest> certifications) {
+        this.certifications = certifications;
         return this;
     }
 
@@ -95,7 +102,7 @@ public class CompanyCreateRequestBuilder {
                 null,            // equipmentNames
                 null,            // tagNames
                 categoryIds,
-                null,            // certificationIds
+                certifications,
                 null,            // countryIds
                 null,            // domesticRegionIds
                 null             // industryIds
@@ -132,7 +139,7 @@ public class CompanyCreateRequestBuilder {
                 null,            // equipmentNames
                 null,            // tagNames
                 categoryIds,
-                null,            // certificationIds
+                certifications,
                 null,            // countryIds
                 null,            // domesticRegionIds
                 null             // industryIds

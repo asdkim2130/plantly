@@ -2,6 +2,7 @@ package project.plantly.domain.company.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import project.plantly.domain.company.enums.CompanyVisibility;
@@ -68,7 +69,10 @@ public record CompanyCreateRequest(
 
         // ===== 링크(M:N) 엔티티 - 기존 마스터 ID 참조 =====
         List<Long> categoryIds,
-        List<Long> certificationIds,
+        // 인증만 평면 ID 가 아니다 — '기타' 를 고르면 인증명을 직접 적어 보내야 하고, 그건 마스터 ID 옆에
+        // 붙어야 어느 항목의 이름인지가 정해진다. 일반 인증은 customName 없이 ID 만 담으면 된다.
+        @Valid
+        List<CertificationRequest> certifications,
         List<Long> countryIds,
         List<Long> domesticRegionIds,
         List<Long> industryIds
@@ -90,6 +94,21 @@ public record CompanyCreateRequest(
             String position,
             String phone,
             String email
+    ) {
+    }
+
+    /**
+     * 인증 1건 선택. 마스터 목록에서 고른 인증은 {@code certificationId} 만 담고,
+     * 목록에 없어 '기타'를 고른 경우에만 {@code customName} 에 직접 입력한 인증명을 담는다.
+     *
+     * <p>둘의 짝은 링크 엔티티가 강제한다 — customName 이 있으면 마스터는 ETC 여야 하고, 없으면 아니어야 한다.
+     * 같은 '기타' 마스터를 이름만 달리해 여러 건 보낼 수 있다(중복 판정 키가 ID 가 아니라 ID+이름이다).
+     */
+    public record CertificationRequest(
+            @NotNull(message = "인증 ID는 필수입니다.")
+            Long certificationId,
+            @Size(max = 100, message = "직접 입력한 인증명은 100자를 넘을 수 없습니다.")
+            String customName
     ) {
     }
 

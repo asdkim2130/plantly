@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
@@ -210,8 +211,9 @@ public class AdminCompanyController {
 
     @PutMapping("/api/v1/admin/companies/{id}/certifications")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceCertificationsByAdmin(@PathVariable Long id, @RequestBody List<Long> certificationIds) {
-        companyUpdateService.replaceCertificationsByAdmin(id, certificationIds);
+    public ApiResponse<Void> replaceCertificationsByAdmin(@PathVariable Long id,
+                                                         @RequestBody List<CertificationRequest> certifications) {
+        companyUpdateService.replaceCertificationsByAdmin(id, certifications);
         return ApiResponse.ok();
     }
 

@@ -12,6 +12,7 @@ import project.plantly.domain.company.country.CountryRepository;
 import project.plantly.domain.company.domesticRegion.DomesticRegion;
 import project.plantly.domain.company.domesticRegion.DomesticRegionRepository;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.link.CompanyCategory;
 import project.plantly.domain.company.entity.link.CompanyCertification;
@@ -53,8 +54,7 @@ public class CompanyLinkWriter {
     public void write(Company company, CompanyCreateRequest request) {
         companyCategoryRepository.saveAll(
                 buildLinks(request.categoryIds(), categoryRepository, Category::getId, company, CompanyCategory::new, CompanyErrorCode.CATEGORY_NOT_FOUND));
-        companyCertificationRepository.saveAll(
-                buildLinks(request.certificationIds(), certificationRepository, Certification::getId, company, CompanyCertification::new, CompanyErrorCode.CERTIFICATION_NOT_FOUND));
+        companyCertificationRepository.saveAll(buildCertificationLinks(company, request.certifications()));
         companyCountryRepository.saveAll(
                 buildLinks(request.countryIds(), countryRepository, Country::getId, company, CompanyCountry::new, CompanyErrorCode.COUNTRY_NOT_FOUND));
         companyDomesticRegionRepository.saveAll(
@@ -73,10 +73,9 @@ public class CompanyLinkWriter {
                 buildLinks(categoryIds, categoryRepository, Category::getId, company, CompanyCategory::new, CompanyErrorCode.CATEGORY_NOT_FOUND));
     }
 
-    public void replaceCertifications(Company company, List<Long> certificationIds) {
+    public void replaceCertifications(Company company, List<CertificationRequest> certifications) {
         companyCertificationRepository.deleteByCompanyId(company.getId());
-        companyCertificationRepository.saveAll(
-                buildLinks(certificationIds, certificationRepository, Certification::getId, company, CompanyCertification::new, CompanyErrorCode.CERTIFICATION_NOT_FOUND));
+        companyCertificationRepository.saveAll(buildCertificationLinks(company, certifications));
     }
 
     public void replaceCountries(Company company, List<Long> countryIds) {
@@ -95,6 +94,43 @@ public class CompanyLinkWriter {
         companyIndustryRepository.deleteByCompanyId(company.getId());
         companyIndustryRepository.saveAll(
                 buildLinks(industryIds, industryRepository, Industry::getId, company, CompanyIndustry::new, CompanyErrorCode.INDUSTRY_NOT_FOUND));
+    }
+
+    // ===== 인증 전용 경로 =====
+    // 인증만 제네릭 buildLinks 를 못 쓴다. 다른 링크는 "회사당 마스터 1건"이라 ID 리스트를 distinct 하면 끝이지만,
+    // 인증은 '기타'(ETC) 마스터 하나에 custom_name 만 다른 링크가 여러 건 붙는다 — 중복 판정 키가
+    // ID 가 아니라 (ID, customName) 이다. 마스터 존재 검증·displayOrder 부여 방식은 제네릭 쪽과 같다.
+    private List<CompanyCertification> buildCertificationLinks(Company company, List<CertificationRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+
+        // 정규화(공백 제거 → 빈 문자열은 null)를 먼저 해야 " ISO" 와 "ISO" 가 같은 중복으로 걸린다.
+        List<CertificationRequest> distinct = requests.stream()
+                .map(r -> new CertificationRequest(r.certificationId(), CompanyCertification.normalizeCustomName(r.customName())))
+                .distinct()
+                .toList();
+
+        // 마스터 조회 전에 ID 가 비었는지 먼저 막는다.
+        if (distinct.stream().anyMatch(r -> r.certificationId() == null)) {
+            throw new BusinessException(CompanyErrorCode.CERTIFICATION_NOT_FOUND);
+        }
+
+        List<Long> masterIds = distinct.stream().map(CertificationRequest::certificationId).distinct().toList();
+        List<Certification> masters = certificationRepository.findAllById(masterIds);
+
+        if (masters.size() != masterIds.size()) {
+            throw new BusinessException(CompanyErrorCode.CERTIFICATION_NOT_FOUND);
+        }
+
+        Map<Long, Certification> mastersById = masters.stream()
+                .collect(Collectors.toMap(Certification::getId, Function.identity()));
+
+        // ETC ↔ customName 짝이 맞는지는 링크 엔티티 생성자가 던진다(마스터를 쥐고 있는 쪽이 소유).
+        return IntStream.range(0, distinct.size())
+                .mapToObj(i -> new CompanyCertification(company,
+                        mastersById.get(distinct.get(i).certificationId()), distinct.get(i).customName(), i))
+                .toList();
     }
 
     // 요청 ID 리스트 → 마스터 일괄 조회(중복 제거) → 누락 시 예외 → 링크 엔티티 생성.

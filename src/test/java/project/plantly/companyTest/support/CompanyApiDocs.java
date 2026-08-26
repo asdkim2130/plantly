@@ -144,7 +144,12 @@ public class CompanyApiDocs {
 
                 // ===== 링크(M:N) 엔티티 - 기존 마스터 ID 참조 =====
                 fieldWithPath("categoryIds").type(JsonFieldType.ARRAY).optional().description("카테고리 ID 목록 (등급별 개수 제한)"),
-                fieldWithPath("certificationIds").type(JsonFieldType.ARRAY).optional().description("인증 ID 목록"),
+                fieldWithPath("certifications").type(JsonFieldType.ARRAY).optional().description("인증 목록"),
+                fieldWithPath("certifications[].certificationId").type(JsonFieldType.NUMBER)
+                        .description("인증 ID. 목록에 없는 인증은 '기타' 인증의 ID 를 보내고 customName 에 이름을 적는다"),
+                fieldWithPath("certifications[].customName").type(JsonFieldType.STRING).optional()
+                        .description("직접 입력한 인증명(최대 100자). '기타' 인증에만 허용되고, '기타' 인증에는 필수다."
+                                + " 같은 '기타' 인증에 이름만 다르게 여러 건 보낼 수 있다"),
                 fieldWithPath("countryIds").type(JsonFieldType.ARRAY).optional().description("수출 국가 ID 목록"),
                 fieldWithPath("domesticRegionIds").type(JsonFieldType.ARRAY).optional().description("국내 지역 ID 목록"),
                 fieldWithPath("industryIds").type(JsonFieldType.ARRAY).optional().description("산업군 ID 목록")
@@ -521,9 +526,11 @@ public class CompanyApiDocs {
 
                 fieldWithPath(p + "certifications").type(JsonFieldType.ARRAY).description("인증 목록"),
                 fieldWithPath(p + "certifications[].id").type(JsonFieldType.NUMBER).description("인증 ID"),
-                fieldWithPath(p + "certifications[].certificationName").type(JsonFieldType.STRING).description("인증명"),
+                fieldWithPath(p + "certifications[].certificationName").type(JsonFieldType.STRING)
+                        .description("화면에 그대로 쓰는 인증명. type=ETC 면 회사가 직접 입력한 이름이 온다(마스터 이름 '기타'가 아니다)"),
                 fieldWithPath(p + "certifications[].type").type(JsonFieldType.STRING)
-                        .description("인증 구분: MANAGEMENT_SYSTEM(경영시스템), INDUSTRY_SPECIFIC(산업특화), MARKET_ACCESS(시장진입)"),
+                        .description("인증 구분: MANAGEMENT_SYSTEM(경영시스템), INDUSTRY_SPECIFIC(산업특화),"
+                                + " MARKET_ACCESS(시장진입), ETC(직접 입력)"),
 
                 fieldWithPath(p + "countries").type(JsonFieldType.ARRAY).description("수출 국가 목록"),
                 fieldWithPath(p + "countries[].id").type(JsonFieldType.NUMBER).description("국가 ID"),

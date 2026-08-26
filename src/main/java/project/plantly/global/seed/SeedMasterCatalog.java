@@ -8,6 +8,7 @@ import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.category.CategoryRepository;
 import project.plantly.domain.company.certification.Certification;
 import project.plantly.domain.company.certification.CertificationRepository;
+import project.plantly.domain.company.certification.CertificationType;
 import project.plantly.domain.company.country.Country;
 import project.plantly.domain.company.country.CountryRepository;
 import project.plantly.domain.company.domesticRegion.DomesticRegion;
@@ -49,6 +50,7 @@ public class SeedMasterCatalog {
     private List<Category> rootCategories;
     private List<Industry> industries;
     private List<Certification> certifications;
+    private Certification etcCertification;
     private List<Country> countries;
     private List<DomesticRegion> regions;
 
@@ -62,7 +64,13 @@ public class SeedMasterCatalog {
         rootCategories = categories.stream().filter(c -> c.getDepth() == 1).toList();
 
         industries = industryRepository.findAllByOrderByDisplayOrderAsc();
-        certifications = certificationRepository.findAllByOrderByDisplayOrderAsc();
+        // '기타'(ETC)는 회사가 인증명을 직접 적어 넣는 앵커라, 이름 없이 그냥 붙일 수 없다(링크 불변식).
+        // 무작위 샘플링 풀에서 빼고 따로 들고 있다가 직접입력 케이스에서만 쓴다.
+        List<Certification> allCertifications = certificationRepository.findAllByOrderByDisplayOrderAsc();
+        certifications = allCertifications.stream()
+                .filter(c -> c.getType() != CertificationType.ETC).toList();
+        etcCertification = allCertifications.stream()
+                .filter(c -> c.getType() == CertificationType.ETC).findFirst().orElse(null);
         countries = countryRepository.findAll();
         // 광역시·특별시는 커버리지 모델상 시도 행 자체가 지역이라 SIGUNGU 자식이 없다. 시군구만 쓰면
         // 서울·부산이 통째로 빠져 지역 필터가 도(道) 지역만 검증하게 되므로 둘 다 풀에 넣는다.
@@ -105,6 +113,14 @@ public class SeedMasterCatalog {
 
     public List<Long> certificationIds(int seed, int count) {
         return pickIds(certifications, seed, count, Certification::getId);
+    }
+
+    /**
+     * '기타' 인증 마스터 ID. 시드에 이 행이 없으면(구버전 certification.sql) null 이라, 직접입력 케이스는
+     * 조용히 건너뛴다 — 마스터 하나 때문에 시드 전체가 죽는 것보다 낫다.
+     */
+    public Long etcCertificationId() {
+        return etcCertification == null ? null : etcCertification.getId();
     }
 
     public List<Long> countryIds(int seed, int count) {

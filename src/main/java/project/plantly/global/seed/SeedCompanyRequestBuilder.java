@@ -2,6 +2,7 @@ package project.plantly.global.seed;
 
 import project.plantly.domain.company.domesticRegion.DomesticRegion;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
@@ -13,6 +14,7 @@ import project.plantly.domain.company.enums.TrlLevel;
 import project.plantly.domain.company.policy.GradePolicy;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -59,7 +61,7 @@ public class SeedCompanyRequestBuilder {
     private List<String> tagNames;
 
     private List<Long> categoryIds;
-    private List<Long> certificationIds;
+    private List<CertificationRequest> certifications;
     private List<Long> countryIds;
     private List<Long> domesticRegionIds;
     private List<Long> industryIds;
@@ -102,7 +104,7 @@ public class SeedCompanyRequestBuilder {
         this.tagNames = SeedVocabulary.tags(index, 3);
 
         this.categoryIds = masters.categoryIds(index, 1);
-        this.certificationIds = masters.certificationIds(index, 2);
+        this.certifications = masterCertifications(masters.certificationIds(index, 2));
         this.countryIds = masters.countryIds(index, 2);
         this.domesticRegionIds = List.of(region.getId());
         this.industryIds = masters.industryIds(index, 1);
@@ -160,8 +162,26 @@ public class SeedCompanyRequestBuilder {
     }
 
     public SeedCompanyRequestBuilder certificationIds(List<Long> value) {
-        this.certificationIds = value;
+        this.certifications = masterCertifications(value);
         return this;
+    }
+
+    /**
+     * 마스터 목록에 없는 인증을 직접 입력한 케이스. 기존 인증 뒤에 '기타' 링크로 덧붙는다.
+     * 같은 마스터에 이름만 다른 링크가 여러 건 붙는 형태라, 프론트가 배지를 이름 기준으로 그리는지 확인하는 자리다.
+     */
+    public SeedCompanyRequestBuilder customCertificationNames(Long etcCertificationId, List<String> names) {
+        if (etcCertificationId == null || names == null || names.isEmpty()) {
+            return this;
+        }
+        List<CertificationRequest> merged = new ArrayList<>(certifications == null ? List.of() : certifications);
+        names.forEach(name -> merged.add(new CertificationRequest(etcCertificationId, name)));
+        this.certifications = List.copyOf(merged);
+        return this;
+    }
+
+    private static List<CertificationRequest> masterCertifications(List<Long> ids) {
+        return ids == null ? null : ids.stream().map(id -> new CertificationRequest(id, null)).toList();
     }
 
     public SeedCompanyRequestBuilder countryIds(List<Long> value) {
@@ -242,7 +262,7 @@ public class SeedCompanyRequestBuilder {
                 website, logoUrl, coverImageUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo,
                 pricingType, brandColor, visibility,
                 contacts, images, references, materialNames, equipmentNames, tagNames,
-                categoryIds, certificationIds, countryIds, domesticRegionIds, industryIds);
+                categoryIds, certifications, countryIds, domesticRegionIds, industryIds);
     }
 
     /**
@@ -255,7 +275,7 @@ public class SeedCompanyRequestBuilder {
                 website, logoUrl, coverImageUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo,
                 pricingType, brandColor, visibility,
                 contacts, images, references, materialNames, equipmentNames, tagNames,
-                categoryIds, certificationIds, countryIds, domesticRegionIds, industryIds);
+                categoryIds, certifications, countryIds, domesticRegionIds, industryIds);
     }
 
     // 회사 직속 갤러리는 DETAIL 타입만 허용된다(GalleryImageTypePolicy). PROJECT 이미지는 레퍼런스로만 들어간다.

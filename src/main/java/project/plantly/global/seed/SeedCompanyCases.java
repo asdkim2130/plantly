@@ -162,13 +162,17 @@ public class SeedCompanyCases {
         Long maxed = adminCompany(adminId, 21, "최대치", CompanyGrade.ENTERPRISE,
                 b -> b.categoryIds(masters.categoryIds(SeedIndexes.forCase(21), 10))
                         .certificationIds(masters.certificationIds(SeedIndexes.forCase(21), 6))
+                        // 마스터 목록에 없는 인증을 직접 적어 넣은 링크. 같은 '기타' 마스터에 이름만 달리해 2건이 붙는다
+                        // — 배지가 마스터 이름("기타")이 아니라 입력한 이름으로 뜨는지 확인하는 자리다.
+                        .customCertificationNames(masters.etcCertificationId(),
+                                List.of("사내 표준 품질인증 QM-2024", "○○산업협회 우수기업 인증"))
                         .countryIds(masters.countryIds(SeedIndexes.forCase(21), 8))
                         .industryIds(masters.industryIds(SeedIndexes.forCase(21), 4))
                         .domesticRegionIds(masters.regionIds(SeedIndexes.forCase(21), 5))
                         .detailImageCount(30)
                         .referenceImageCount(10));
         refs.add(new SeedCompanyRef("C21", maxed, null,
-                "ENTERPRISE 한도를 꽉 채운 회사(카테고리 10, 상세이미지 30, 레퍼런스 이미지 10, 지역 5, 국가 8)."
+                "ENTERPRISE 한도를 꽉 채운 회사(카테고리 10, 인증 6 + 직접입력 2, 상세이미지 30, 레퍼런스 이미지 10, 지역 5, 국가 8)."
                         + " 배지·갤러리 오버플로 처리 확인"));
 
         Long longText = adminCompany(adminId, 22, "긴이름", CompanyGrade.STANDARD,

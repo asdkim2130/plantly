@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
@@ -281,8 +282,9 @@ public class CompanyController {
 
     @PutMapping("/api/v1/companies/{id}/certifications")
     public ApiResponse<Void> replaceCertifications(@AuthenticationPrincipal UserPrincipal principal,
-                                                   @PathVariable Long id, @RequestBody List<Long> certificationIds) {
-        companyUpdateService.replaceCertificationsByUser(id, principal.getUser().getId(), certificationIds);
+                                                   @PathVariable Long id,
+                                                   @RequestBody List<CertificationRequest> certifications) {
+        companyUpdateService.replaceCertificationsByUser(id, principal.getUser().getId(), certifications);
         return ApiResponse.ok();
     }
 

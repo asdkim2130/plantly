@@ -1,6 +1,7 @@
 package project.plantly.companyTest.support;
 
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
@@ -48,7 +49,8 @@ public class CompanyCreateRequestSamples {
                 List.of("사출 성형기"),
                 List.of("친환경", "B2B"),
                 List.of(1L),
-                List.of(2L),
+                // 인증 2건 — 마스터에서 고른 것 1건 + '기타'(9L) 에 직접 적어 넣은 것 1건.
+                List.of(new CertificationRequest(2L, null), new CertificationRequest(9L, "사내 표준 품질인증 QM-2024")),
                 List.of(3L),
                 List.of(4L),
                 List.of(5L)
@@ -84,7 +86,8 @@ public class CompanyCreateRequestSamples {
                 List.of("사출 성형기"),
                 List.of("친환경", "B2B"),
                 List.of(1L),
-                List.of(2L),
+                // 인증 2건 — 마스터에서 고른 것 1건 + '기타'(9L) 에 직접 적어 넣은 것 1건.
+                List.of(new CertificationRequest(2L, null), new CertificationRequest(9L, "사내 표준 품질인증 QM-2024")),
                 List.of(3L),
                 List.of(4L),
                 List.of(5L)

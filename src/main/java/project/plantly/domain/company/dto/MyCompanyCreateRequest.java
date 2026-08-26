@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
@@ -71,7 +72,8 @@ public record MyCompanyCreateRequest(
 
         // ===== 링크(M:N) 엔티티 =====
         List<Long> categoryIds,
-        List<Long> certificationIds,
+        @Valid
+        List<CertificationRequest> certifications,
         List<Long> countryIds,
         List<Long> domesticRegionIds,
         List<Long> industryIds
@@ -94,6 +96,6 @@ public record MyCompanyCreateRequest(
                 website, logoUrl, coverImageUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo,
                 pricingType, brandColor, visibility,
                 contacts, images, references, materialNames, equipmentNames, tagNames,
-                categoryIds, certificationIds, countryIds, domesticRegionIds, industryIds);
+                categoryIds, certifications, countryIds, domesticRegionIds, industryIds);
     }
 }
