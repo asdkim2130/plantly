@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.AdminCompanyFlagsRequest;
 import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.CompanySubscription;
@@ -158,8 +159,8 @@ public class CompanyUpdateService {
         mutateOwned(companyId, userId, company -> linkWriter.replaceIndustries(company, industryIds));
     }
 
-    public void replaceCertificationsByUser(Long companyId, Long userId, List<Long> certificationIds) {
-        mutateOwned(companyId, userId, company -> linkWriter.replaceCertifications(company, certificationIds));
+    public void replaceCertificationsByUser(Long companyId, Long userId, List<CertificationRequest> certifications) {
+        mutateOwned(companyId, userId, company -> linkWriter.replaceCertifications(company, certifications));
     }
 
     public void replaceCountriesByUser(Long companyId, Long userId, List<Long> countryIds) {
@@ -239,8 +240,8 @@ public class CompanyUpdateService {
         mutateAsAdmin(companyId, company -> linkWriter.replaceIndustries(company, industryIds));
     }
 
-    public void replaceCertificationsByAdmin(Long companyId, List<Long> certificationIds) {
-        mutateAsAdmin(companyId, company -> linkWriter.replaceCertifications(company, certificationIds));
+    public void replaceCertificationsByAdmin(Long companyId, List<CertificationRequest> certifications) {
+        mutateAsAdmin(companyId, company -> linkWriter.replaceCertifications(company, certifications));
     }
 
     public void replaceCountriesByAdmin(Long companyId, List<Long> countryIds) {

@@ -17,6 +17,9 @@ public interface IndustryRepository extends JpaRepository<Industry, Long> {
     // (이미 그 산업을 링크한 회사의 상세에는 계속 보인다 — 노출 대상이 다른 경로다)
     List<Industry> findAllByActiveTrueOrderByDisplayOrderAsc();
 
+    // 위 공개 목록의 건수. 현황 지표가 드롭다운 항목 수와 어긋나지 않도록 같은 조건(active)을 쓴다.
+    long countByActiveTrue();
+
     // 전체 산업군 중 최대 displayOrder — 없으면 -1 (자동 순번 부여용, +1 하면 첫 항목은 0)
     @Query("select coalesce(max(i.displayOrder), -1) from Industry i")
     int findMaxDisplayOrder();

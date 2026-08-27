@@ -9,15 +9,24 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.domain.company.category.Category;
+import project.plantly.domain.company.certification.Certification;
+import project.plantly.domain.company.certification.CertificationType;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.entity.link.CompanyCertification;
+import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.repository.CompanyCategoryRepository;
+import project.plantly.domain.company.repository.CompanyCertificationRepository;
 import project.plantly.domain.company.service.CompanyLinkWriter;
+import project.plantly.global.exception.BusinessException;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 // CompanyLinkWriter 가 링크의 displayOrder 를 "회사가 보낸 요청(선택) 순서"로 부여하는지 검증.
 // findAllById 는 입력 순서를 보존하지 않으므로, id 오름차순과 다른 요청 순서로 그 버그를 막았는지 확인한다.
@@ -25,12 +34,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @ActiveProfiles("test")
 @Import(CompanyLinkWriter.class)
-@DisplayName("CompanyLinkWriter: 링크 displayOrder = 요청(선택) 순서")
+@DisplayName("CompanyLinkWriter: 링크 displayOrder = 요청(선택) 순서 / 인증 직접입력 규약")
 class CompanyLinkWriterTest {
 
     @Autowired EntityManager em;
     @Autowired CompanyLinkWriter linkWriter;
     @Autowired CompanyCategoryRepository companyCategoryRepository;
+    @Autowired CompanyCertificationRepository companyCertificationRepository;
 
     @Test
     @DisplayName("카테고리 링크의 displayOrder 는 id 순이 아니라 요청에 담긴 순서를 따른다")
@@ -64,6 +74,184 @@ class CompanyLinkWriterTest {
         List<Long> projectedCategoryIds = companyCategoryRepository.findLinksByCompanyId(company.getId())
                 .stream().map(link -> link.getCategory().getId()).toList();
         assertThat(projectedCategoryIds).containsExactly(c3.getId(), c1.getId(), c2.getId());
+    }
+
+    @Test
+    @DisplayName("'기타' 인증은 이름만 다르면 같은 마스터에 여러 건 붙고, 표시 이름은 입력값이다")
+    void attachesMultipleCustomCertifications() {
+        Certification iso = persistCertification("ISO 9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM);
+        Certification etc = persistCertification("기타", "etc", CertificationType.ETC);
+        Company company = persistCompany();
+
+        linkWriter.write(company, CompanyCreateRequestBuilder.aRequest()
+                .certifications(List.of(
+                        new CertificationRequest(etc.getId(), "사내 표준 품질인증"),
+                        new CertificationRequest(iso.getId(), null),
+                        new CertificationRequest(etc.getId(), "○○협회 우수기업 인증")))
+                .build());
+        em.flush();
+
+        // 표시 이름은 마스터의 "기타"가 아니라 입력값이고, 순서는 요청 순서를 따른다.
+        assertThat(companyCertificationRepository.findLinksByCompanyId(company.getId()))
+                .extracting(CompanyCertification::displayName)
+                .containsExactly("사내 표준 품질인증", "ISO 9001", "○○협회 우수기업 인증");
+    }
+
+    @Test
+    @DisplayName("같은 (인증, 이름) 조합은 공백만 다르더라도 1건으로 접힌다")
+    void deduplicatesByIdAndCustomName() {
+        Certification etc = persistCertification("기타", "etc", CertificationType.ETC);
+        Company company = persistCompany();
+
+        linkWriter.write(company, CompanyCreateRequestBuilder.aRequest()
+                .certifications(List.of(
+                        new CertificationRequest(etc.getId(), "사내 표준 품질인증"),
+                        new CertificationRequest(etc.getId(), "  사내 표준 품질인증  ")))
+                .build());
+        em.flush();
+
+        assertThat(companyCertificationRepository.findLinksByCompanyId(company.getId()))
+                .extracting(CompanyCertification::displayName)
+                .containsExactly("사내 표준 품질인증");
+    }
+
+    @Test
+    @DisplayName("'기타' 인증을 이름 없이 보내면 거부한다")
+    void rejectsEtcWithoutCustomName() {
+        Certification etc = persistCertification("기타", "etc", CertificationType.ETC);
+        Company company = persistCompany();
+
+        CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
+                .certifications(List.of(new CertificationRequest(etc.getId(), "   ")))
+                .build();
+
+        assertThatThrownBy(() -> linkWriter.write(company, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.CERTIFICATION_CUSTOM_NAME_REQUIRED);
+    }
+
+    @Test
+    @DisplayName("'기타'가 아닌 인증에 직접 입력한 이름을 붙이면 거부한다")
+    void rejectsCustomNameOnMasterCertification() {
+        Certification iso = persistCertification("ISO 9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM);
+        Company company = persistCompany();
+
+        CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
+                .certifications(List.of(new CertificationRequest(iso.getId(), "내 마음대로 이름")))
+                .build();
+
+        assertThatThrownBy(() -> linkWriter.write(company, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.CERTIFICATION_CUSTOM_NAME_NOT_ALLOWED);
+    }
+
+    @Test
+    @DisplayName("이미 붙어 있는 항목을 그대로 둔 채 교체해도 유일성 제약에 걸리지 않는다")
+    void replaceKeepingExistingLink() {
+        Certification iso = persistCertification("ISO 9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM);
+        Certification kc = persistCertification("KC 인증", "kc", CertificationType.MARKET_ACCESS);
+        Category category = persistRoot("A", "CAT-A");
+        Company company = persistCompany();
+
+        linkWriter.write(company, CompanyCreateRequestBuilder.aRequest()
+                .categoryIds(List.of(category.getId()))
+                .certifications(List.of(new CertificationRequest(iso.getId(), null)))
+                .build());
+        em.flush();
+
+        // ISO 는 그대로 두고 KC 만 추가하는, 화면에서 가장 흔한 교체.
+        // 삭제가 flush 되기 전에 INSERT 가 나가면 여기서 제약 위반으로 터진다.
+        linkWriter.replaceCertifications(company, List.of(
+                new CertificationRequest(iso.getId(), null), new CertificationRequest(kc.getId(), null)));
+        linkWriter.replaceCategories(company, List.of(category.getId()));
+        em.flush();
+
+        assertThat(companyCertificationRepository.findLinksByCompanyId(company.getId()))
+                .extracting(CompanyCertification::displayName)
+                .containsExactly("ISO 9001", "KC 인증");
+        assertThat(companyCategoryRepository.findLinksByCompanyId(company.getId())).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("null 원소가 들어와도 NPE 가 아니라 비즈니스 예외(400)로 끊는다")
+    void rejectsNullElementWithoutNpe() {
+        Company company = persistCompany();
+
+        // 컨트롤러 앞단 검증을 뚫고 들어오는 경우(내부 호출·검증 누락)까지 대비한 방어선.
+        CompanyCreateRequest request = CompanyCreateRequestBuilder.aRequest()
+                .certifications(Collections.singletonList(null))
+                .build();
+
+        assertThatThrownBy(() -> linkWriter.write(company, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.CERTIFICATION_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("직접 입력 인증의 이름변경·삭제 후 추가·전량 제거가 모두 교체(PUT) 하나로 처리된다")
+    void replaceCoversEveryCustomCertificationTransition() {
+        Certification iso = persistCertification("ISO 9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM);
+        Certification etc = persistCertification("기타", "etc", CertificationType.ETC);
+        Company company = persistCompany();
+
+        linkWriter.write(company, CompanyCreateRequestBuilder.aRequest()
+                .certifications(List.of(
+                        new CertificationRequest(iso.getId(), null),
+                        new CertificationRequest(etc.getId(), "사내 표준 품질인증"),
+                        new CertificationRequest(etc.getId(), "○○협회 우수기업 인증")))
+                .build());
+        em.flush();
+
+        // (1) 이름만 고친다. 같은 마스터에 custom_name 만 바뀌는 자리라 부분 유니크 인덱스와 정면으로 만난다.
+        linkWriter.replaceCertifications(company, List.of(
+                new CertificationRequest(iso.getId(), null),
+                new CertificationRequest(etc.getId(), "사내 표준 품질인증 QM-2024"),
+                new CertificationRequest(etc.getId(), "○○협회 우수기업 인증")));
+        em.flush();
+        assertThat(displayNamesOf(company))
+                .containsExactly("ISO 9001", "사내 표준 품질인증 QM-2024", "○○협회 우수기업 인증");
+
+        // (2) 하나를 지우고 다른 이름을 새로 넣는다.
+        linkWriter.replaceCertifications(company, List.of(
+                new CertificationRequest(iso.getId(), null),
+                new CertificationRequest(etc.getId(), "○○협회 우수기업 인증"),
+                new CertificationRequest(etc.getId(), "△△ 시험성적서")));
+        em.flush();
+        assertThat(displayNamesOf(company))
+                .containsExactly("ISO 9001", "○○협회 우수기업 인증", "△△ 시험성적서");
+
+        // (3) 직접 입력을 전부 걷어내고 마스터 인증만 남긴다.
+        linkWriter.replaceCertifications(company, List.of(new CertificationRequest(iso.getId(), null)));
+        em.flush();
+        assertThat(displayNamesOf(company)).containsExactly("ISO 9001");
+
+        // (4) 반대로 마스터를 걷어내고 직접 입력만 남기는 것도, 전부 비우는 것도 같은 한 번의 교체다.
+        linkWriter.replaceCertifications(company, List.of(new CertificationRequest(etc.getId(), "△△ 시험성적서")));
+        em.flush();
+        assertThat(displayNamesOf(company)).containsExactly("△△ 시험성적서");
+
+        linkWriter.replaceCertifications(company, List.of());
+        em.flush();
+        assertThat(displayNamesOf(company)).isEmpty();
+    }
+
+    private List<String> displayNamesOf(Company company) {
+        return companyCertificationRepository.findLinksByCompanyId(company.getId())
+                .stream().map(CompanyCertification::displayName).toList();
+    }
+
+    private Certification persistCertification(String name, String slug, CertificationType type) {
+        Certification certification = Certification.create(name, slug, type, 0);
+        em.persist(certification);
+        return certification;
+    }
+
+    private Company persistCompany() {
+        Company company = Company.createByUser(1L, null, "회사", "대표", null,
+                Address.of("06236", "서울 강남구", null, "테헤란로 1"), null, "logo", null,
+                null, null, null, null, null, null, null, null);
+        em.persist(company);
+        return company;
     }
 
     private Category persistRoot(String name, String code) {

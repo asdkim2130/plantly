@@ -92,7 +92,7 @@ class CompanyAggregateLoader {
                 equipmentRepository.findByCompanyIdOrderByDisplayOrderAsc(companyId),
                 tagRepository.findByCompanyIdOrderByDisplayOrderAsc(companyId),
                 categoryRepository.findLinksByCompanyId(companyId),
-                certificationRepository.findCertificationsByCompanyId(companyId),
+                certificationRepository.findLinksByCompanyId(companyId),
                 countryRepository.findCountriesByCompanyId(companyId),
                 domesticRegionRepository.findRegionsByCompanyId(companyId),
                 industryRepository.findIndustriesByCompanyId(companyId));

@@ -2,6 +2,7 @@ package project.plantly.domain.company.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import project.plantly.domain.company.enums.CompanyVisibility;
@@ -56,19 +57,24 @@ public record CompanyCreateRequest(
         // (추후 다건 허용 + '더보기' 별도 조회로 확장 시 이 @Size 제약을 푼다)
         @Valid
         @Size(max = 1, message = "연락처는 현재 1건만 등록할 수 있습니다.")
-        List<ContactRequest> contacts,
+        List<@NotNull(message = "연락처 항목은 비어 있을 수 없습니다.") ContactRequest> contacts,
         @Valid
-        List<ImageRequest> images,
+        List<@NotNull(message = "이미지 항목은 비어 있을 수 없습니다.") ImageRequest> images,
         @Valid
         @Size(max = 1, message = "프로젝트 레퍼런스는 현재 1건만 등록할 수 있습니다.")
-        List<ReferenceRequest> references,
+        List<@NotNull(message = "레퍼런스 항목은 비어 있을 수 없습니다.") ReferenceRequest> references,
         List<String> materialNames,
         List<String> equipmentNames,
         List<String> tagNames,
 
         // ===== 링크(M:N) 엔티티 - 기존 마스터 ID 참조 =====
         List<Long> categoryIds,
-        List<Long> certificationIds,
+        // 인증만 평면 ID 가 아니다 — '기타' 를 고르면 인증명을 직접 적어 보내야 하고, 그건 마스터 ID 옆에
+        // 붙어야 어느 항목의 이름인지가 정해진다. 일반 인증은 customName 없이 ID 만 담으면 된다.
+        // @NotNull 은 리스트가 아니라 '원소'에 붙는다 — 인증을 하나도 고르지 않은 "해당 사항 없음"은
+        // 정상 상태라 리스트 자체는 null/빈 배열이어도 된다. 막아야 하는 건 [null] 같은 깨진 원소뿐이다.
+        @Valid
+        List<@NotNull(message = "인증 항목은 비어 있을 수 없습니다.") CertificationRequest> certifications,
         List<Long> countryIds,
         List<Long> domesticRegionIds,
         List<Long> industryIds
@@ -90,6 +96,21 @@ public record CompanyCreateRequest(
             String position,
             String phone,
             String email
+    ) {
+    }
+
+    /**
+     * 인증 1건 선택. 마스터 목록에서 고른 인증은 {@code certificationId} 만 담고,
+     * 목록에 없어 '기타'를 고른 경우에만 {@code customName} 에 직접 입력한 인증명을 담는다.
+     *
+     * <p>둘의 짝은 링크 엔티티가 강제한다 — customName 이 있으면 마스터는 ETC 여야 하고, 없으면 아니어야 한다.
+     * 같은 '기타' 마스터를 이름만 달리해 여러 건 보낼 수 있다(중복 판정 키가 ID 가 아니라 ID+이름이다).
+     */
+    public record CertificationRequest(
+            @NotNull(message = "인증 ID는 필수입니다.")
+            Long certificationId,
+            @Size(max = 100, message = "직접 입력한 인증명은 100자를 넘을 수 없습니다.")
+            String customName
     ) {
     }
 

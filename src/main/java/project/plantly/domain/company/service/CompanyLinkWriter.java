@@ -12,6 +12,7 @@ import project.plantly.domain.company.country.CountryRepository;
 import project.plantly.domain.company.domesticRegion.DomesticRegion;
 import project.plantly.domain.company.domesticRegion.DomesticRegionRepository;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.entity.Company;
 import project.plantly.domain.company.entity.link.CompanyCategory;
 import project.plantly.domain.company.entity.link.CompanyCertification;
@@ -53,8 +54,7 @@ public class CompanyLinkWriter {
     public void write(Company company, CompanyCreateRequest request) {
         companyCategoryRepository.saveAll(
                 buildLinks(request.categoryIds(), categoryRepository, Category::getId, company, CompanyCategory::new, CompanyErrorCode.CATEGORY_NOT_FOUND));
-        companyCertificationRepository.saveAll(
-                buildLinks(request.certificationIds(), certificationRepository, Certification::getId, company, CompanyCertification::new, CompanyErrorCode.CERTIFICATION_NOT_FOUND));
+        companyCertificationRepository.saveAll(buildCertificationLinks(company, request.certifications()));
         companyCountryRepository.saveAll(
                 buildLinks(request.countryIds(), countryRepository, Country::getId, company, CompanyCountry::new, CompanyErrorCode.COUNTRY_NOT_FOUND));
         companyDomesticRegionRepository.saveAll(
@@ -66,35 +66,84 @@ public class CompanyLinkWriter {
     // ===== 링크 전체 교체(PUT) 진입점 =====
     // 각 메서드는 "기존 링크 삭제 → 새 id 리스트로 재생성(displayOrder 재부여)" 하며, create 경로와 검증·저장 로직을 공유한다.
     // null/빈 리스트를 넘기면 삭제만 수행(= 전부 비우기)된다.
+    //
+    // 삭제 뒤에 flush 를 거는 이유 — 파생 delete 는 em.remove 만 걸어두고 실제 DELETE 는 flush 시점에 나가는데,
+    // 링크 PK 가 IDENTITY 라 saveAll 의 INSERT 는 persist 즉시 나간다. 그대로 두면 "기존 항목을 그대로 둔 채
+    // 하나만 추가하는" 흔한 교체 요청이 INSERT 가 DELETE 를 앞질러 유일성 제약에 걸린다.
 
     public void replaceCategories(Company company, List<Long> categoryIds) {
         companyCategoryRepository.deleteByCompanyId(company.getId());
+        companyCategoryRepository.flush();
         companyCategoryRepository.saveAll(
                 buildLinks(categoryIds, categoryRepository, Category::getId, company, CompanyCategory::new, CompanyErrorCode.CATEGORY_NOT_FOUND));
     }
 
-    public void replaceCertifications(Company company, List<Long> certificationIds) {
+    public void replaceCertifications(Company company, List<CertificationRequest> certifications) {
         companyCertificationRepository.deleteByCompanyId(company.getId());
-        companyCertificationRepository.saveAll(
-                buildLinks(certificationIds, certificationRepository, Certification::getId, company, CompanyCertification::new, CompanyErrorCode.CERTIFICATION_NOT_FOUND));
+        companyCertificationRepository.flush();
+        companyCertificationRepository.saveAll(buildCertificationLinks(company, certifications));
     }
 
     public void replaceCountries(Company company, List<Long> countryIds) {
         companyCountryRepository.deleteByCompanyId(company.getId());
+        companyCountryRepository.flush();
         companyCountryRepository.saveAll(
                 buildLinks(countryIds, countryRepository, Country::getId, company, CompanyCountry::new, CompanyErrorCode.COUNTRY_NOT_FOUND));
     }
 
     public void replaceRegions(Company company, List<Long> domesticRegionIds) {
         companyDomesticRegionRepository.deleteByCompanyId(company.getId());
+        companyDomesticRegionRepository.flush();
         companyDomesticRegionRepository.saveAll(
                 buildLinks(domesticRegionIds, domesticRegionRepository, DomesticRegion::getId, company, CompanyDomesticRegion::new, CompanyErrorCode.DOMESTIC_REGION_NOT_FOUND));
     }
 
     public void replaceIndustries(Company company, List<Long> industryIds) {
         companyIndustryRepository.deleteByCompanyId(company.getId());
+        companyIndustryRepository.flush();
         companyIndustryRepository.saveAll(
                 buildLinks(industryIds, industryRepository, Industry::getId, company, CompanyIndustry::new, CompanyErrorCode.INDUSTRY_NOT_FOUND));
+    }
+
+    // ===== 인증 전용 경로 =====
+    // 인증만 제네릭 buildLinks 를 못 쓴다. 다른 링크는 "회사당 마스터 1건"이라 ID 리스트를 distinct 하면 끝이지만,
+    // 인증은 '기타'(ETC) 마스터 하나에 custom_name 만 다른 링크가 여러 건 붙는다 — 중복 판정 키가
+    // ID 가 아니라 (ID, customName) 이다. 마스터 존재 검증·displayOrder 부여 방식은 제네릭 쪽과 같다.
+    private List<CompanyCertification> buildCertificationLinks(Company company, List<CertificationRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+
+        // 원소 자체의 null 을 역참조 전에 먼저 막는다. @Valid 는 null 원소를 거부하지 않기 때문이다 —
+        // non-null 원소 안으로는 중첩 검증이 들어가 certificationId 의 @NotNull 까지 잡아주지만,
+        // 원소가 null 이면 검증할 대상이 없어 그대로 통과한다(그 자리는 List<@NotNull ...> 가 막는다).
+        // 여기 가드는 컨트롤러 검증을 거치지 않는 내부 호출까지 덮는 방어선이다 —
+        // 없으면 {"certifications":[null]} 이 NPE(500)로 나간다.
+        if (requests.stream().anyMatch(r -> r == null || r.certificationId() == null)) {
+            throw new BusinessException(CompanyErrorCode.CERTIFICATION_NOT_FOUND);
+        }
+
+        // 정규화(공백 제거 → 빈 문자열은 null)를 먼저 해야 " ISO" 와 "ISO" 가 같은 중복으로 걸린다.
+        List<CertificationRequest> distinct = requests.stream()
+                .map(r -> new CertificationRequest(r.certificationId(), CompanyCertification.normalizeCustomName(r.customName())))
+                .distinct()
+                .toList();
+
+        List<Long> masterIds = distinct.stream().map(CertificationRequest::certificationId).distinct().toList();
+        List<Certification> masters = certificationRepository.findAllById(masterIds);
+
+        if (masters.size() != masterIds.size()) {
+            throw new BusinessException(CompanyErrorCode.CERTIFICATION_NOT_FOUND);
+        }
+
+        Map<Long, Certification> mastersById = masters.stream()
+                .collect(Collectors.toMap(Certification::getId, Function.identity()));
+
+        // ETC ↔ customName 짝이 맞는지는 링크 엔티티 생성자가 던진다(마스터를 쥐고 있는 쪽이 소유).
+        return IntStream.range(0, distinct.size())
+                .mapToObj(i -> new CompanyCertification(company,
+                        mastersById.get(distinct.get(i).certificationId()), distinct.get(i).customName(), i))
+                .toList();
     }
 
     // 요청 ID 리스트 → 마스터 일괄 조회(중복 제거) → 누락 시 예외 → 링크 엔티티 생성.

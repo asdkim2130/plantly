@@ -2,8 +2,14 @@ package project.plantly.domain.company.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import project.plantly.domain.company.entity.Company;
+import project.plantly.domain.company.enums.CompanyVisibility;
 
 public interface CompanyRepository extends JpaRepository<Company, Long> {
+
+    // 공개 노출 중인 회사 수(현황 지표). 목록/검색과 달리 company_search_document 를 조인하지 않는다 —
+    // 색인은 등록 트랜잭션 안에서 동기로 쓰이므로 두 수는 같고, 다르다면 색인이 밀린 것이라
+    // '등록된 회사가 몇인가'에 대한 답으로는 이쪽이 옳다. 조건은 showcase 레일의 가시성 규칙과 같다.
+    long countByDeletedFalseAndVisibility(CompanyVisibility visibility);
 
     // 좋아요/즐겨찾기 등 상호작용 대상 검증용. 미삭제(공개 가능) 회사만 true. 소프트 삭제는 미존재로 취급한다.
     boolean existsByIdAndDeletedFalse(Long id);

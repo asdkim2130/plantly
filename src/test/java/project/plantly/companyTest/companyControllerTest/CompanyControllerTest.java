@@ -30,6 +30,7 @@ import project.plantly.companyTest.support.CompanyResponseSamples;
 import project.plantly.domain.company.controller.CompanyController;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
 import project.plantly.domain.company.dto.CompanyShowcaseResponse;
+import project.plantly.domain.company.dto.CompanyStatsResponse;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
 import project.plantly.domain.company.dto.CompanyReverificationRequest;
 import project.plantly.domain.company.dto.CompanyReverificationResponse;
@@ -42,6 +43,7 @@ import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.search.CompanySearchCriteria;
 import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.domain.company.service.CompanyDraftService;
+import project.plantly.domain.company.service.CompanyStatsService;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
 import project.plantly.domain.company.service.CompanyUpdateService;
@@ -116,6 +118,10 @@ public class CompanyControllerTest {
     // 컨트롤러가 임시저장용으로 주입받는 협력 객체. 초안 슬라이스 테스트에서 사용하며, 나머지 테스트는 컨텍스트 로딩용으로만 둔다.
     @MockitoBean
     private CompanyDraftService companyDraftService;
+
+    // 현황 지표용. 이 테스트에서는 stats 슬라이스에서만 쓰고, 나머지는 컨텍스트 로딩용으로 둔다.
+    @MockitoBean
+    private CompanyStatsService companyStatsService;
 
     private MockMvc mockMvc;
 
@@ -552,6 +558,26 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.data.latest[0].spotlight").value(false))
                 .andDo(document("company-showcase",
                         responseFields(CompanyApiDocs.companyShowcaseResponseFields())));
+    }
+
+    @Test
+    @DisplayName("현황 지표는 인증 없이 네 개의 집계 숫자만 반환한다 (목록 없음)")
+    void getStats_public_success() throws Exception {
+        given(companyStatsService.getStats()).willReturn(new CompanyStatsResponse(45, 143, 24, 8));
+
+        mockMvc.perform(get("/api/v1/companies/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.companyCount").value(45))
+                // 대분류 개수가 아니라 공개 트리 전체 노드 수다(대+중+소).
+                .andExpect(jsonPath("$.data.categoryCount").value(143))
+                .andExpect(jsonPath("$.data.industryCount").value(24))
+                .andExpect(jsonPath("$.data.certificationCount").value(8))
+                // 개수만 필요한 화면이 목록을 받아 세지 않게 하려고 만든 엔드포인트다 — 카드가 실리면 목적이 사라진다.
+                .andExpect(jsonPath("$.data.content").doesNotExist())
+                .andExpect(jsonPath("$.data.pageInfo").doesNotExist())
+                .andDo(document("company-stats",
+                        responseFields(CompanyApiDocs.companyStatsResponseFields())));
     }
 
     @Test

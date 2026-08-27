@@ -4,5 +4,6 @@ package project.plantly.domain.company.certification;
 public enum CertificationType {
     MANAGEMENT_SYSTEM,   // 경영시스템 (ISO 9001/14001/45001 등)
     INDUSTRY_SPECIFIC,   // 산업특화 (IATF 16949, SQ 등)
-    MARKET_ACCESS        // 시장진입 (KC, CE, UL 등)
+    MARKET_ACCESS,        // 시장진입 (KC, CE, UL 등)
+    ETC                   // 자유입력
 }

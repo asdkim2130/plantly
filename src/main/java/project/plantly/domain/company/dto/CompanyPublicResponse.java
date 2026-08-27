@@ -1,7 +1,6 @@
 package project.plantly.domain.company.dto;
 
 import project.plantly.domain.company.category.Category;
-import project.plantly.domain.company.certification.Certification;
 import project.plantly.domain.company.certification.CertificationType;
 import project.plantly.domain.company.country.Continent;
 import project.plantly.domain.company.country.Country;
@@ -12,6 +11,7 @@ import project.plantly.domain.company.entity.CompanyContact;
 import project.plantly.domain.company.entity.CompanyImage;
 import project.plantly.domain.company.entity.CompanyProjectReference;
 import project.plantly.domain.company.entity.link.CompanyCategory;
+import project.plantly.domain.company.entity.link.CompanyCertification;
 import project.plantly.domain.company.enums.ImageType;
 import project.plantly.domain.company.enums.PricingType;
 import project.plantly.domain.company.enums.TrlLevel;
@@ -183,10 +183,14 @@ public record CompanyPublicResponse(
     }
 
     // type 은 상세 페이지에서 인증 배지를 그룹별로 구분(색 등)하는 데 쓴다.
+    //
+    // certificationName 은 '화면에 그대로 찍는 이름'이다 — 마스터 목록에 없어 회사가 직접 적은 인증(type=ETC)이면
+    // 마스터의 "기타"가 아니라 그 입력값이 온다. 폴백을 프론트에 넘기지 않고 여기서 끝낸다(안 그러면 화면마다
+    // "기타"라고만 뜨는 배지가 생긴다). 직접 입력인지 구분해야 하면 type 으로 판별한다.
     public record CertificationResponse(Long id, String certificationName, CertificationType type) {
-        public static CertificationResponse from(Certification certification) {
-            return new CertificationResponse(certification.getId(), certification.getCertificationName(),
-                    certification.getType());
+        public static CertificationResponse from(CompanyCertification link) {
+            return new CertificationResponse(link.getCertification().getId(), link.displayName(),
+                    link.getCertification().getType());
         }
     }
 

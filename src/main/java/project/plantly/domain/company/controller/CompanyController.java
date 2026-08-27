@@ -1,6 +1,7 @@
 package project.plantly.domain.company.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
@@ -23,6 +25,7 @@ import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
 import project.plantly.domain.company.dto.CompanyShowcaseResponse;
+import project.plantly.domain.company.dto.CompanyStatsResponse;
 import project.plantly.domain.company.dto.CompanyReverificationRequest;
 import project.plantly.domain.company.dto.CompanyReverificationResponse;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
@@ -34,6 +37,7 @@ import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.search.dto.CompanySearchRequest;
 import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.domain.company.service.CompanyDraftService;
+import project.plantly.domain.company.service.CompanyStatsService;
 import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyService;
 import project.plantly.domain.company.service.CompanyUpdateService;
@@ -54,6 +58,7 @@ public class CompanyController {
     private final CompanyUpdateService companyUpdateService;
     private final CompanyVerificationService companyVerificationService;
     private final CompanyDraftService companyDraftService;
+    private final CompanyStatsService companyStatsService;
 
     // 사업자 인증 — 회사 등록 폼 앞단에서 아이디 중복 확인처럼 먼저 수행한다.
     // 국세청 진위확인(사업자번호+대표자명+개업일자) + 상태조회(계속사업자 여부) + 중복 검사를 한 번에 통과해야
@@ -140,6 +145,14 @@ public class CompanyController {
         // 인증은 선택: 로그인 상태면 카드마다 좋아요/즐겨찾기 여부를 채우고, 익명이면 principal=null → 전부 false.
         Long viewerId = (principal == null) ? null : principal.getUser().getId();
         return ApiResponse.success(companyQueryService.getShowcase(viewerId));
+    }
+
+    // 메인 화면 현황 지표 — 인증 없이 누구나. 뷰어와 무관한 숫자라 principal 을 받지 않는다.
+    // 개수만 필요한 화면이 목록 API 를 빌려 쓰지 않게 하려고 따로 둔다(size=1 조회로 총수만 빼 가는 식).
+    // 'showcase'/'my' 와 같은 단일 세그먼트라 공개 상세(/{id})보다 먼저 매칭된다.
+    @GetMapping("/api/v1/companies/stats")
+    public ApiResponse<CompanyStatsResponse> getStats() {
+        return ApiResponse.success(companyStatsService.getStats());
     }
 
     // 내가 등록한 회사 목록 — 인증된 본인 소유(userId=본인) 미삭제 회사를 요약 카드로, 최신순 페이징(검색 없음).
@@ -235,21 +248,21 @@ public class CompanyController {
 
     @PutMapping("/api/v1/companies/{id}/images")
     public ApiResponse<Void> replaceGalleryImages(@AuthenticationPrincipal UserPrincipal principal,
-                                                  @PathVariable Long id, @Valid @RequestBody List<ImageRequest> images) {
+                                                  @PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "이미지 항목은 비어 있을 수 없습니다.") ImageRequest> images) {
         companyUpdateService.replaceGalleryImagesByUser(id, principal.getUser().getId(), images);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/contacts")
     public ApiResponse<Void> replaceContacts(@AuthenticationPrincipal UserPrincipal principal,
-                                             @PathVariable Long id, @Valid @RequestBody List<ContactRequest> contacts) {
+                                             @PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "연락처 항목은 비어 있을 수 없습니다.") ContactRequest> contacts) {
         companyUpdateService.replaceContactsByUser(id, principal.getUser().getId(), contacts);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/references")
     public ApiResponse<Void> replaceReferences(@AuthenticationPrincipal UserPrincipal principal,
-                                               @PathVariable Long id, @Valid @RequestBody List<ReferenceRequest> references) {
+                                               @PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "레퍼런스 항목은 비어 있을 수 없습니다.") ReferenceRequest> references) {
         companyUpdateService.replaceReferencesByUser(id, principal.getUser().getId(), references);
         return ApiResponse.ok();
     }
@@ -270,8 +283,9 @@ public class CompanyController {
 
     @PutMapping("/api/v1/companies/{id}/certifications")
     public ApiResponse<Void> replaceCertifications(@AuthenticationPrincipal UserPrincipal principal,
-                                                   @PathVariable Long id, @RequestBody List<Long> certificationIds) {
-        companyUpdateService.replaceCertificationsByUser(id, principal.getUser().getId(), certificationIds);
+                                                   @PathVariable Long id,
+                                                   @Valid @RequestBody List<@NotNull(message = "인증 항목은 비어 있을 수 없습니다.") CertificationRequest> certifications) {
+        companyUpdateService.replaceCertificationsByUser(id, principal.getUser().getId(), certifications);
         return ApiResponse.ok();
     }
 

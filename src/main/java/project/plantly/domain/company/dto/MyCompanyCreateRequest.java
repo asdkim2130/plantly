@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
@@ -59,19 +60,22 @@ public record MyCompanyCreateRequest(
         // ===== 자식(소유) 엔티티 =====
         @Valid
         @Size(max = 1, message = "연락처는 현재 1건만 등록할 수 있습니다.")
-        List<ContactRequest> contacts,
+        List<@NotNull(message = "연락처 항목은 비어 있을 수 없습니다.") ContactRequest> contacts,
         @Valid
-        List<ImageRequest> images,
+        List<@NotNull(message = "이미지 항목은 비어 있을 수 없습니다.") ImageRequest> images,
         @Valid
         @Size(max = 1, message = "프로젝트 레퍼런스는 현재 1건만 등록할 수 있습니다.")
-        List<ReferenceRequest> references,
+        List<@NotNull(message = "레퍼런스 항목은 비어 있을 수 없습니다.") ReferenceRequest> references,
         List<String> materialNames,
         List<String> equipmentNames,
         List<String> tagNames,
 
         // ===== 링크(M:N) 엔티티 =====
         List<Long> categoryIds,
-        List<Long> certificationIds,
+        // @NotNull 은 리스트가 아니라 '원소'에 붙는다 — 인증을 하나도 고르지 않은 "해당 사항 없음"은
+        // 정상 상태라 리스트 자체는 null/빈 배열이어도 된다. 막아야 하는 건 [null] 같은 깨진 원소뿐이다.
+        @Valid
+        List<@NotNull(message = "인증 항목은 비어 있을 수 없습니다.") CertificationRequest> certifications,
         List<Long> countryIds,
         List<Long> domesticRegionIds,
         List<Long> industryIds
@@ -94,6 +98,6 @@ public record MyCompanyCreateRequest(
                 website, logoUrl, coverImageUrl, introTitle, content, trlLevel, videoUrl, leadTime, asInfo,
                 pricingType, brandColor, visibility,
                 contacts, images, references, materialNames, equipmentNames, tagNames,
-                categoryIds, certificationIds, countryIds, domesticRegionIds, industryIds);
+                categoryIds, certifications, countryIds, domesticRegionIds, industryIds);
     }
 }

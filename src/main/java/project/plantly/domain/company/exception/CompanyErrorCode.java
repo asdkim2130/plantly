@@ -35,6 +35,14 @@ public enum CompanyErrorCode implements ErrorCode {
     DOMESTIC_REGION_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 국내 지역이 포함되어 있습니다."),
     INDUSTRY_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 산업군이 포함되어 있습니다."),
 
+    // 인증 링크의 "직접 입력한 인증명(customName)" 규약 위반.
+    // customName 은 '기타'(ETC) 마스터에만 붙는다 — 마스터 목록에 없는 인증을 회사가 적어 넣는 앵커라서다.
+    // 양방향으로 다 막는다: 기타인데 이름이 없으면 화면에 "기타"라는 정체불명 배지가 뜨고,
+    // 기타가 아닌데 이름이 있으면 마스터 이름과 다른 이름이 같은 인증 행세를 한다(패싯 필터와 표기가 어긋난다).
+    CERTIFICATION_CUSTOM_NAME_REQUIRED(HttpStatus.BAD_REQUEST, "기타 인증은 인증명을 직접 입력해야 합니다."),
+    CERTIFICATION_CUSTOM_NAME_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "직접 입력한 인증명은 기타 인증에만 붙일 수 있습니다."),
+    CERTIFICATION_CUSTOM_NAME_TOO_LONG(HttpStatus.BAD_REQUEST, "직접 입력한 인증명이 너무 깁니다."),
+
     // 조회 대상 회사가 없거나(삭제 포함) 식별자가 잘못된 경우. 공개 조회에서 소프트 삭제는 미존재로 취급한다.
     COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 회사입니다."),
 

@@ -144,7 +144,12 @@ public class CompanyApiDocs {
 
                 // ===== 링크(M:N) 엔티티 - 기존 마스터 ID 참조 =====
                 fieldWithPath("categoryIds").type(JsonFieldType.ARRAY).optional().description("카테고리 ID 목록 (등급별 개수 제한)"),
-                fieldWithPath("certificationIds").type(JsonFieldType.ARRAY).optional().description("인증 ID 목록"),
+                fieldWithPath("certifications").type(JsonFieldType.ARRAY).optional().description("인증 목록"),
+                fieldWithPath("certifications[].certificationId").type(JsonFieldType.NUMBER)
+                        .description("인증 ID. 목록에 없는 인증은 '기타' 인증의 ID 를 보내고 customName 에 이름을 적는다"),
+                fieldWithPath("certifications[].customName").type(JsonFieldType.STRING).optional()
+                        .description("직접 입력한 인증명(최대 100자). '기타' 인증에만 허용되고, '기타' 인증에는 필수다."
+                                + " 같은 '기타' 인증에 이름만 다르게 여러 건 보낼 수 있다"),
                 fieldWithPath("countryIds").type(JsonFieldType.ARRAY).optional().description("수출 국가 ID 목록"),
                 fieldWithPath("domesticRegionIds").type(JsonFieldType.ARRAY).optional().description("국내 지역 ID 목록"),
                 fieldWithPath("industryIds").type(JsonFieldType.ARRAY).optional().description("산업군 ID 목록")
@@ -316,6 +321,23 @@ public class CompanyApiDocs {
     //
     // latest 는 목록이 아니라 레일이다 — '더보기'는 여기서 더 받아오는 게 아니라 목록 화면
     // (GET /api/v1/companies)으로 넘어간다. 카테고리 패싯을 고른 뒤의 목록도 그 API 가 담당한다.
+    // 메인 화면 현황 지표(ApiResponse<CompanyStatsResponse>). 집계 숫자만 — 목록도 pageInfo 도 없다.
+    // 각 숫자는 대응하는 공개 목록과 같은 기준으로 세므로, 현황과 선택지 개수가 어긋나지 않는다.
+    public static FieldDescriptor[] companyStatsResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
+                fieldWithPath("data.companyCount").type(JsonFieldType.NUMBER)
+                        .description("공개 노출 중인 기업 수 (비공개·삭제 제외)"),
+                fieldWithPath("data.categoryCount").type(JsonFieldType.NUMBER)
+                        .description("공개 카테고리 트리의 전체 노드 수(대+중+소). 대분류 개수가 아니다"),
+                fieldWithPath("data.industryCount").type(JsonFieldType.NUMBER)
+                        .description("공개 옵션으로 제공되는 업종 수"),
+                fieldWithPath("data.certificationCount").type(JsonFieldType.NUMBER)
+                        .description("공개 옵션으로 제공되는 인증 항목 수"),
+                fieldWithPath("error").type(JsonFieldType.STRING).optional().description("오류 메시지 (성공 시 null)")
+        };
+    }
+
     public static FieldDescriptor[] companyShowcaseResponseFields() {
         java.util.List<FieldDescriptor> fields = new java.util.ArrayList<>();
         fields.add(fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"));
@@ -504,9 +526,11 @@ public class CompanyApiDocs {
 
                 fieldWithPath(p + "certifications").type(JsonFieldType.ARRAY).description("인증 목록"),
                 fieldWithPath(p + "certifications[].id").type(JsonFieldType.NUMBER).description("인증 ID"),
-                fieldWithPath(p + "certifications[].certificationName").type(JsonFieldType.STRING).description("인증명"),
+                fieldWithPath(p + "certifications[].certificationName").type(JsonFieldType.STRING)
+                        .description("화면에 그대로 쓰는 인증명. type=ETC 면 회사가 직접 입력한 이름이 온다(마스터 이름 '기타'가 아니다)"),
                 fieldWithPath(p + "certifications[].type").type(JsonFieldType.STRING)
-                        .description("인증 구분: MANAGEMENT_SYSTEM(경영시스템), INDUSTRY_SPECIFIC(산업특화), MARKET_ACCESS(시장진입)"),
+                        .description("인증 구분: MANAGEMENT_SYSTEM(경영시스템), INDUSTRY_SPECIFIC(산업특화),"
+                                + " MARKET_ACCESS(시장진입), ETC(직접 입력)"),
 
                 fieldWithPath(p + "countries").type(JsonFieldType.ARRAY).description("수출 국가 목록"),
                 fieldWithPath(p + "countries[].id").type(JsonFieldType.NUMBER).description("국가 ID"),
