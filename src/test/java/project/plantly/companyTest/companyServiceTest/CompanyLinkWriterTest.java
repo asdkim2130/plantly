@@ -187,6 +187,59 @@ class CompanyLinkWriterTest {
                 .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.CERTIFICATION_NOT_FOUND);
     }
 
+    @Test
+    @DisplayName("직접 입력 인증의 이름변경·삭제 후 추가·전량 제거가 모두 교체(PUT) 하나로 처리된다")
+    void replaceCoversEveryCustomCertificationTransition() {
+        Certification iso = persistCertification("ISO 9001", "iso-9001", CertificationType.MANAGEMENT_SYSTEM);
+        Certification etc = persistCertification("기타", "etc", CertificationType.ETC);
+        Company company = persistCompany();
+
+        linkWriter.write(company, CompanyCreateRequestBuilder.aRequest()
+                .certifications(List.of(
+                        new CertificationRequest(iso.getId(), null),
+                        new CertificationRequest(etc.getId(), "사내 표준 품질인증"),
+                        new CertificationRequest(etc.getId(), "○○협회 우수기업 인증")))
+                .build());
+        em.flush();
+
+        // (1) 이름만 고친다. 같은 마스터에 custom_name 만 바뀌는 자리라 부분 유니크 인덱스와 정면으로 만난다.
+        linkWriter.replaceCertifications(company, List.of(
+                new CertificationRequest(iso.getId(), null),
+                new CertificationRequest(etc.getId(), "사내 표준 품질인증 QM-2024"),
+                new CertificationRequest(etc.getId(), "○○협회 우수기업 인증")));
+        em.flush();
+        assertThat(displayNamesOf(company))
+                .containsExactly("ISO 9001", "사내 표준 품질인증 QM-2024", "○○협회 우수기업 인증");
+
+        // (2) 하나를 지우고 다른 이름을 새로 넣는다.
+        linkWriter.replaceCertifications(company, List.of(
+                new CertificationRequest(iso.getId(), null),
+                new CertificationRequest(etc.getId(), "○○협회 우수기업 인증"),
+                new CertificationRequest(etc.getId(), "△△ 시험성적서")));
+        em.flush();
+        assertThat(displayNamesOf(company))
+                .containsExactly("ISO 9001", "○○협회 우수기업 인증", "△△ 시험성적서");
+
+        // (3) 직접 입력을 전부 걷어내고 마스터 인증만 남긴다.
+        linkWriter.replaceCertifications(company, List.of(new CertificationRequest(iso.getId(), null)));
+        em.flush();
+        assertThat(displayNamesOf(company)).containsExactly("ISO 9001");
+
+        // (4) 반대로 마스터를 걷어내고 직접 입력만 남기는 것도, 전부 비우는 것도 같은 한 번의 교체다.
+        linkWriter.replaceCertifications(company, List.of(new CertificationRequest(etc.getId(), "△△ 시험성적서")));
+        em.flush();
+        assertThat(displayNamesOf(company)).containsExactly("△△ 시험성적서");
+
+        linkWriter.replaceCertifications(company, List.of());
+        em.flush();
+        assertThat(displayNamesOf(company)).isEmpty();
+    }
+
+    private List<String> displayNamesOf(Company company) {
+        return companyCertificationRepository.findLinksByCompanyId(company.getId())
+                .stream().map(CompanyCertification::displayName).toList();
+    }
+
     private Certification persistCertification(String name, String slug, CertificationType type) {
         Certification certification = Certification.create(name, slug, type, 0);
         em.persist(certification);
