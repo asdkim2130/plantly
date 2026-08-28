@@ -89,6 +89,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/countries").permitAll()
                         // 국내 지역 트리도 공개 — 등록/수정 폼의 커버리지 선택지이자 향후 검색 패싯이다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/domestic-regions").permitAll()
+                        // 업로드된 이미지 서빙은 공개. 이 파일들은 공개 회사 상세/카드에 실려 나가므로
+                        // 인증을 걸면 브라우저의 <img> 가 읽지 못한다. 반대로 업로드(POST /api/v1/uploads)는
+                        // 아래 anyRequest().authenticated() 에 그대로 걸려 로그인이 필요하다 - 여기서 여는 것은
+                        // 읽기뿐이고, key 가 UUID 라 주소를 모르면 발행 전 초안 이미지에 닿을 수도 없다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/files/{key}").permitAll()
                         // 공개 회사 목록/검색은 누구에게나 허용. (단일 세그먼트라 /{id}·/private·/admin 과 구분된다)
                         .requestMatchers(HttpMethod.GET, "/api/v1/companies").permitAll()
                         // 메인 화면 노출 영역(스팟라이트/추천)도 공개. /{id} permitAll 로도 통과하지만,

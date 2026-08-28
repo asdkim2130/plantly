@@ -6,10 +6,12 @@ import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import project.plantly.global.response.ApiResponse;
 
 import java.util.Objects;
@@ -49,6 +51,28 @@ public class GlobalExceptionHandler {
                 .orElse(CommonErrorCode.INVALID_INPUT.getMessage());
 
         return ResponseEntity.badRequest().body(ApiResponse.failure(firstMessage));
+    }
+
+    // 400 업로드 용량 초과 - 서블릿 컨테이너가 요청을 다 받기 전에 끊고 던진다.
+    // 컨트롤러에 닿지 않으므로 UploadService 의 상한 검사로는 잡히지 않고, 이 핸들러가 없으면
+    // 아래 fallback 이 삼켜 "서버 오류"(500)로 나간다 - 사용자가 고칠 수 있는 문제인데 서버 탓으로 보인다.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(MaxUploadSizeExceededException e) {
+        return ResponseEntity.status(CommonErrorCode.FILE_TOO_LARGE.getStatus())
+                .body(ApiResponse.failure(CommonErrorCode.FILE_TOO_LARGE.getMessage()));
+    }
+
+    // 415 요청 형식 불일치 - Content-Type 이 엔드포인트가 받는 형식과 다르거나 아예 없다.
+    // 잡지 않으면 아래 fallback 이 삼켜 500 으로 나가고, 클라이언트 구현 오류가 "서버가 죽었다"로 읽힌다.
+    // 스프링의 기본 처리(DefaultHandlerExceptionResolver)가 415 로 매핑해 주지만, 이 advice 의
+    // @ExceptionHandler(Exception.class) 가 먼저 잡아 가로채기 때문에 여기서 명시적으로 되돌려 놓는다.
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException e) {
+        // 사용자가 고칠 수 있는 값이 아니므로 응답은 일반화하고, 진단에 필요한 값은 로그로만 남긴다.
+        log.warn("지원하지 않는 Content-Type 요청: 받은 값={}, 허용={}", e.getContentType(), e.getSupportedMediaTypes());
+
+        return ResponseEntity.status(CommonErrorCode.UNSUPPORTED_MEDIA_TYPE.getStatus())
+                .body(ApiResponse.failure(CommonErrorCode.UNSUPPORTED_MEDIA_TYPE.getMessage()));
     }
 
     // 500 서버 오류 - 예상치 못한 모든 예외의 fallback
