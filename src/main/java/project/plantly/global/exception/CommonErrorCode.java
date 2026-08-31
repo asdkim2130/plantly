@@ -23,6 +23,14 @@ public enum CommonErrorCode implements ErrorCode {
     // 실제 형식/허용 형식은 로그로 남긴다(GlobalExceptionHandler).
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 요청 형식입니다."),
 
+    // 아래 셋은 도메인이 던지는 코드가 아니라, 스프링이 요청 자체를 거절할 때 GlobalExceptionHandler 가
+    // 상태 코드로부터 골라 쓰는 기본 문구다. 도메인은 여전히 자기 enum 의 코드를 던진다 -
+    // 예를 들어 "존재하지 않는 회사"는 CompanyErrorCode 의 404 지 여기 NOT_FOUND 가 아니다.
+    // 여기 NOT_FOUND 는 매핑 자체가 없는 URL(오타 주소 등)용이다.
+    NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 경로를 찾을 수 없습니다."),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식입니다."),
+    NOT_ACCEPTABLE(HttpStatus.NOT_ACCEPTABLE, "요청한 형식으로는 응답할 수 없습니다."),
+
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
 
     private final HttpStatus status;
