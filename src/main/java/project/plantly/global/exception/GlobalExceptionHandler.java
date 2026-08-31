@@ -3,14 +3,17 @@ package project.plantly.global.exception;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSourceResolvable;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.validation.FieldError;
+import org.springframework.util.StringUtils;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -58,6 +61,31 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // 500 서버 오류 - 부모가 다루지 않는, 예상치 못한 모든 예외의 fallback
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpected (Exception e){
+        // 예외 클래스에 @ResponseStatus 로 상태가 선언돼 있으면 그것을 따른다.
+        // 그 선언을 읽는 것은 ResponseStatusExceptionResolver 인데 이 advice 가 먼저 잡아 선점하므로,
+        // 여기서 직접 보지 않으면 "404 로 나가라"고 써 붙인 예외가 조용히 500 으로 둔갑한다.
+        // (프로그래밍 방식으로 던지는 ResponseStatusException 은 ErrorResponseException 의 하위라
+        //  부모가 이미 처리한다 - 여기 걸리는 것은 애너테이션만 붙은 예외다.)
+        //
+        // 이 프로젝트의 규약은 여전히 BusinessException + ErrorCode 다. 이 분기는 규약 밖의 예외
+        // (주로 라이브러리가 던지는 것)가 선언해 둔 상태를 삼키지 않기 위한 안전망이지 두 번째 규약이 아니다.
+        ResponseStatus declared = AnnotatedElementUtils.findMergedAnnotation(e.getClass(), ResponseStatus.class);
+
+        if (declared != null) {
+            HttpStatus status = declared.code();
+            // reason 은 개발자가 "이 문구로 내보내라"고 적어 둔 것이므로 있으면 그대로 쓰고,
+            // 없으면 상태 코드로 고른 기본 문구를 쓴다.
+            String message = StringUtils.hasText(declared.reason()) ? declared.reason() : defaultMessage(status);
+
+            if (status.is5xxServerError()) {
+                log.error("상태가 선언된 예외 (status={})", status.value(), e);
+            } else {
+                log.warn("상태가 선언된 예외 (status={}): {}: {}", status.value(), e.getClass().getSimpleName(), e.getMessage());
+            }
+
+            return ResponseEntity.status(status).body(ApiResponse.failure(message));
+        }
+
         log.error("예상치 못한 서버 오류", e);  //실제 원인은 로그로 기록
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -73,9 +101,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
-        // 필드 에러가 하나도 없는 경우(클래스 레벨 제약만 걸린 경우)가 있어 첫 원소를 바로 꺼내지 않는다.
-        String firstMessage = ex.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getDefaultMessage)
+        // getFieldErrors 가 아니라 getAllErrors 다. 클래스 레벨 제약(여러 필드를 함께 보는 검증)은
+        // FieldError 가 아니라 ObjectError 로 담기는데, 필드 에러만 훑으면 그 구체적인 메시지를 두고도
+        // 아래 기본 문구로 뭉개진다. 필드 에러도 ObjectError 의 하위라 getAllErrors 가 양쪽을 다 준다.
+        String firstMessage = ex.getBindingResult().getAllErrors().stream()
+                .map(ObjectError::getDefaultMessage)
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(CommonErrorCode.INVALID_INPUT.getMessage());

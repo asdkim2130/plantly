@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -140,11 +142,45 @@ class GlobalExceptionHandlerTest {
 
         // 오타 난 URL 은 사용자가 만들 수 있는 상태다(북마크, 프론트 라우팅 실수). 이게 500 이면
         // 프론트는 "서버 장애"로 읽고 엉뚱한 데서 원인을 찾는다.
+        //
+        // 상태 코드뿐 아니라 봉투까지 확인한다 - 상태만 보면 이 경로가 나중에 빈 본문이나 ProblemDetail 로
+        // 바뀌어도 테스트가 통과해 버린다. success 플래그는 ProblemDetail 에 없으므로 형식이 갈리면 여기서 걸린다.
         @Test
-        @DisplayName("매핑되지 않은 경로는 404 다 - NoResourceFoundException")
+        @DisplayName("매핑되지 않은 경로는 404 이고 본문도 같은 봉투다 - NoResourceFoundException")
         void unmappedPath() throws Exception {
             mockMvc.perform(get("/probe/does-not-exist"))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error").value("요청한 경로를 찾을 수 없습니다."));
+        }
+    }
+
+    @Nested
+    @DisplayName("부모가 다루지 않는 것 - fallback 의 안전망")
+    class DeclaredStatusOnException {
+
+        // 예외 클래스에 붙은 @ResponseStatus 는 ResponseStatusExceptionResolver 가 읽지만, 이 advice 의
+        // fallback 이 먼저 잡아 선점한다. 부모(ResponseEntityExceptionHandler)가 다루는 것은 자기가 선언한
+        // 표준 MVC 예외 목록과 ErrorResponseException 계열뿐이라 여기까지 오지 않는다.
+        //
+        // 이 프로젝트는 상태를 BusinessException + ErrorCode 로 선언하므로 지금 이런 예외는 없다.
+        // 라이브러리 예외나 나중에 들어올 코드가 선언한 상태를 조용히 500 으로 바꾸지 않도록 잠가 둔다.
+        @Test
+        @DisplayName("@ResponseStatus 가 붙은 예외는 그 상태로 나간다 - 500 으로 덮이지 않는다")
+        void declaredStatusIsHonoured() throws Exception {
+            mockMvc.perform(get("/probe/declared-status"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error").value(not(FALLBACK_MESSAGE)));
+        }
+
+        @Test
+        @DisplayName("reason 을 적어 두었으면 그 문구를 쓴다")
+        void declaredReasonIsUsed() throws Exception {
+            mockMvc.perform(get("/probe/declared-reason"))
+                    .andExpect(status().isGone())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error").value("만료된 초대입니다."));
         }
     }
 
@@ -217,6 +253,16 @@ class GlobalExceptionHandlerTest {
             return ApiResponse.success(Map.of("keyword", keyword));
         }
 
+        @GetMapping("/declared-status")
+        ApiResponse<Void> declaredStatus() {
+            throw new DeclaredStatusException();
+        }
+
+        @GetMapping("/declared-reason")
+        ApiResponse<Void> declaredReason() {
+            throw new DeclaredReasonException();
+        }
+
         @PostMapping("/too-large")
         ApiResponse<Void> tooLarge() {
             throw new MaxUploadSizeExceededException(10L);
@@ -226,5 +272,13 @@ class GlobalExceptionHandlerTest {
         ApiResponse<Map<String, String>> part(@RequestPart MultipartFile file) {
             return ApiResponse.success(Map.of("name", file.getName()));
         }
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    static class DeclaredStatusException extends RuntimeException {
+    }
+
+    @ResponseStatus(code = HttpStatus.GONE, reason = "만료된 초대입니다.")
+    static class DeclaredReasonException extends RuntimeException {
     }
 }
