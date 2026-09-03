@@ -47,3 +47,5 @@ src/main/resources/application-local.properties
 # 케이스 정의는 src/main/java/project/plantly/global/seed/ 코드가 소유한다.
 # 이 파일들은 그 코드의 실행 결과일 뿐이라, 커밋하면 시드를 돌릴 때마다 diff 가 생긴다.
 /docs/seed/
+### 업로드된 파일 (로컬 디스크 저장소) ###
+uploads/
