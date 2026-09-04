@@ -168,10 +168,18 @@ public class CompanyApiDocs {
     }
 
     // 실패 응답(ApiResponse.failure). success=false + error 만 존재하고 message/data 는 NON_NULL 로 생략된다.
+    // 입력 검증 실패일 때만 errors 가 추가로 실린다 — 아래 validationErrorFields 참고.
     public static FieldDescriptor[] errorResponseFields() {
         return new FieldDescriptor[]{
                 fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부 (실패 시 false)"),
-                fieldWithPath("error").type(JsonFieldType.STRING).description("에러 메시지")
+                fieldWithPath("error").type(JsonFieldType.STRING).description("에러 메시지"),
+                fieldWithPath("errors").type(JsonFieldType.ARRAY).optional()
+                        .description("입력 검증 실패일 때만 존재. 위반 전체가 화면의 폼 순서로 담긴다"),
+                fieldWithPath("errors[].field").type(JsonFieldType.STRING).optional()
+                        .description("위반한 입력칸의 경로 (예: companyName, contacts[0].phone). "
+                                + "여러 필드를 함께 보는 검증은 붙일 칸이 없어 이 키가 생략된다 — 폼 전체 오류로 표시한다"),
+                fieldWithPath("errors[].message").type(JsonFieldType.STRING).optional()
+                        .description("그 입력칸 아래에 표시할 문구")
         };
     }
 

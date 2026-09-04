@@ -171,7 +171,13 @@ public class IndustryControllerTest {
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
-                                        .description("검증 실패 메시지 (첫 번째 위반 항목)")
+                                        .description("검증 실패 메시지 (첫 번째 위반 항목)"),
+                                fieldWithPath("errors").type(JsonFieldType.ARRAY).optional()
+                                        .description("입력 검증 실패일 때만 존재. 위반 전체가 화면의 폼 순서로 담긴다"),
+                                fieldWithPath("errors[].field").type(JsonFieldType.STRING).optional()
+                                        .description("위반한 입력칸의 경로. 폼 전체 오류면 생략된다"),
+                                fieldWithPath("errors[].message").type(JsonFieldType.STRING).optional()
+                                        .description("그 입력칸 아래에 표시할 문구")
                         )
                 ));
     }
