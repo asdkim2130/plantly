@@ -59,9 +59,12 @@ public class Company {
 
     private String website;
 
-    @NotNull
-    @Column(nullable = false)
-    private String logoUrl;  // 기업 대표 이미지(단일·필수). 여러 장 이미지는 CompanyImage 로 분리 관리한다.
+    // 기업 대표 이미지(단일·선택). 여러 장 이미지는 CompanyImage 로 분리 관리한다.
+    //
+    // NOT NULL 이 아니다. 로고가 없는 회사도 등록할 수 있어야 하고, 없을 때는 화면이 회사명 앞 두 글자로
+    // 대체 배지를 그린다(프론트 담당). 서버가 자리표시자 URL 을 만들어 넣지 않는 이유는, 그러면 "로고를
+    // 올린 적 없음" 과 "자리표시자를 로고로 올림" 이 저장 값으로 구분되지 않기 때문이다.
+    private String logoUrl;
 
     // 카드 커버 이미지(단일·선택). 로고와는 다른 축이다 — 로고는 정사각 배지, 커버는 카드 배경으로 깔리는 와이드 사진.
     // CompanyImage 가 아니라 스칼라로 두는 이유는 '회사당 최대 1장'을 정책이 아니라 구조로 보장하기 위해서다
@@ -184,10 +187,10 @@ public class Company {
         if (postalCode != null || roadAddress != null || jibunAddress != null || detailAddress != null) {
             this.address = this.address.merged(postalCode, roadAddress, jibunAddress, detailAddress);
         }
-        if (logoUrl != null) this.logoUrl = logoUrl;
 
         // 선택 문자열 필드: null = 미변경, blank = 비움(null)
-        // 커버는 logoUrl 과 달리 선택 필드라 이쪽에 둔다 — 로고는 NOT NULL 이라 위에서 교체만 한다.
+        // 로고도 선택 필드가 되면서 이쪽으로 왔다 — 비우면 화면이 회사명 앞 두 글자로 대체 배지를 그린다.
+        if (logoUrl != null) this.logoUrl = blankToNull(logoUrl);
         if (coverImageUrl != null) this.coverImageUrl = blankToNull(coverImageUrl);
         if (website != null) this.website = blankToNull(website);
         if (introTitle != null) this.introTitle = blankToNull(introTitle);

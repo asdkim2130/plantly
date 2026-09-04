@@ -41,8 +41,9 @@ public record CompanyUpdateRequest(
         String detailAddress,
         @Size(max = CompanyConstraints.URL_MAX, message = "홈페이지 주소는 255자를 넘을 수 없습니다.")
         String website,
-        @Size(min = 1, max = CompanyConstraints.URL_MAX,
-                message = "로고 이미지 주소는 1자 이상 255자 이하여야 합니다.")
+        // 로고도 선택 필드가 되면서 @Size(min=1) 를 뗐다 — blank("") 로 비울 수 있고, 비면 프론트가
+        // 회사명 앞 두 글자로 대체 배지를 그린다. (엔티티의 NOT NULL 도 함께 풀렸다)
+        @Size(max = CompanyConstraints.URL_MAX, message = "로고 이미지 주소는 255자를 넘을 수 없습니다.")
         String logoUrl,
         // 커버는 선택 필드라 blank("") 로 비울 수 있다(null = 미변경).
         @Size(max = CompanyConstraints.URL_MAX, message = "커버 이미지 주소는 255자를 넘을 수 없습니다.")
