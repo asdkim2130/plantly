@@ -67,6 +67,11 @@ class CompanyCollectionBodyValidationTest {
     @MockitoBean CompanyDraftService companyDraftService;
     @MockitoBean CompanyStatsService companyStatsService;
 
+    // 등록 요청의 필수 항목을 채운 최소 본문. 이 테스트의 관심사는 컬렉션 원소 검증이므로,
+    // 그 외 필수 항목(주소 3축)이 빠져 400 이 나면 무엇 때문에 거절됐는지 구분되지 않는다.
+    private static final String MINIMAL_BODY = "{\"verificationId\":1,\"companyName\":\"회사\""
+            + ",\"postalCode\":\"06236\",\"roadAddress\":\"서울시 강남구 테헤란로 1\",\"detailAddress\":\"10층\"";
+
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -80,7 +85,7 @@ class CompanyCollectionBodyValidationTest {
     void createRejectsNullCertificationElement() throws Exception {
         mockMvc.perform(post("/api/v1/companies")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"verificationId\":1,\"companyName\":\"회사\",\"certifications\":[null]}"))
+                        .content(MINIMAL_BODY + ",\"certifications\":[null]}"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -90,7 +95,7 @@ class CompanyCollectionBodyValidationTest {
         for (String certifications : new String[]{"", ",\"certifications\":null", ",\"certifications\":[]"}) {
             mockMvc.perform(post("/api/v1/companies")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"verificationId\":1,\"companyName\":\"회사\"" + certifications + "}"))
+                            .content(MINIMAL_BODY + certifications + "}"))
                     .andExpect(status().isCreated());
         }
     }

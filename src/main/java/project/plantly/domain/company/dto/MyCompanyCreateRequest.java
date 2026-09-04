@@ -34,51 +34,85 @@ public record MyCompanyCreateRequest(
         Long verificationId,
 
         // ===== 본체 (신원 3종 제외) =====
-        @NotBlank
+        @NotBlank(message = "기업명은 필수입니다.")
+        @Size(max = CompanyConstraints.COMPANY_NAME_MAX, message = "기업명은 100자를 넘을 수 없습니다.")
         String companyName,
-        @Pattern(regexp = "\\d{5}", message = "우편번호는 5자리 숫자여야 합니다.")
+        // 주소 3축(우편번호/도로명/상세)은 엔티티(Address)가 NOT NULL 이라 필수다. 관리자 등록 경로와 같은 규칙이다.
+        @NotBlank(message = "우편번호는 필수입니다.")
+        @Pattern(regexp = CompanyConstraints.POSTAL_CODE_PATTERN, message = CompanyConstraints.POSTAL_CODE_MESSAGE)
         String postalCode,
+        @NotBlank(message = "도로명 주소는 필수입니다.")
+        @Size(max = CompanyConstraints.ROAD_ADDRESS_MAX, message = "도로명 주소는 200자를 넘을 수 없습니다.")
         String roadAddress,
+        @Size(max = CompanyConstraints.JIBUN_ADDRESS_MAX, message = "지번 주소는 200자를 넘을 수 없습니다.")
         String jibunAddress,
+        @NotBlank(message = "상세주소는 필수입니다.")
+        @Size(max = CompanyConstraints.DETAIL_ADDRESS_MAX, message = "상세주소는 100자를 넘을 수 없습니다.")
         String detailAddress,
+        @Size(max = CompanyConstraints.URL_MAX, message = "홈페이지 주소는 255자를 넘을 수 없습니다.")
         String website,
+        // 로고는 선택이다. 없으면 프론트가 회사명 앞 두 글자로 대체 배지를 그린다.
+        @Size(max = CompanyConstraints.URL_MAX, message = "로고 이미지 주소는 255자를 넘을 수 없습니다.")
         String logoUrl,
+        @Size(max = CompanyConstraints.URL_MAX, message = "커버 이미지 주소는 255자를 넘을 수 없습니다.")
         String coverImageUrl,
+        @Size(max = CompanyConstraints.INTRO_TITLE_MAX, message = "한 줄 요약은 50자를 넘을 수 없습니다.")
         String introTitle,
+        @Size(max = CompanyConstraints.CONTENT_MAX, message = "소개글은 5000자를 넘을 수 없습니다.")
         String content,
         TrlLevel trlLevel,
+        @Size(max = CompanyConstraints.URL_MAX, message = "동영상 주소는 255자를 넘을 수 없습니다.")
         String videoUrl,
+        @Size(max = CompanyConstraints.LEAD_TIME_MAX, message = "예상 리드타임은 100자를 넘을 수 없습니다.")
         String leadTime,
+        @Size(max = CompanyConstraints.AS_INFO_MAX, message = "유지보수 정보는 1000자를 넘을 수 없습니다.")
         String asInfo,
         PricingType pricingType,
         // 자동저장(PUT /drafts/{id})은 @Valid 를 붙이지 않으므로, 이 검증은 발행(POST /companies) 시점에만 발화한다.
         // 작성 중 초안에 반쯤 입력된 색이 담겨도 저장은 막히지 않는다.
-        @Pattern(regexp = CompanyCreateRequest.BRAND_COLOR_PATTERN, message = CompanyCreateRequest.BRAND_COLOR_MESSAGE)
+        @Pattern(regexp = CompanyConstraints.BRAND_COLOR_PATTERN, message = CompanyConstraints.BRAND_COLOR_MESSAGE)
         String brandColor,
         CompanyVisibility visibility,
 
         // ===== 자식(소유) 엔티티 =====
         @Valid
-        @Size(max = 1, message = "연락처는 현재 1건만 등록할 수 있습니다.")
+        @Size(max = CompanyConstraints.CONTACTS_MAX, message = "연락처는 현재 1건만 등록할 수 있습니다.")
         List<@NotNull(message = "연락처 항목은 비어 있을 수 없습니다.") ContactRequest> contacts,
+        // 상세 이미지 장수는 등급이 정한다(DetailImageLimitPolicy). 여기 상한은 최고 등급값을 둔 천장이다.
         @Valid
+        @Size(max = CompanyConstraints.DETAIL_IMAGES_CEILING, message = "상세 이미지는 30장을 넘을 수 없습니다.")
         List<@NotNull(message = "이미지 항목은 비어 있을 수 없습니다.") ImageRequest> images,
         @Valid
-        @Size(max = 1, message = "프로젝트 레퍼런스는 현재 1건만 등록할 수 있습니다.")
+        @Size(max = CompanyConstraints.REFERENCES_MAX, message = "프로젝트 레퍼런스는 현재 1건만 등록할 수 있습니다.")
         List<@NotNull(message = "레퍼런스 항목은 비어 있을 수 없습니다.") ReferenceRequest> references,
-        List<String> materialNames,
-        List<String> equipmentNames,
-        List<String> tagNames,
+        @Size(max = CompanyConstraints.MATERIALS_MAX, message = "취급 소재는 20개를 넘을 수 없습니다.")
+        List<@NotBlank(message = "소재명은 비어 있을 수 없습니다.")
+                @Size(max = CompanyConstraints.MATERIAL_NAME_MAX, message = "소재명은 50자를 넘을 수 없습니다.")
+                String> materialNames,
+        @Size(max = CompanyConstraints.EQUIPMENTS_MAX, message = "보유 장비는 20개를 넘을 수 없습니다.")
+        List<@NotBlank(message = "장비명은 비어 있을 수 없습니다.")
+                @Size(max = CompanyConstraints.EQUIPMENT_NAME_MAX, message = "장비명은 50자를 넘을 수 없습니다.")
+                String> equipmentNames,
+        @Size(max = CompanyConstraints.TAGS_MAX, message = "태그는 10개를 넘을 수 없습니다.")
+        List<@NotBlank(message = "태그는 비어 있을 수 없습니다.")
+                @Size(max = CompanyConstraints.TAG_NAME_MAX, message = "태그는 20자를 넘을 수 없습니다.")
+                String> tagNames,
 
         // ===== 링크(M:N) 엔티티 =====
-        List<Long> categoryIds,
+        // 카테고리 개수는 등급이 정한다(CategoryLimitPolicy). 여기 상한은 천장이다.
+        @Size(max = CompanyConstraints.CATEGORIES_CEILING, message = "카테고리는 10개를 넘을 수 없습니다.")
+        List<@NotNull(message = "카테고리 항목은 비어 있을 수 없습니다.") Long> categoryIds,
         // @NotNull 은 리스트가 아니라 '원소'에 붙는다 — 인증을 하나도 고르지 않은 "해당 사항 없음"은
         // 정상 상태라 리스트 자체는 null/빈 배열이어도 된다. 막아야 하는 건 [null] 같은 깨진 원소뿐이다.
         @Valid
+        @Size(max = CompanyConstraints.CERTIFICATIONS_MAX, message = "인증은 10개를 넘을 수 없습니다.")
         List<@NotNull(message = "인증 항목은 비어 있을 수 없습니다.") CertificationRequest> certifications,
-        List<Long> countryIds,
-        List<Long> domesticRegionIds,
-        List<Long> industryIds
+        @Size(max = CompanyConstraints.COUNTRIES_MAX, message = "대응 가능 국가는 20개를 넘을 수 없습니다.")
+        List<@NotNull(message = "국가 항목은 비어 있을 수 없습니다.") Long> countryIds,
+        @Size(max = CompanyConstraints.DOMESTIC_REGIONS_MAX, message = "대응 가능 지역은 20개를 넘을 수 없습니다.")
+        List<@NotNull(message = "지역 항목은 비어 있을 수 없습니다.") Long> domesticRegionIds,
+        @Size(max = CompanyConstraints.INDUSTRIES_MAX, message = "산업군은 5개를 넘을 수 없습니다.")
+        List<@NotNull(message = "산업군 항목은 비어 있을 수 없습니다.") Long> industryIds
 ) {
 
     /**

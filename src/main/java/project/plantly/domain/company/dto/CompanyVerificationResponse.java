@@ -29,7 +29,8 @@ public record CompanyVerificationResponse(
         // (등록 후 실제 구독 상태는 구독 조회 API 가 내려준다 — 이건 '예고'다)
         CompanyGrade initialGrade,
         // 그 등급이 허용하는 입력 한도. 폼이 입력 개수를 제어하는 근거다.
-        InitialLimits limits
+        // 수정 폼(구독 조회)도 같은 모양을 쓴다 — GradeLimits 주석 참고.
+        GradeLimits limits
 ) {
 
     public static CompanyVerificationResponse from(CompanyVerification verification,
@@ -41,29 +42,6 @@ public record CompanyVerificationResponse(
                 verification.getBusinessStartDate(),
                 verification.getExpiresAt(),
                 initialGrade,
-                InitialLimits.from(policy));
-    }
-
-    /**
-     * 등록 폼이 읽는 한도. 내부 정책 표({@link GradePolicy})를 그대로 노출하지 않고 옮겨 담는다 —
-     * 정책 표는 새 제약이 생길 때마다 필드가 늘어나는 내부 구조라, 그대로 내보내면 표를 고칠 때
-     * API 계약이 함께 깨진다.
-     *
-     * <p>videoAllowed 는 개수가 아니라 노출 자격이다. 동영상은 등급과 무관하게 저장되고 공개 조회에서만
-     * 가려지므로(입력은 막지 않는다), 폼은 이 값으로 입력란을 감출지 자물쇠 안내를 붙일지 정한다.
-     */
-    public record InitialLimits(
-            int maxCategories,
-            int maxDetailImages,
-            int maxReferenceImages,
-            boolean videoAllowed
-    ) {
-        public static InitialLimits from(GradePolicy policy) {
-            return new InitialLimits(
-                    policy.maxCompanyCategories(),
-                    policy.maxDetailImages(),
-                    policy.maxReferenceImages(),
-                    policy.videoAllowed());
-        }
+                GradeLimits.from(policy));
     }
 }

@@ -1,7 +1,9 @@
 package project.plantly.domain.company.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import project.plantly.domain.company.dto.CompanyConstraints;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
@@ -156,56 +159,67 @@ public class AdminCompanyController {
 
     @PutMapping("/api/v1/admin/companies/{id}/tags")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceTagsByAdmin(@PathVariable Long id, @RequestBody List<String> tagNames) {
+    public ApiResponse<Void> replaceTagsByAdmin(@PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.TAGS_MAX, message = "태그는 10개를 넘을 수 없습니다.")
+                    List<@NotBlank(message = "태그는 비어 있을 수 없습니다.")
+                            @Size(max = CompanyConstraints.TAG_NAME_MAX, message = "태그는 20자를 넘을 수 없습니다.") String> tagNames) {
         companyUpdateService.replaceTagsByAdmin(id, tagNames);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/admin/companies/{id}/materials")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceMaterialsByAdmin(@PathVariable Long id, @RequestBody List<String> materialNames) {
+    public ApiResponse<Void> replaceMaterialsByAdmin(@PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.MATERIALS_MAX, message = "취급 소재는 20개를 넘을 수 없습니다.")
+                    List<@NotBlank(message = "소재명은 비어 있을 수 없습니다.")
+                            @Size(max = CompanyConstraints.MATERIAL_NAME_MAX, message = "소재명은 50자를 넘을 수 없습니다.") String> materialNames) {
         companyUpdateService.replaceMaterialsByAdmin(id, materialNames);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/admin/companies/{id}/equipment")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceEquipmentByAdmin(@PathVariable Long id, @RequestBody List<String> equipmentNames) {
+    public ApiResponse<Void> replaceEquipmentByAdmin(@PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.EQUIPMENTS_MAX, message = "보유 장비는 20개를 넘을 수 없습니다.")
+                    List<@NotBlank(message = "장비명은 비어 있을 수 없습니다.")
+                            @Size(max = CompanyConstraints.EQUIPMENT_NAME_MAX, message = "장비명은 50자를 넘을 수 없습니다.") String> equipmentNames) {
         companyUpdateService.replaceEquipmentByAdmin(id, equipmentNames);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/admin/companies/{id}/images")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceGalleryImagesByAdmin(@PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "이미지 항목은 비어 있을 수 없습니다.") ImageRequest> images) {
+    public ApiResponse<Void> replaceGalleryImagesByAdmin(@PathVariable Long id, @Valid @RequestBody @Size(max = CompanyConstraints.DETAIL_IMAGES_CEILING, message = "상세 이미지는 30장을 넘을 수 없습니다.")
+                    List<@NotNull(message = "이미지 항목은 비어 있을 수 없습니다.") ImageRequest> images) {
         companyUpdateService.replaceGalleryImagesByAdmin(id, images);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/admin/companies/{id}/contacts")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceContactsByAdmin(@PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "연락처 항목은 비어 있을 수 없습니다.") ContactRequest> contacts) {
+    public ApiResponse<Void> replaceContactsByAdmin(@PathVariable Long id, @Valid @RequestBody @Size(max = CompanyConstraints.CONTACTS_MAX, message = "연락처는 현재 1건만 등록할 수 있습니다.")
+                    List<@NotNull(message = "연락처 항목은 비어 있을 수 없습니다.") ContactRequest> contacts) {
         companyUpdateService.replaceContactsByAdmin(id, contacts);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/admin/companies/{id}/references")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceReferencesByAdmin(@PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "레퍼런스 항목은 비어 있을 수 없습니다.") ReferenceRequest> references) {
+    public ApiResponse<Void> replaceReferencesByAdmin(@PathVariable Long id, @Valid @RequestBody @Size(max = CompanyConstraints.REFERENCES_MAX, message = "프로젝트 레퍼런스는 현재 1건만 등록할 수 있습니다.")
+                    List<@NotNull(message = "레퍼런스 항목은 비어 있을 수 없습니다.") ReferenceRequest> references) {
         companyUpdateService.replaceReferencesByAdmin(id, references);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/admin/companies/{id}/categories")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceCategoriesByAdmin(@PathVariable Long id, @RequestBody List<Long> categoryIds) {
+    public ApiResponse<Void> replaceCategoriesByAdmin(@PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.CATEGORIES_CEILING, message = "카테고리는 10개를 넘을 수 없습니다.")
+                    List<@NotNull(message = "카테고리 항목은 비어 있을 수 없습니다.") Long> categoryIds) {
         companyUpdateService.replaceCategoriesByAdmin(id, categoryIds);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/admin/companies/{id}/industries")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceIndustriesByAdmin(@PathVariable Long id, @RequestBody List<Long> industryIds) {
+    public ApiResponse<Void> replaceIndustriesByAdmin(@PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.INDUSTRIES_MAX, message = "산업군은 5개를 넘을 수 없습니다.")
+                    List<@NotNull(message = "산업군 항목은 비어 있을 수 없습니다.") Long> industryIds) {
         companyUpdateService.replaceIndustriesByAdmin(id, industryIds);
         return ApiResponse.ok();
     }
@@ -213,21 +227,24 @@ public class AdminCompanyController {
     @PutMapping("/api/v1/admin/companies/{id}/certifications")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> replaceCertificationsByAdmin(@PathVariable Long id,
-                                                         @Valid @RequestBody List<@NotNull(message = "인증 항목은 비어 있을 수 없습니다.") CertificationRequest> certifications) {
+                                                         @Valid @RequestBody @Size(max = CompanyConstraints.CERTIFICATIONS_MAX, message = "인증은 10개를 넘을 수 없습니다.")
+                    List<@NotNull(message = "인증 항목은 비어 있을 수 없습니다.") CertificationRequest> certifications) {
         companyUpdateService.replaceCertificationsByAdmin(id, certifications);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/admin/companies/{id}/countries")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceCountriesByAdmin(@PathVariable Long id, @RequestBody List<Long> countryIds) {
+    public ApiResponse<Void> replaceCountriesByAdmin(@PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.COUNTRIES_MAX, message = "대응 가능 국가는 20개를 넘을 수 없습니다.")
+                    List<@NotNull(message = "국가 항목은 비어 있을 수 없습니다.") Long> countryIds) {
         companyUpdateService.replaceCountriesByAdmin(id, countryIds);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/admin/companies/{id}/regions")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> replaceRegionsByAdmin(@PathVariable Long id, @RequestBody List<Long> domesticRegionIds) {
+    public ApiResponse<Void> replaceRegionsByAdmin(@PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.DOMESTIC_REGIONS_MAX, message = "대응 가능 지역은 20개를 넘을 수 없습니다.")
+                    List<@NotNull(message = "지역 항목은 비어 있을 수 없습니다.") Long> domesticRegionIds) {
         companyUpdateService.replaceRegionsByAdmin(id, domesticRegionIds);
         return ApiResponse.ok();
     }

@@ -22,7 +22,7 @@ public class CompanyCreateRequestSamples {
 
     public static CompanyCreateRequest full() {
         return new CompanyCreateRequest(
-                "123-45-67890",
+                "1234567890",
                 "플랜틀리",
                 "김대표",
                 LocalDate.of(2020, 1, 15),

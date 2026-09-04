@@ -12,7 +12,8 @@ import java.util.List;
 
 // 정책: 실제 저장될 카테고리(중복 제거 후) 개수가 등급별 상한을 넘으면 거부한다. (등록·수정 공통)
 // - 유저: 회사 구독 등급(FREE 등)의 상한을 따른다.
-// - 관리자 등록(ADMIN_EXEMPT): 등급 한도 면제 — 스킵한다.
+// - 관리자 등록(ADMIN_EXEMPT): 등급 한도 면제 — 스킵한다. 다만 '무제한' 은 아니다:
+//   요청 DTO 가 최고 등급값을 절대 천장으로 걸어두므로(CompanyConstraints 의 CEILING) 면제 회사도 그 수는 넘지 못한다.
 // 등급별 상한 값 자체는 GradePolicyRegistry 가 소유한다.
 @Component
 @RequiredArgsConstructor

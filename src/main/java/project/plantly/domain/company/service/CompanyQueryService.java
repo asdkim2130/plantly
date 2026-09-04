@@ -227,7 +227,8 @@ public class CompanyQueryService {
 
         CompanySubscription subscription = companySubscriptionRepository.getByCompanyId(companyId);
 
-        return CompanySubscriptionResponse.from(subscription, company.getCompanyName());
+        return CompanySubscriptionResponse.from(subscription, company.getCompanyName(),
+                gradePolicyRegistry.of(subscription.effectiveGrade()));
     }
 
     // 관리자 구독 조회: 소유(멤버) 검증 없이(상태 무관) 회사+구독을 로드해 감사 필드까지 내려준다.

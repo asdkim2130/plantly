@@ -326,19 +326,20 @@ public class CompanyUpdateControllerTest {
                         responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
+    // 1건 상한이 이제 요청 DTO 에서 먼저 걸린다 — 등록 경로와 같은 제약을 수정 경로에도 걸었기 때문이다.
+    // 서비스의 writer 가드(CONTACT_LIMIT_EXCEEDED)는 남아 있지만 이 경로로는 도달하지 않는다.
+    // 검증에서 끊는 쪽이 낫다: 응답에 field 경로가 실려 화면이 어느 항목을 지적할지 알 수 있다.
     @Test
-    @DisplayName("연락처를 1건 초과로 교체하면 400(CONTACT_LIMIT_EXCEEDED) 를 반환한다")
+    @DisplayName("연락처를 1건 초과로 교체하면 400 을 반환한다")
     void replaceContacts_overLimit_badRequest() throws Exception {
         authenticate(7L, UserRole.MEMBER);
-        willThrow(new BusinessException(CompanyErrorCode.CONTACT_LIMIT_EXCEEDED))
-                .given(companyUpdateService).replaceContactsByUser(eq(9L), eq(7L), any());
 
         mockMvc.perform(put("/api/v1/companies/{id}/contacts", 9L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("[{\"contactName\":\"a\"},{\"contactName\":\"b\"}]"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error").value("연락처는 1건만 등록할 수 있습니다."))
+                .andExpect(jsonPath("$.error").value("연락처는 현재 1건만 등록할 수 있습니다."))
                 .andDo(document("company-update-contacts-limit-error",
                         responseFields(CompanyApiDocs.errorResponseFields())));
     }

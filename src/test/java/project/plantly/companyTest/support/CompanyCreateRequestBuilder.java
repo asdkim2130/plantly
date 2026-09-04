@@ -17,6 +17,10 @@ public class CompanyCreateRequestBuilder {
     // @NotBlank 대상은 의미 있는 기본값을 둔다. (정책 단위 테스트는 Bean Validation 을 거치지 않지만 현실성 유지)
     private String companyName = "테스트회사";
     private String ceoName = "홍길동";
+    // 주소 3축도 @NotBlank 대상이다 — 엔티티(Address)가 NOT NULL 이라 등록 DTO 가 필수로 막는다.
+    private String postalCode = "06236";
+    private String roadAddress = "서울시 강남구 테헤란로 1";
+    private String detailAddress = "10층";
 
     private String videoUrl;
     private String brandColor;
@@ -79,10 +83,10 @@ public class CompanyCreateRequestBuilder {
                 companyName,
                 ceoName,
                 null,            // establishmentDate
-                null,            // postalCode
-                null,            // roadAddress
+                postalCode,
+                roadAddress,
                 null,            // jibunAddress
-                null,            // detailAddress
+                detailAddress,
                 null,            // website
                 null,            // logoUrl
                 null,            // coverImageUrl
@@ -116,10 +120,10 @@ public class CompanyCreateRequestBuilder {
         return new MyCompanyCreateRequest(
                 verificationId,
                 companyName,
-                null,            // postalCode
-                null,            // roadAddress
+                postalCode,
+                roadAddress,
                 null,            // jibunAddress
-                null,            // detailAddress
+                detailAddress,
                 null,            // website
                 null,            // logoUrl
                 null,            // coverImageUrl
