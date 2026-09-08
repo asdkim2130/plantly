@@ -30,7 +30,10 @@ import java.util.List;
 public record MyCompanyCreateRequest(
         // ===== 선행 인증 =====
         // POST /api/v1/companies/verification 이 발급한 식별자. 본인이 받은 것이어야 하고, 미사용·미만료여야 한다.
-        @NotNull
+        // 메시지를 적어두는 이유는 이 폼에서 유일하게 생략돼 있었기 때문이다. 생략하면 Bean Validation 의
+        // 기본 문구("널이어서는 안됩니다")가 나가는데, 나머지 30여 개 항목이 전부 우리말 안내 문구를 쓰는
+        // 폼에서 이 칸만 말투가 튄다. 제약 조회 API 도 같은 문구를 그대로 내려보낸다.
+        @NotNull(message = "사업자 인증 정보는 필수입니다.")
         Long verificationId,
 
         // ===== 본체 (신원 3종 제외) =====
