@@ -45,19 +45,29 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>DTO 가 record 가 아니면 하위 필드를 훑지 않는다. 일반 클래스의 {@code getDeclaredFields()} 는 JLS 가
  * 순서를 보장하지 않아, 순서가 계약인 이 응답에서는 쓸 수 없기 때문이다(정렬 쪽도 같은 이유로 record 만 푼다).
+ *
+ * <p><b>무엇을 내보내지 않는가.</b> 검증 애너테이션 전부를 옮기지는 않는다. 나가는 것은
+ * <b>우리가 정한 값</b>뿐이다 — 필수 여부, 개수, 길이. 이 셋은 제품 결정이라 실제로 바뀐다
+ * (로고는 필수에서 선택이 됐고, 주소 3필드는 반대로 선택에서 필수가 됐다). 프론트가 이 값을 들고 있으면
+ * 바꿀 때마다 두 곳이 어긋난다.
+ *
+ * <p>반대로 형식 규칙({@code @Pattern}·{@code @Email}·{@code @PastOrPresent})은 내보내지 않는다.
+ * 사업자등록번호 10자리·우편번호 5자리는 국세청과 우정사업본부가 정한 형식이라 우리가 바꿀 수 없고,
+ * {@code #RRGGBB} 와 이메일 표기도 마찬가지다. 연락처를 숫자·하이픈으로 좁힌 것은 우리 결정이지만
+ * 이걸 푸는 날에는 입력 UI 자체가 바뀐다. 이런 값은 프론트가 알고 있으면 되고, 계약에 한번 넣으면
+ * 못 빼게 된다 — API 표면은 좁을수록 싸다. 서버는 물론 이 규칙들을 그대로 강제하므로, 프론트가
+ * 놓친 형식 오류는 400 응답으로 되돌아온다.
  */
 @Component
 public class FormConstraintsReader {
 
-    // 한 필드 안에서 규칙을 늘어놓는 순서. 검증 실패 응답의 제약 정렬(비어 있음 → 길이·개수 → 형식)과
+    // 한 필드 안에서 규칙을 늘어놓는 순서. 검증 실패 응답의 제약 정렬(비어 있음 → 개수 → 길이)과
     // 같은 순서다 - 프론트가 "먼저 지적할 규칙" 을 두 응답에서 다르게 읽지 않게 하려는 것.
-    // 여기 없는 규칙(모르는 커스텀 제약)은 전부 뒤로 간다.
     private static final List<String> RULE_ORDER = List.of(
             "required",
             "minItems", "maxItems",
             "minLength", "maxLength",
-            "min", "max",
-            "email", "pattern");
+            "min", "max");
 
     // Jakarta 는 제약 집합을 Set 으로 준다. 같은 요청에 같은 응답이 나오도록 규칙 순서를 못 박는다 -
     // 우선순위가 같은 규칙끼리는 이름·메시지로 마저 가른다.
@@ -114,11 +124,20 @@ public class FormConstraintsReader {
                 continue;
             }
 
-            fields.add(new FieldConstraints(
+            FieldConstraints described = new FieldConstraints(
                     component.getName(),
                     rulesOf(property.getConstraintDescriptors(), property.getElementClass()),
                     nestedFieldsOf(property, component, nested),
-                    itemsOf(property, component, nested)));
+                    itemsOf(property, component, nested));
+
+            // 걸린 제약이 형식뿐이면(사업자등록번호처럼) 여기 남는 것이 이름뿐이다. 규칙 없는 칸을
+            // 내보내면 프론트가 "제약을 받았는데 비어 있다" 를 따로 처리해야 하므로 아예 뺀다 -
+            // 제약이 없는 칸(enum 등)이 목록에 없는 것과 같은 규칙이다.
+            if (described.rules().isEmpty() && described.fields().isEmpty() && described.items() == null) {
+                continue;
+            }
+
+            fields.add(described);
         }
 
         return fields;
@@ -184,22 +203,24 @@ public class FormConstraintsReader {
     }
 
     // 애너테이션 하나 → 규칙 0~2개. @Size 만 둘로 갈라진다(min 과 max 는 화면에서 다른 규칙이다).
+    //
+    // 이 switch 가 곧 계약이다 - 여기 적힌 애너테이션만 응답에 나간다. 화이트리스트로 두는 이유는
+    // 나중에 DTO 에 새 제약을 붙였을 때 그것이 계약에 저절로 새지 않게 하려는 것이다. 새 제약을
+    // 프론트에 알려야 한다면 여기에 한 줄을 더하는 것이 그 결정을 남기는 자리가 된다.
     private List<ConstraintRule> toRules(ConstraintDescriptor<?> descriptor, Class<?> owner) {
         Map<String, Object> attributes = descriptor.getAttributes();
-        String message = messageOf(descriptor);
         String name = descriptor.getAnnotation().annotationType().getSimpleName();
 
         return switch (name) {
             // 셋 다 화면에서는 "필수" 하나로 읽힌다.
-            case "NotNull", "NotBlank", "NotEmpty" -> List.of(ConstraintRule.of("required", message));
-            case "Size", "Length" -> sizeRules(attributes, owner, message);
-            // @Email 은 regexp 속성을 갖지만 기본값이라 실어 보내도 쓸모가 없다. 형식 판정은 프론트가
-            // 자기 이메일 검사로 하고, 여기서는 "이메일 형식이어야 한다" 는 사실과 문구만 전한다.
-            case "Email" -> List.of(ConstraintRule.of("email", message));
-            case "Pattern" -> List.of(ConstraintRule.of("pattern", attributes.get("regexp"), message));
-            case "Min", "Max" -> List.of(ConstraintRule.of(uncapitalize(name), attributes.get("value"), message));
-            // 모르는 제약도 메시지는 내보낸다. 값을 해석할 수 없을 뿐 "이런 규칙이 있다" 는 사실은 참이다.
-            default -> List.of(ConstraintRule.of(uncapitalize(name), message));
+            case "NotNull", "NotBlank", "NotEmpty" ->
+                    List.of(ConstraintRule.of("required", messageOf(descriptor)));
+            case "Size", "Length" -> sizeRules(attributes, owner, messageOf(descriptor));
+            case "Min", "Max" -> List.of(ConstraintRule.of(uncapitalize(name),
+                    (Number) attributes.get("value"), messageOf(descriptor)));
+            // 형식 규칙(@Pattern·@Email·@PastOrPresent)과 커스텀 제약은 계약에 싣지 않는다.
+            // 서버는 그대로 강제하므로, 프론트가 형식을 놓치면 400 응답으로 되돌아온다.
+            default -> List.of();
         };
     }
 

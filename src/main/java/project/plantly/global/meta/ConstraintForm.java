@@ -3,7 +3,6 @@ package project.plantly.global.meta;
 import project.plantly.domain.company.dto.CompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.dto.MyCompanyCreateRequest;
-import project.plantly.domain.user.dto.request.SignUpRequest;
 import project.plantly.global.exception.BusinessException;
 import project.plantly.global.exception.CommonErrorCode;
 
@@ -34,10 +33,11 @@ public enum ConstraintForm {
      * 대신 "비우기" 규약 때문에 패턴이 다르다(brandColor 는 빈 문자열을 함께 허용한다).
      * 그래서 프론트도 등록 폼의 제약을 재사용하면 안 된다.
      */
-    COMPANY_UPDATE("company-update", CompanyUpdateRequest.class),
+    COMPANY_UPDATE("company-update", CompanyUpdateRequest.class);
 
-    /** 회원가입 폼. 비밀번호 규칙(길이·특수문자)이 화면 안내 문구와 어긋나지 않게 하는 것이 주 용도다. */
-    SIGN_UP("sign-up", SignUpRequest.class);
+    // 회원가입 폼은 일부러 열지 않는다. 비밀번호 규칙은 가입 화면이 "10자 이상, 특수문자 1개 포함" 같은
+    // 안내 문구로 어차피 화면에 적어야 하는 값이라, API 로 한 번 더 주면 같은 사실이 두 곳에 산다.
+    // 열게 된다면 비로그인도 읽어야 하므로 SecurityConfig 에 permitAll 도 함께 필요하다.
 
     private final String slug;
     private final Class<?> type;

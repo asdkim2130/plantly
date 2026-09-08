@@ -20,6 +20,7 @@ import project.plantly.global.meta.dto.FormConstraintsResponse;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -87,15 +88,31 @@ class FormConstraintsReaderTest {
             assertThat(rule(field(response, "contacts"), "maxLength")).isNull();
         }
 
+        // 사업자등록번호 10자리·우편번호 5자리는 국세청과 우정사업본부가 정한 형식이라 우리가 바꿀 수
+        // 없고, #RRGGBB·이메일 표기도 마찬가지다. 프론트가 알고 있으면 되는 값을 계약에 넣으면
+        // 나중에 못 뺀다. 서버는 그대로 강제하므로 놓친 형식 오류는 400 으로 되돌아온다.
         @Test
-        @DisplayName("형식 제약은 정규식과 문구를 함께 내려보낸다")
-        void patternsCarryRegexAndMessage() {
+        @DisplayName("형식 규칙은 계약에 싣지 않는다")
+        void formatRulesAreNotPublished() {
             FormConstraintsResponse response = reader.read(ConstraintForm.COMPANY_CREATE);
 
-            ConstraintRule businessNumber = rule(field(response, "businessNumber"), "pattern");
+            assertThat(allTypes(response)).doesNotContain("pattern", "email", "pastOrPresent");
 
-            assertThat(businessNumber.value()).isEqualTo(CompanyConstraints.BUSINESS_NUMBER_PATTERN);
-            assertThat(businessNumber.message()).isEqualTo(CompanyConstraints.BUSINESS_NUMBER_MESSAGE);
+            // 우편번호는 필수이기도 하므로 칸은 남고, 그 안에서 형식 규칙만 빠진다.
+            assertThat(types(field(response, "postalCode"))).containsExactly("required");
+        }
+
+        // 걸린 제약이 형식뿐인 칸은 남는 것이 이름밖에 없다. 규칙 없는 칸을 내보내면 프론트가
+        // "제약을 받았는데 비어 있다" 를 따로 처리해야 한다.
+        @Test
+        @DisplayName("제약이 형식뿐인 칸은 목록에서 통째로 빠진다")
+        void fieldsWithOnlyFormatRulesDisappear() {
+            assertThat(names(reader.read(ConstraintForm.COMPANY_CREATE)))
+                    .doesNotContain("businessNumber");
+
+            // 수정 폼에서는 셋이 사라진다 - 우편번호·브랜드 컬러는 형식만, 설립일은 @PastOrPresent 만 걸려 있다.
+            assertThat(names(reader.read(ConstraintForm.COMPANY_UPDATE)))
+                    .doesNotContain("postalCode", "brandColor", "establishmentDate");
         }
 
         // 메시지를 생략한 제약은 애너테이션에 기본 템플릿 키가 들어 있다. 그대로 내보내면 프론트가
@@ -135,15 +152,14 @@ class FormConstraintsReaderTest {
         // 검증 실패 응답의 제약 정렬과 같은 순서다. 두 응답이 "먼저 지적할 규칙" 을 다르게 말하면
         // 프론트의 인라인 표시가 서버 응답과 어긋난다.
         @Test
-        @DisplayName("한 필드 안의 규칙은 비어 있음 → 길이 → 형식 순이다")
+        @DisplayName("한 필드 안의 규칙은 비어 있음 → 개수 → 길이 순이다")
         void rulesFollowConstraintOrder() {
-            FormConstraintsResponse response = reader.read(ConstraintForm.SIGN_UP);
+            // "필수인데 비었다" 를 놔두고 "100자를 넘었다" 부터 지적하지 않는다.
+            assertThat(types(field(reader.read(ConstraintForm.COMPANY_CREATE), "companyName")))
+                    .containsExactly("required", "maxLength");
 
-            assertThat(types(field(response, "password")))
-                    .containsExactly("required", "minLength", "maxLength", "pattern");
-
-            assertThat(types(field(response, "email")))
-                    .containsExactly("required", "email");
+            assertThat(types(field(reader.read(ConstraintForm.COMPANY_UPDATE), "companyName")))
+                    .containsExactly("minLength", "maxLength");
         }
     }
 
@@ -214,21 +230,20 @@ class FormConstraintsReaderTest {
     @DisplayName("폼 선택")
     class Forms {
 
-        // 수정은 sparse PATCH 라 필수 규칙이 없고(null = 미변경), 대신 '비우기' 규약 때문에 패턴이 다르다.
-        // 프론트가 등록 폼의 제약을 수정 화면에 재사용하면 안 되는 이유가 여기 있다.
+        // 수정은 sparse PATCH 라 필수 규칙이 없다(null = 미변경). 프론트가 등록 폼의 제약을 수정 화면에
+        // 재사용하면 필수가 아닌 칸을 필수로 막게 된다.
         @Test
         @DisplayName("수정 폼은 등록 폼과 다른 규칙을 준다")
         void updateFormDiffersFromCreate() {
             FormConstraintsResponse update = reader.read(ConstraintForm.COMPANY_UPDATE);
+            FormConstraintsResponse create = reader.read(ConstraintForm.COMPANY_CREATE);
 
-            // 안 보내면 미변경이므로 필수가 아니다. 대신 빈 문자열로 지울 수는 없다.
+            // 안 보내면 미변경이므로 필수가 아니다. 대신 빈 문자열로 지울 수는 없다(min 1).
             assertThat(types(field(update, "companyName"))).containsExactly("minLength", "maxLength");
+            assertThat(types(field(create, "companyName"))).containsExactly("required", "maxLength");
 
-            // 등록은 #RRGGBB 만, 수정은 빈 문자열("" = 색 비우기)도 받는다.
-            assertThat(rule(field(update, "brandColor"), "pattern").value())
-                    .isEqualTo(CompanyConstraints.BRAND_COLOR_CLEARABLE_PATTERN);
-            assertThat(rule(field(reader.read(ConstraintForm.COMPANY_CREATE), "brandColor"), "pattern").value())
-                    .isEqualTo(CompanyConstraints.BRAND_COLOR_PATTERN);
+            // 수정 폼에는 필수 규칙이 하나도 없다.
+            assertThat(allTypes(update)).doesNotContain("required");
         }
 
         // 자가등록은 신원 3종을 아예 받지 않는다(선행 인증이 채운다). 폼에 칸이 없으니 제약도 없어야 한다.
@@ -249,6 +264,15 @@ class FormConstraintsReaderTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(exception -> ((BusinessException) exception).getErrorCode())
                     .isEqualTo(CommonErrorCode.NOT_FOUND);
+        }
+
+        // 가입 화면은 "10자 이상, 특수문자 1개 포함" 안내 문구를 어차피 화면에 적어야 한다.
+        // API 로 한 번 더 주면 같은 사실이 두 곳에 사는 것이라 일부러 열지 않았다.
+        @Test
+        @DisplayName("회원가입 폼은 일부러 열지 않는다")
+        void signUpFormIsNotExposed() {
+            assertThatThrownBy(() -> ConstraintForm.of("sign-up"))
+                    .isInstanceOf(BusinessException.class);
         }
     }
 
@@ -282,5 +306,28 @@ class FormConstraintsReaderTest {
 
     private static List<String> types(FieldConstraints field) {
         return field.rules().stream().map(ConstraintRule::type).toList();
+    }
+
+    private static List<String> names(FormConstraintsResponse response) {
+        return response.fields().stream().map(FieldConstraints::field).toList();
+    }
+
+    // 중첩·원소까지 훑어 응답 전체에 실린 규칙 종류를 모은다. "이 종류는 어디에도 없다" 를 확인하려면
+    // 맨 위만 봐서는 안 된다 - 형식 규칙은 contacts[].phone 같은 안쪽에 많다.
+    private static List<String> allTypes(FormConstraintsResponse response) {
+        return allTypes(response.fields());
+    }
+
+    private static List<String> allTypes(List<FieldConstraints> fields) {
+        return fields.stream()
+                .flatMap(field -> Stream.of(
+                                types(field).stream(),
+                                allTypes(field.fields()).stream(),
+                                (field.items() != null)
+                                        ? Stream.concat(types(field.items()).stream(),
+                                                allTypes(field.items().fields()).stream())
+                                        : Stream.<String>empty())
+                        .flatMap(stream -> stream))
+                .toList();
     }
 }

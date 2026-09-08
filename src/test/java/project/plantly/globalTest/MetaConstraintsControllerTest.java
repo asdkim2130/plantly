@@ -107,7 +107,7 @@ class MetaConstraintsControllerTest {
                         pathParameters(
                                 parameterWithName("form").description(
                                         "폼 이름: company-create(관리자 등록) / my-company-create(자가등록) / "
-                                                + "company-update(수정) / sign-up(회원가입). 목록에 없는 이름은 404")
+                                                + "company-update(수정). 목록에 없는 이름은 404")
                         ),
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
@@ -120,17 +120,17 @@ class MetaConstraintsControllerTest {
                                         .description("필드에 붙지 않는 폼 전체 규칙. 없으면 생략됨"),
                                 fieldWithPath("data.fields").type(JsonFieldType.ARRAY)
                                         .description("입력칸별 규칙. 화면의 폼 순서(요청 DTO 선언 순서)로 정렬돼 있다. "
-                                                + "제약이 없는 칸(enum 등)은 목록에 없다"),
+                                                + "내려줄 규칙이 없는 칸(enum, 형식 제약만 걸린 칸)은 목록에 없다"),
                                 fieldWithPath("data.fields[].field").type(JsonFieldType.STRING)
                                         .description("요청 본문에서의 필드 이름. 검증 실패 응답의 errors[].field 와 같은 어휘다"),
                                 fieldWithPath("data.fields[].rules").type(JsonFieldType.ARRAY)
-                                        .description("이 칸에 걸린 규칙 목록. 비어 있음 → 길이·개수 → 형식 순"),
+                                        .description("이 칸에 걸린 규칙 목록. 비어 있음 → 개수 → 길이 순"),
                                 fieldWithPath("data.fields[].rules[].type").type(JsonFieldType.STRING)
                                         .description("규칙 종류: required / minLength / maxLength / minItems / maxItems / "
-                                                + "min / max / email / pattern. 모르는 종류는 무시하고 message 만 쓰면 된다"),
-                                fieldWithPath("data.fields[].rules[].value").type(JsonFieldType.VARIES).optional()
-                                        .description("규칙의 값. 길이·개수는 숫자, pattern 은 정규식 문자열. "
-                                                + "값이 필요 없는 규칙(required/email)에서는 생략됨"),
+                                                + "min / max. 형식 규칙(정규식·이메일·날짜)은 여기 실리지 않는다 — "
+                                                + "우리가 정한 값만 내려간다"),
+                                fieldWithPath("data.fields[].rules[].value").type(JsonFieldType.NUMBER).optional()
+                                        .description("규칙의 값(길이·개수). 값이 필요 없는 규칙(required)에서는 생략됨"),
                                 fieldWithPath("data.fields[].rules[].message").type(JsonFieldType.STRING)
                                         .description("규칙을 어겼을 때 띄울 문구. 서버가 400 으로 되돌려줄 때와 같은 문구다"),
                                 fieldWithPath("data.fields[].fields").type(JsonFieldType.ARRAY).optional()
@@ -142,8 +142,8 @@ class MetaConstraintsControllerTest {
                                         .description("원소에 걸린 규칙"),
                                 fieldWithPath("data.fields[].items.rules[].type").type(JsonFieldType.STRING)
                                         .description("규칙 종류"),
-                                fieldWithPath("data.fields[].items.rules[].value").type(JsonFieldType.VARIES).optional()
-                                        .description("규칙의 값"),
+                                fieldWithPath("data.fields[].items.rules[].value").type(JsonFieldType.NUMBER).optional()
+                                        .description("규칙의 값(길이·개수)"),
                                 fieldWithPath("data.fields[].items.rules[].message").type(JsonFieldType.STRING)
                                         .description("규칙을 어겼을 때 띄울 문구"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
