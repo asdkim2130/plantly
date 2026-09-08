@@ -557,7 +557,7 @@ include::{snippets}/company-subscription-forbidden/response-fields.adoc[]
 * *부분 수정(sparse)*: 모든 필드가 선택이며, 요청에 담긴 필드만 변경됩니다(`null`/미포함 = 미변경).
 * *비우기(clear) 규약*: 선택 문자열 필드는 빈 문자열(`""`)을 보내면 값을 비웁니다. 필수 필드(회사명·대표자·주소 등)는 빈 문자열로 비울 수 없어 `400` 이 반환됩니다. 날짜·enum 은 비우기를 지원하지 않습니다(값이 오면 교체만).
 * 시스템 플래그(`verified`/`featured`/`spotlight`/`spotlightOrder`/`deleted`)·사업자번호·등록 provenance 는 이 API 로 바꿀 수 없습니다(요청 필드에서 제외).
-* `coverImageUrl` 은 선택 필드라 `""` 로 비울 수 있습니다. 필수인 `logoUrl` 과 다릅니다.
+* `logoUrl` · `coverImageUrl` 은 둘 다 선택 필드라 `""` 로 비울 수 있습니다. 로고가 비면 화면은 회사명 앞 두 글자로 대체 배지를 그립니다(서버는 자리표시자 URL 을 만들지 않습니다).
 * `brandColor` 는 `#RRGGBB` 형식만 받습니다(`""` = 비우기). 색 이름·축약형(`#RGB`)·`rgb()` 표기는 `400` 입니다.
 
 수정 값은 이미 화면에 반영되어 있으므로, 성공 응답은 본문 없이 `success` 플래그만 내려갑니다.
