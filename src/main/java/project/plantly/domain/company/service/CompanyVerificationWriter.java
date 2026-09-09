@@ -43,10 +43,13 @@ public class CompanyVerificationWriter {
     private final CompanyMemberRepository companyMemberRepository;
     private final CompanySearchDocumentWriter searchDocumentWriter;
 
-    /** 오늘 소진한 시도 횟수. 국세청 장애로 판정을 못 받은 건은 제외된다. */
+    /**
+     * 오늘 소진한 시도 횟수. 국세청 장애로 판정을 못 받은 건과, 서버가 대신 건 자동 재질의는 제외된다
+     * (제외 근거는 {@link CompanyVerificationAttemptRepository} 참고).
+     */
     @Transactional(readOnly = true)
     public long countTodayAttempts(Long userId, LocalDateTime startOfDay) {
-        return attemptRepository.countByUserIdAndCreatedAtAfterAndOutcomeNot(
+        return attemptRepository.countByUserIdAndCreatedAtAfterAndOutcomeNotAndAutomaticFalse(
                 userId, startOfDay, VerificationOutcome.UNAVAILABLE);
     }
 
@@ -56,6 +59,62 @@ public class CompanyVerificationWriter {
                               VerificationOutcome outcome, String rawResponse) {
         attemptRepository.save(CompanyVerificationAttempt.of(
                 userId, businessNumber, ceoName, businessStartDate, outcome, rawResponse));
+    }
+
+    /** 자동 재질의 1건을 감사 로그에 남긴다. 기록은 사용자 시도와 동일하되 일일 한도는 소모하지 않는다. */
+    @Transactional
+    public void recordAutomaticAttempt(Long userId, String businessNumber, String ceoName,
+                                       LocalDate businessStartDate, VerificationOutcome outcome, String rawResponse) {
+        attemptRepository.save(CompanyVerificationAttempt.automatic(
+                userId, businessNumber, ceoName, businessStartDate, outcome, rawResponse));
+    }
+
+    /**
+     * 본인이 받은 인증을 읽어온다. 국세청 재질의에 쓸 세 값을 트랜잭션 밖으로 빼내는 창구다.
+     *
+     * <p>{@code findByIdAndUserId} 로 userId 를 함께 거는 것은 등록 경로와 같은 방어다 —
+     * 남의 인증 식별자를 주워 쓰면 남의 사업자번호로 국세청을 호출하게 된다.
+     */
+    @Transactional(readOnly = true)
+    public CompanyVerification loadOwned(Long userId, Long verificationId) {
+        return verificationRepository.findByIdAndUserId(verificationId, userId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.VERIFICATION_NOT_FOUND));
+    }
+
+    /**
+     * 자동 재질의 통과분을 반영한다 — 판정 시각과 유효기간만 새로 찍는다.
+     *
+     * <p>검증값(대표자명·개업일자)은 건드리지 않는다. 저장된 값 그대로 다시 물어 통과한 경우에만 불리므로
+     * 바꿀 것이 없기 때문이다. 값이 실제로 바뀌었다면 국세청이 MISMATCH 를 돌려주고 이 메서드는 불리지 않는다
+     * (그 경우 사용자가 재인증 경로로 새 값을 넣어야 한다).
+     */
+    @Transactional
+    public void refresh(Long userId, Long verificationId, LocalDateTime now, Duration ttl, String rawResponse) {
+        CompanyVerification verification = verificationRepository.findByIdAndUserId(verificationId, userId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.VERIFICATION_NOT_FOUND));
+        verification.refresh(now, now.plus(ttl));
+
+        attemptRepository.save(CompanyVerificationAttempt.automatic(
+                userId, verification.getBusinessNumber(), verification.getCeoName(),
+                verification.getBusinessStartDate(), VerificationOutcome.VALID, rawResponse));
+    }
+
+    /**
+     * 자동 재질의가 국세청 판정에서 떨어진 경우. 만료를 확정 기록하고 시도를 감사 로그에 남긴다.
+     *
+     * <p>상태를 지금 찍어두는 이유는 등록 경로가 뒤이어 같은 인증을 읽기 때문이다 — 확정해 두지 않으면
+     * 매 발행 시도마다 국세청을 다시 부른다. 되살릴 길은 남아 있다: 사용자가 재인증하면 새 인증이 발급되고,
+     * 초안은 사업자번호로 키잉돼 있어 그대로 이어진다.
+     */
+    @Transactional
+    public void markExpired(Long userId, Long verificationId, VerificationOutcome outcome, String rawResponse) {
+        CompanyVerification verification = verificationRepository.findByIdAndUserId(verificationId, userId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.VERIFICATION_NOT_FOUND));
+        verification.markExpired();
+
+        attemptRepository.save(CompanyVerificationAttempt.automatic(
+                userId, verification.getBusinessNumber(), verification.getCeoName(),
+                verification.getBusinessStartDate(), outcome, rawResponse));
     }
 
     /**

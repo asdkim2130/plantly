@@ -118,6 +118,31 @@ public class CompanyVerification {
         this.revokedReason = reason;
     }
 
+    /**
+     * 만료된 판정을 국세청 재질의 결과로 되살린다.
+     *
+     * <p>{@link #reverify}와 달리 검증값(대표자명·개업일자)을 바꾸지 않는다 — 저장된 값 그대로 다시 물어
+     * 통과한 경우에만 불리므로 바꿀 것이 없다. 바뀌는 것은 판정의 신선도뿐이라 인증 시각과 유효기간만
+     * 새로 찍고, EXPIRED 로 내려앉았던 상태도 VERIFIED 로 되돌린다.
+     *
+     * <p>CONSUMED/REVOKED 에는 부르지 않는다(호출부가 {@link #needsRefresh} 로 먼저 거른다) —
+     * 이미 회사에 쓰였거나 관리자가 회수한 인증을 되살리는 경로가 되면 안 된다.
+     */
+    public void refresh(LocalDateTime verifiedAt, LocalDateTime expiresAt) {
+        this.status = VerificationStatus.VERIFIED;
+        this.verifiedAt = verifiedAt;
+        this.expiresAt = expiresAt;
+    }
+
+    /**
+     * 자동 재질의로 되살릴 수 있는 상태인지. 두 경우를 함께 본다 —
+     * 아직 VERIFIED 인데 기한만 지난 경우와, 이전 시도에서 이미 EXPIRED 로 찍힌 경우다.
+     * 후자를 빼면 한 번 만료 판정을 받은 인증은 영영 되살아나지 못해 초안이 발행될 길이 사라진다.
+     */
+    public boolean needsRefresh(LocalDateTime now) {
+        return isExpired(now) || status == VerificationStatus.EXPIRED;
+    }
+
     /** 미사용 상태로 유효기간이 지났는지. 만료 판정은 읽는 시점에 하고, 상태 전이는 사용 시도 때 기록한다. */
     public boolean isExpired(LocalDateTime now) {
         return status == VerificationStatus.VERIFIED && now.isAfter(expiresAt);

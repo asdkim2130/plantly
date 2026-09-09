@@ -153,7 +153,8 @@ public class SeedManifestWriter {
                     verification.getBusinessNumber(),
                     verification.getStatus().name(),
                     verification.getExpiresAt().toString(),
-                    draftRepository.findByVerificationId(ref.verificationId()).isPresent(),
+                    draftRepository.findByUserIdAndBusinessNumber(
+                            verification.getUserId(), verification.getBusinessNumber()).isPresent(),
                     verification.getCompanyId(),
                     ref.proves()));
         }

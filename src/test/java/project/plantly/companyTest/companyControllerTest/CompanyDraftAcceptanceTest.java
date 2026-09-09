@@ -20,6 +20,9 @@ import static org.hamcrest.Matchers.nullValue;
 // 초안의 본질인 "직렬화 왕복 / 통째 교체(upsert) / 느슨한 저장 / 멱등 폐기" 를 실제로 저장·복원해 검증하고,
 // 접근 제어(401/409/남의 인증 400)와 상태 매핑을 실 응답으로 못 박는다.
 //
+// 초안 키가 (userId, 사업자번호) 라는 사실도 여기서 실 DB 로 확인된다 — 시더가 발급하는 인증은 모두 같은 번호라
+// 같은 사용자가 인증을 다시 받아도 같은 초안 행에 이어 쓰게 된다.
+//
 // 발행(POST /companies, 201) 성공 후 초안 자동 삭제 seam 은 여기서 다루지 않는다 — 등록 경로가 검색 도큐먼트
 // 동기화(Postgres 전용 SQL)를 거쳐 H2 인수 프로파일에서 뜨지 않기 때문. 그 seam 은 CompanyServiceTest 가
 // draftRepository.deleteByVerificationId 호출로 단위 검증한다. (반대로 @Valid 400 은 서비스 진입 전이라 H2 에서도 안전 → 아래 대비 테스트로 확인)
@@ -31,10 +34,13 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
     @Autowired
     private UserRepository userRepository;
 
-    private static final String DRAFT_PATH = "/api/v1/companies/drafts/{verificationId}";
+    // 경로 키는 인증 식별자가 아니라 사업자등록번호다 — 인증은 만료·재발급되며 id 가 바뀌지만 작성분은
+    // 그 수명에 묶이면 안 되기 때문이다(CompanyDraft 주석). 시더의 인증은 모두 이 번호로 발급된다.
+    private static final String DRAFT_PATH = "/api/v1/companies/drafts/{businessNumber}";
+    private static final String BUSINESS_NUMBER = CompanyAggregateSeeder.BUSINESS_NUMBER;
 
     @Nested
-    @DisplayName("저장·조회 왕복 PUT/GET /api/v1/companies/drafts/{verificationId}")
+    @DisplayName("저장·조회 왕복 PUT/GET /api/v1/companies/drafts/{businessNumber}")
     class SaveAndGet {
 
         @Test
@@ -46,12 +52,12 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
             String body = """
                     {"verificationId":%d,"companyName":"작성중회사","introTitle":"한 줄 요약 초안","tagNames":["친환경","B2B"]}
                     """.formatted(vid);
-            putDraft(owner, vid, body).then().statusCode(200).body("success", equalTo(true));
+            putDraft(owner, body).then().statusCode(200).body("success", equalTo(true));
 
             given()
                     .filter(owner.cookies())
                     .when()
-                    .get(DRAFT_PATH, vid)
+                    .get(DRAFT_PATH, BUSINESS_NUMBER)
                     .then()
                     .statusCode(200)
                     .body("success", equalTo(true))
@@ -69,18 +75,18 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
             long vid = seeder.seedUsableVerification(owner.userId());
 
             // 1차: companyName + introTitle
-            putDraft(owner, vid, """
+            putDraft(owner, """
                     {"verificationId":%d,"companyName":"1차회사","introTitle":"지워질 요약"}
                     """.formatted(vid)).then().statusCode(200);
             // 2차: companyName 만 (introTitle 없음) → 부분 병합이 아니라 통째 교체여야 한다
-            putDraft(owner, vid, """
+            putDraft(owner, """
                     {"verificationId":%d,"companyName":"2차회사"}
                     """.formatted(vid)).then().statusCode(200);
 
             given()
                     .filter(owner.cookies())
                     .when()
-                    .get(DRAFT_PATH, vid)
+                    .get(DRAFT_PATH, BUSINESS_NUMBER)
                     .then()
                     .statusCode(200)
                     .body("data.payload.companyName", equalTo("2차회사"))
@@ -96,7 +102,7 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
             given()
                     .filter(owner.cookies())
                     .when()
-                    .get(DRAFT_PATH, vid)
+                    .get(DRAFT_PATH, BUSINESS_NUMBER)
                     .then()
                     .statusCode(404)
                     .body("success", equalTo(false));
@@ -120,7 +126,7 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
                     """.formatted(vid);
 
             // 느슨한 저장: 필수값이 없어도 그대로 보관된다
-            putDraft(owner, vid, partial).then().statusCode(200).body("success", equalTo(true));
+            putDraft(owner, partial).then().statusCode(200).body("success", equalTo(true));
 
             // 엄격한 발행: 같은 본문을 정식 등록으로 보내면 @NotBlank(companyName) 위반으로 400 (서비스 진입 전이라 H2 에서도 안전)
             given()
@@ -137,7 +143,7 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
     }
 
     @Nested
-    @DisplayName("폐기 DELETE /api/v1/companies/drafts/{verificationId}")
+    @DisplayName("폐기 DELETE /api/v1/companies/drafts/{businessNumber}")
     class Delete {
 
         @Test
@@ -145,16 +151,16 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
         void delete_thenGet_isNotFound() {
             Session owner = signUpMember("draft-del@example.com");
             long vid = seeder.seedUsableVerification(owner.userId());
-            putDraft(owner, vid, """
+            putDraft(owner, """
                     {"verificationId":%d,"companyName":"버릴회사"}
                     """.formatted(vid)).then().statusCode(200);
 
-            deleteDraft(owner, vid).then().statusCode(200).body("success", equalTo(true));
+            deleteDraft(owner).then().statusCode(200).body("success", equalTo(true));
 
             given()
                     .filter(owner.cookies())
                     .when()
-                    .get(DRAFT_PATH, vid)
+                    .get(DRAFT_PATH, BUSINESS_NUMBER)
                     .then()
                     .statusCode(404);
         }
@@ -165,7 +171,7 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
             Session owner = signUpMember("draft-del-idem@example.com");
             long vid = seeder.seedUsableVerification(owner.userId());
 
-            deleteDraft(owner, vid).then().statusCode(200).body("success", equalTo(true));
+            deleteDraft(owner).then().statusCode(200).body("success", equalTo(true));
         }
     }
 
@@ -173,14 +179,14 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
     @DisplayName("접근 제어")
     class AccessControl {
 
-        // 경로가 2세그먼트('drafts/{vid}')라 공개 상세(/{id}, permitAll)로 새지 않고 인증 규칙에 걸려야 한다.
+        // 경로가 2세그먼트('drafts/{businessNumber}')라 공개 상세(/{id}, permitAll)로 새지 않고 인증 규칙에 걸려야 한다.
         // 여기서 401 이 아니라 404/500 이 나오면 요청이 /{id} 로 샜다는 뜻이다.
         @Test
         @DisplayName("미인증 조회는 401 (공개 상세 /{id} 로 새지 않는다)")
         void get_unauthenticated_isUnauthorized() {
             given() // 세션 없음 = 익명
                     .when()
-                    .get(DRAFT_PATH, 1)
+                    .get(DRAFT_PATH, BUSINESS_NUMBER)
                     .then()
                     .statusCode(401);
         }
@@ -198,21 +204,21 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
                     .contentType(ContentType.JSON)
                     .body("{\"verificationId\":1,\"companyName\":\"익명\"}")
                     .when()
-                    .put(DRAFT_PATH, 1)
+                    .put(DRAFT_PATH, BUSINESS_NUMBER)
                     .then()
                     .statusCode(401);
         }
 
         @Test
-        @DisplayName("남의 인증 식별자로는 저장·조회·폐기 모두 400(VERIFICATION_NOT_FOUND) — 크로스키 방어")
+        @DisplayName("남의 사업자번호로는 저장·조회·폐기 모두 400(VERIFICATION_NOT_FOUND) — 크로스키 방어")
         void foreignVerification_isRejected() {
             Session owner = signUpMember("draft-owner2@example.com");
             long vid = seeder.seedUsableVerification(owner.userId());
             Session intruder = signUpMember("draft-intruder@example.com");
 
-            // 침입자가 소유자의 verificationId 로 조회
+            // 침입자가 소유자의 사업자번호로 조회 — 그 번호로 국세청을 통과한 이력이 없으므로 초안에 닿지 못한다
             given().filter(intruder.cookies())
-                    .when().get(DRAFT_PATH, vid)
+                    .when().get(DRAFT_PATH, BUSINESS_NUMBER)
                     .then().statusCode(400).body("success", equalTo(false));
 
             // 저장
@@ -220,23 +226,23 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
                     .header("X-XSRF-TOKEN", intruder.csrf())
                     .contentType(ContentType.JSON)
                     .body("{\"verificationId\":%d,\"companyName\":\"가로채기\"}".formatted(vid))
-                    .when().put(DRAFT_PATH, vid)
+                    .when().put(DRAFT_PATH, BUSINESS_NUMBER)
                     .then().statusCode(400);
 
             // 폐기
             given().filter(intruder.cookies())
                     .header("X-XSRF-TOKEN", intruder.csrf())
-                    .when().delete(DRAFT_PATH, vid)
+                    .when().delete(DRAFT_PATH, BUSINESS_NUMBER)
                     .then().statusCode(400);
         }
 
         @Test
-        @DisplayName("이미 등록에 소비된(CONSUMED) 인증에 저장하면 409(VERIFICATION_ALREADY_USED)")
+        @DisplayName("이미 등록에 소비된(CONSUMED) 인증이 있는 사업자번호에 저장하면 409(VERIFICATION_ALREADY_USED)")
         void consumedVerification_saveRejected() {
             Session owner = signUpMember("draft-consumed@example.com");
             long vid = seeder.seedConsumedVerification(owner.userId());
 
-            putDraft(owner, vid, """
+            putDraft(owner, """
                     {"verificationId":%d,"companyName":"이미소비된인증"}
                     """.formatted(vid))
                     .then()
@@ -262,21 +268,21 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
         return new Session(cookies, rotated != null ? rotated : csrf, userId);
     }
 
-    private Response putDraft(Session session, long verificationId, String jsonBody) {
+    private Response putDraft(Session session, String jsonBody) {
         return given()
                 .filter(session.cookies())
                 .header("X-XSRF-TOKEN", session.csrf())
                 .contentType(ContentType.JSON)
                 .body(jsonBody)
                 .when()
-                .put(DRAFT_PATH, verificationId);
+                .put(DRAFT_PATH, BUSINESS_NUMBER);
     }
 
-    private Response deleteDraft(Session session, long verificationId) {
+    private Response deleteDraft(Session session) {
         return given()
                 .filter(session.cookies())
                 .header("X-XSRF-TOKEN", session.csrf())
                 .when()
-                .delete(DRAFT_PATH, verificationId);
+                .delete(DRAFT_PATH, BUSINESS_NUMBER);
     }
 }
