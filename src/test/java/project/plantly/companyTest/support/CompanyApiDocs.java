@@ -168,10 +168,18 @@ public class CompanyApiDocs {
     }
 
     // 실패 응답(ApiResponse.failure). success=false + error 만 존재하고 message/data 는 NON_NULL 로 생략된다.
+    // 입력 검증 실패일 때만 errors 가 추가로 실린다 — 아래 validationErrorFields 참고.
     public static FieldDescriptor[] errorResponseFields() {
         return new FieldDescriptor[]{
                 fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부 (실패 시 false)"),
-                fieldWithPath("error").type(JsonFieldType.STRING).description("에러 메시지")
+                fieldWithPath("error").type(JsonFieldType.STRING).description("에러 메시지"),
+                fieldWithPath("errors").type(JsonFieldType.ARRAY).optional()
+                        .description("입력 검증 실패일 때만 존재. 위반 전체가 화면의 폼 순서로 담긴다"),
+                fieldWithPath("errors[].field").type(JsonFieldType.STRING).optional()
+                        .description("위반한 입력칸의 경로 (예: companyName, contacts[0].phone). "
+                                + "여러 필드를 함께 보는 검증은 붙일 칸이 없어 이 키가 생략된다 — 폼 전체 오류로 표시한다"),
+                fieldWithPath("errors[].message").type(JsonFieldType.STRING).optional()
+                        .description("그 입력칸 아래에 표시할 문구")
         };
     }
 
@@ -401,7 +409,18 @@ public class CompanyApiDocs {
                 fieldWithPath("data.effectiveGrade").type(JsonFieldType.STRING).description("지금 유효한 등급 (체험/만료 반영, 정책이 실제 참조하는 값). 만료 시 FREE 로 강등됨"),
                 fieldWithPath("data.status").type(JsonFieldType.STRING).description("구독 상태: ACTIVE(정상), TRIAL(체험), ADMIN_EXEMPT(관리자 등록·한도 면제)"),
                 fieldWithPath("data.startedAt").type(JsonFieldType.STRING).description("구독 시작일 (yyyy-MM-dd)"),
-                fieldWithPath("data.expiresAt").type(JsonFieldType.STRING).optional().description("구독 만료일 (yyyy-MM-dd, null = 무기한)")
+                fieldWithPath("data.expiresAt").type(JsonFieldType.STRING).optional().description("구독 만료일 (yyyy-MM-dd, null = 무기한)"),
+                // 한도를 구독 응답에 싣는 이유: 수정 폼이 한도를 알 방법이 여기뿐이다. 등급 이름만 주면
+                // 프론트가 등급→한도 표를 따로 들게 되고, 표를 고칠 때 두 곳이 어긋난다.
+                // 계약 등급이 아니라 effectiveGrade 기준이다 — 정책이 실제로 참조하는 값이 그쪽이다.
+                fieldWithPath("data.limits.maxCategories").type(JsonFieldType.NUMBER)
+                        .description("선택 가능한 카테고리 최대 개수"),
+                fieldWithPath("data.limits.maxDetailImages").type(JsonFieldType.NUMBER)
+                        .description("갤러리 상세 이미지 최대 장수"),
+                fieldWithPath("data.limits.maxReferenceImages").type(JsonFieldType.NUMBER)
+                        .description("레퍼런스 1건당 이미지 최대 장수 (0 = 업로드 비활성)"),
+                fieldWithPath("data.limits.videoAllowed").type(JsonFieldType.BOOLEAN)
+                        .description("동영상 공개 노출 가능 여부. 저장은 등급과 무관하게 허용되므로, false 면 입력란을 감추거나 자물쇠 안내를 붙인다")
         };
     }
 

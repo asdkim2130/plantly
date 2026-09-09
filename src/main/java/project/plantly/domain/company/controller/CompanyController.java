@@ -1,7 +1,9 @@
 package project.plantly.domain.company.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import project.plantly.domain.company.dto.CompanyConstraints;
 import project.plantly.domain.company.dto.CompanyCreateRequest.CertificationRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ContactRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
@@ -227,56 +230,67 @@ public class CompanyController {
 
     @PutMapping("/api/v1/companies/{id}/tags")
     public ApiResponse<Void> replaceTags(@AuthenticationPrincipal UserPrincipal principal,
-                                         @PathVariable Long id, @RequestBody List<String> tagNames) {
+                                         @PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.TAGS_MAX, message = "태그는 10개를 넘을 수 없습니다.")
+                    List<@NotBlank(message = "태그는 비어 있을 수 없습니다.")
+                            @Size(max = CompanyConstraints.TAG_NAME_MAX, message = "태그는 20자를 넘을 수 없습니다.") String> tagNames) {
         companyUpdateService.replaceTagsByUser(id, principal.getUser().getId(), tagNames);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/materials")
     public ApiResponse<Void> replaceMaterials(@AuthenticationPrincipal UserPrincipal principal,
-                                              @PathVariable Long id, @RequestBody List<String> materialNames) {
+                                              @PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.MATERIALS_MAX, message = "취급 소재는 20개를 넘을 수 없습니다.")
+                    List<@NotBlank(message = "소재명은 비어 있을 수 없습니다.")
+                            @Size(max = CompanyConstraints.MATERIAL_NAME_MAX, message = "소재명은 50자를 넘을 수 없습니다.") String> materialNames) {
         companyUpdateService.replaceMaterialsByUser(id, principal.getUser().getId(), materialNames);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/equipment")
     public ApiResponse<Void> replaceEquipment(@AuthenticationPrincipal UserPrincipal principal,
-                                              @PathVariable Long id, @RequestBody List<String> equipmentNames) {
+                                              @PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.EQUIPMENTS_MAX, message = "보유 장비는 20개를 넘을 수 없습니다.")
+                    List<@NotBlank(message = "장비명은 비어 있을 수 없습니다.")
+                            @Size(max = CompanyConstraints.EQUIPMENT_NAME_MAX, message = "장비명은 50자를 넘을 수 없습니다.") String> equipmentNames) {
         companyUpdateService.replaceEquipmentByUser(id, principal.getUser().getId(), equipmentNames);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/images")
     public ApiResponse<Void> replaceGalleryImages(@AuthenticationPrincipal UserPrincipal principal,
-                                                  @PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "이미지 항목은 비어 있을 수 없습니다.") ImageRequest> images) {
+                                                  @PathVariable Long id, @Valid @RequestBody @Size(max = CompanyConstraints.DETAIL_IMAGES_CEILING, message = "상세 이미지는 30장을 넘을 수 없습니다.")
+                    List<@NotNull(message = "이미지 항목은 비어 있을 수 없습니다.") ImageRequest> images) {
         companyUpdateService.replaceGalleryImagesByUser(id, principal.getUser().getId(), images);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/contacts")
     public ApiResponse<Void> replaceContacts(@AuthenticationPrincipal UserPrincipal principal,
-                                             @PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "연락처 항목은 비어 있을 수 없습니다.") ContactRequest> contacts) {
+                                             @PathVariable Long id, @Valid @RequestBody @Size(max = CompanyConstraints.CONTACTS_MAX, message = "연락처는 현재 1건만 등록할 수 있습니다.")
+                    List<@NotNull(message = "연락처 항목은 비어 있을 수 없습니다.") ContactRequest> contacts) {
         companyUpdateService.replaceContactsByUser(id, principal.getUser().getId(), contacts);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/references")
     public ApiResponse<Void> replaceReferences(@AuthenticationPrincipal UserPrincipal principal,
-                                               @PathVariable Long id, @Valid @RequestBody List<@NotNull(message = "레퍼런스 항목은 비어 있을 수 없습니다.") ReferenceRequest> references) {
+                                               @PathVariable Long id, @Valid @RequestBody @Size(max = CompanyConstraints.REFERENCES_MAX, message = "프로젝트 레퍼런스는 현재 1건만 등록할 수 있습니다.")
+                    List<@NotNull(message = "레퍼런스 항목은 비어 있을 수 없습니다.") ReferenceRequest> references) {
         companyUpdateService.replaceReferencesByUser(id, principal.getUser().getId(), references);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/categories")
     public ApiResponse<Void> replaceCategories(@AuthenticationPrincipal UserPrincipal principal,
-                                               @PathVariable Long id, @RequestBody List<Long> categoryIds) {
+                                               @PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.CATEGORIES_CEILING, message = "카테고리는 10개를 넘을 수 없습니다.")
+                    List<@NotNull(message = "카테고리 항목은 비어 있을 수 없습니다.") Long> categoryIds) {
         companyUpdateService.replaceCategoriesByUser(id, principal.getUser().getId(), categoryIds);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/industries")
     public ApiResponse<Void> replaceIndustries(@AuthenticationPrincipal UserPrincipal principal,
-                                               @PathVariable Long id, @RequestBody List<Long> industryIds) {
+                                               @PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.INDUSTRIES_MAX, message = "산업군은 5개를 넘을 수 없습니다.")
+                    List<@NotNull(message = "산업군 항목은 비어 있을 수 없습니다.") Long> industryIds) {
         companyUpdateService.replaceIndustriesByUser(id, principal.getUser().getId(), industryIds);
         return ApiResponse.ok();
     }
@@ -284,21 +298,24 @@ public class CompanyController {
     @PutMapping("/api/v1/companies/{id}/certifications")
     public ApiResponse<Void> replaceCertifications(@AuthenticationPrincipal UserPrincipal principal,
                                                    @PathVariable Long id,
-                                                   @Valid @RequestBody List<@NotNull(message = "인증 항목은 비어 있을 수 없습니다.") CertificationRequest> certifications) {
+                                                   @Valid @RequestBody @Size(max = CompanyConstraints.CERTIFICATIONS_MAX, message = "인증은 10개를 넘을 수 없습니다.")
+                    List<@NotNull(message = "인증 항목은 비어 있을 수 없습니다.") CertificationRequest> certifications) {
         companyUpdateService.replaceCertificationsByUser(id, principal.getUser().getId(), certifications);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/countries")
     public ApiResponse<Void> replaceCountries(@AuthenticationPrincipal UserPrincipal principal,
-                                              @PathVariable Long id, @RequestBody List<Long> countryIds) {
+                                              @PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.COUNTRIES_MAX, message = "대응 가능 국가는 20개를 넘을 수 없습니다.")
+                    List<@NotNull(message = "국가 항목은 비어 있을 수 없습니다.") Long> countryIds) {
         companyUpdateService.replaceCountriesByUser(id, principal.getUser().getId(), countryIds);
         return ApiResponse.ok();
     }
 
     @PutMapping("/api/v1/companies/{id}/regions")
     public ApiResponse<Void> replaceRegions(@AuthenticationPrincipal UserPrincipal principal,
-                                            @PathVariable Long id, @RequestBody List<Long> domesticRegionIds) {
+                                            @PathVariable Long id, @RequestBody @Size(max = CompanyConstraints.DOMESTIC_REGIONS_MAX, message = "대응 가능 지역은 20개를 넘을 수 없습니다.")
+                    List<@NotNull(message = "지역 항목은 비어 있을 수 없습니다.") Long> domesticRegionIds) {
         companyUpdateService.replaceRegionsByUser(id, principal.getUser().getId(), domesticRegionIds);
         return ApiResponse.ok();
     }

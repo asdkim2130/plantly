@@ -70,6 +70,7 @@ import static org.springframework.restdocs.operation.preprocess.Preprocessors.pr
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.restdocs.payload.JsonFieldType.ARRAY;
 import static org.springframework.restdocs.payload.JsonFieldType.BOOLEAN;
 import static org.springframework.restdocs.payload.JsonFieldType.NUMBER;
 import static org.springframework.restdocs.payload.JsonFieldType.OBJECT;
@@ -178,7 +179,13 @@ public class UserControllerTest {
                 .andDo(document("users-sign-up-validation-error",
                         responseFields(
                                 fieldWithPath("success").description("요청 성공 여부 (false)"),
-                                fieldWithPath("error").description("검증 실패 메시지 (첫 번째 위반 항목)")
+                                fieldWithPath("error").description("검증 실패 메시지 (첫 번째 위반 항목)"),
+                                fieldWithPath("errors").type(ARRAY).optional()
+                                        .description("입력 검증 실패일 때만 존재. 위반 전체가 화면의 폼 순서로 담긴다"),
+                                fieldWithPath("errors[].field").type(STRING).optional()
+                                        .description("위반한 입력칸의 경로. 폼 전체 오류면 생략된다"),
+                                fieldWithPath("errors[].message").type(STRING).optional()
+                                        .description("그 입력칸 아래에 표시할 문구")
                         )
                 ));
 

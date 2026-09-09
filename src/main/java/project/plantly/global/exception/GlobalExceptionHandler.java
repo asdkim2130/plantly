@@ -2,7 +2,6 @@ package project.plantly.global.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.MessageSourceResolvable;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -10,7 +9,6 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.util.StringUtils;
-import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -20,8 +18,10 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import project.plantly.global.response.ApiResponse;
+import project.plantly.global.response.ValidationError;
 
-import java.util.Objects;
+import java.util.List;
+
 
 // ResponseEntityExceptionHandler 를 상속한다.
 //
@@ -101,16 +101,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
-        // getFieldErrors 가 아니라 getAllErrors 다. 클래스 레벨 제약(여러 필드를 함께 보는 검증)은
-        // FieldError 가 아니라 ObjectError 로 담기는데, 필드 에러만 훑으면 그 구체적인 메시지를 두고도
-        // 아래 기본 문구로 뭉개진다. 필드 에러도 ObjectError 의 하위라 getAllErrors 가 양쪽을 다 준다.
-        String firstMessage = ex.getBindingResult().getAllErrors().stream()
-                .map(ObjectError::getDefaultMessage)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(CommonErrorCode.INVALID_INPUT.getMessage());
-
-        return handleExceptionInternal(ex, ApiResponse.failure(firstMessage), headers, status, request);
+        return handleExceptionInternal(ex, validationBody(ValidationErrorOrdering.sorted(ex.getBindingResult())),
+                headers, status, request);
     }
 
     // 400 검증 실패 - 메서드 파라미터 검증. 위 MethodArgumentNotValidException 은 "요청 본문 객체"를 바인딩·검증할 때
@@ -120,14 +112,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleHandlerMethodValidationException(
             HandlerMethodValidationException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
-        String firstMessage = ex.getParameterValidationResults().stream()
-                .flatMap(result -> result.getResolvableErrors().stream())
-                .map(MessageSourceResolvable::getDefaultMessage)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(CommonErrorCode.INVALID_INPUT.getMessage());
+        return handleExceptionInternal(ex, validationBody(ValidationErrorOrdering.sorted(ex)),
+                headers, status, request);
+    }
 
-        return handleExceptionInternal(ex, ApiResponse.failure(firstMessage), headers, status, request);
+    // 검증 실패 응답 본문. 위반을 전부 담고, error 에는 그 첫 메시지를 넣는다 -
+    // 항목별 표시를 하지 않는 화면이 error 하나만 읽어도 동작하도록 봉투 모양을 맞춘다.
+    //
+    // 목록이 비는 것은 이론상의 경우다(메시지 없는 위반만 담겨 온 경우). 그때도 봉투는 나가야 하므로
+    // 기본 문구로 떨어진다.
+    private ApiResponse<Void> validationBody(List<ValidationError> errors) {
+        if (errors.isEmpty()) {
+            return ApiResponse.failure(CommonErrorCode.INVALID_INPUT.getMessage());
+        }
+
+        return ApiResponse.failure(errors.get(0).message(), errors);
     }
 
     // 400 업로드 용량 초과 - 서블릿 컨테이너가 요청을 다 받기 전에 끊고 던진다. 컨트롤러에 닿지 않으므로

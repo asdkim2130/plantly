@@ -14,7 +14,8 @@ import java.util.List;
 // 정책(검증): 레퍼런스 이미지 업로드 가능 여부와 레퍼런스 1건당 최대 장수를 등급별로 강제한다. (등록·수정 공통)
 // - maxReferenceImages == 0 : 업로드 비활성. 이미지를 보내면 거부.
 // - 그 외 : 레퍼런스 1건이라도 상한을 넘으면 거부.
-// 관리자 등록(ADMIN_EXEMPT)은 등급 한도에서 면제되므로 이 게이팅에서 제외한다.
+// 관리자 등록(ADMIN_EXEMPT)은 등급 한도에서 면제되므로 이 게이팅에서 제외한다. 다만 '무제한' 은 아니다:
+// 요청 DTO 가 최고 등급값을 절대 천장으로 걸어두므로(CompanyConstraints 의 CEILING) 면제 회사도 그 수는 넘지 못한다.
 @Component
 @RequiredArgsConstructor
 public class ReferenceImagePolicy implements CompanyMutationPolicy {

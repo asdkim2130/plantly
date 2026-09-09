@@ -32,6 +32,7 @@ import project.plantly.domain.company.dto.CompanyDraftResponse;
 import project.plantly.domain.company.dto.CompanyShowcaseResponse;
 import project.plantly.domain.company.dto.CompanyStatsResponse;
 import project.plantly.domain.company.dto.CompanySubscriptionResponse;
+import project.plantly.domain.company.dto.GradeLimits;
 import project.plantly.domain.company.dto.CompanyReverificationRequest;
 import project.plantly.domain.company.dto.CompanyReverificationResponse;
 import project.plantly.domain.company.dto.CompanyVerificationRequest;
@@ -144,7 +145,7 @@ public class CompanyControllerTest {
                         LocalDate.of(2020, 1, 15), LocalDateTime.of(2026, 7, 19, 12, 30),
                         // 인증에 성공한 자가등록은 체험 최고등급으로 시작하고, 등록 폼은 그 한도로 입력을 연다.
                         CompanyGrade.ENTERPRISE,
-                        new CompanyVerificationResponse.InitialLimits(10, 30, 10, true)));
+                        new GradeLimits(10, 30, 10, true)));
         authenticate(7L, UserRole.MEMBER);
 
         mockMvc.perform(post("/api/v1/companies/verification")
@@ -424,7 +425,8 @@ public class CompanyControllerTest {
     void getMySubscription_owner_success() throws Exception {
         CompanySubscriptionResponse subscription = new CompanySubscriptionResponse(
                 9L, "플랜틀리테크", CompanyGrade.PREMIUM, CompanyGrade.PREMIUM, SubscriptionStatus.ACTIVE,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
+                new GradeLimits(10, 20, 0, true));
         given(companyQueryService.getSubscriptionForOwner(eq(9L), eq(7L))).willReturn(subscription);
         authenticate(7L, UserRole.MEMBER);
 
@@ -438,6 +440,12 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.data.startedAt").value("2026-01-01"))
                 .andExpect(jsonPath("$.data.expiresAt").value("2026-12-31"))
+                // 수정 폼이 입력 개수를 제어하는 근거. 등급 이름만 내려주면 프론트가 등급→한도 표를
+                // 한 벌 더 들게 되고, 표를 고칠 때 두 곳이 어긋난다.
+                .andExpect(jsonPath("$.data.limits.maxCategories").value(10))
+                .andExpect(jsonPath("$.data.limits.maxDetailImages").value(20))
+                .andExpect(jsonPath("$.data.limits.maxReferenceImages").value(0))
+                .andExpect(jsonPath("$.data.limits.videoAllowed").value(true))
                 .andDo(document("company-subscription",
                         pathParameters(parameterWithName("id").description("회사 ID")),
                         responseFields(CompanyApiDocs.companySubscriptionResponseFields())));
