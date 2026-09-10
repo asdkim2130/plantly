@@ -114,6 +114,8 @@ public class CategoryControllerTest {
                                         .description("아이콘 URL (미등록 시 null)"),
                                 fieldWithPath("data[].children[].children").type(JsonFieldType.ARRAY)
                                         .description("하위 카테고리 목록 (소분류는 빈 배열)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 생략됨)")
                         )

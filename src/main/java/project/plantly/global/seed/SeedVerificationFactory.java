@@ -60,8 +60,12 @@ public class SeedVerificationFactory {
     }
 
     /**
-     * 이미 만료된 인증. 발급 시각을 과거로 두고 실제 TTL(30분)을 그대로 적용해, 서비스가 만료를 읽는
-     * 시점에 EXPIRED 로 전이시키도록 둔다(상태를 미리 박아두지 않는 편이 실제 흐름과 같다).
+     * 이미 만료된 인증. 발급 시각을 과거로 두고 짧은 TTL 을 적용해, 서비스가 만료를 읽는 시점에
+     * EXPIRED 로 전이시키도록 둔다(상태를 미리 박아두지 않는 편이 실제 흐름과 같다).
+     *
+     * <p>TTL 을 설정값({@code app.verification.ttl})이 아니라 여기 고정값으로 두는 이유는, 이 팩토리의
+     * 목적이 "만료된 상태를 만드는 것" 이라서다. 설정을 따라가면 기본값(7일)이 늘어날 때마다 발급 시각을
+     * 함께 밀어야 하고, 그러다 한 번 어긋나면 만료 케이스가 조용히 유효한 인증이 된다.
      */
     @Transactional
     public Long issueExpired(Long userId, String businessNumber, String ceoName, LocalDate businessStartDate) {
@@ -71,10 +75,17 @@ public class SeedVerificationFactory {
         return verificationRepository.save(verification).getId();
     }
 
-    /** 임시저장 초안. payload 는 발행 요청 DTO 를 그대로 직렬화한다 — 손으로 JSON 을 쓰면 DTO 변경에 조용히 어긋난다. */
+    /**
+     * 임시저장 초안. payload 는 발행 요청 DTO 를 그대로 직렬화한다 — 손으로 JSON 을 쓰면 DTO 변경에 조용히 어긋난다.
+     *
+     * <p>인자로는 인증 id 를 받지만 초안이 매달리는 키는 그 인증의 <b>사업자번호</b>다({@link CompanyDraft} 주석).
+     * 시드 케이스가 "이 인증에 딸린 초안"으로 읽히는 편이 자연스러워 호출부 모양은 그대로 두고 여기서 옮긴다.
+     */
     @Transactional
     public void saveDraft(Long verificationId, Long userId, MyCompanyCreateRequest payload) {
-        draftRepository.save(CompanyDraft.create(verificationId, userId, serialize(payload)));
+        CompanyVerification verification = verificationRepository.findById(verificationId).orElseThrow();
+        draftRepository.save(
+                CompanyDraft.create(userId, verification.getBusinessNumber(), serialize(payload)));
     }
 
     /**

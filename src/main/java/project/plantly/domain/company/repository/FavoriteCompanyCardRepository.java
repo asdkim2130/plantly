@@ -51,8 +51,9 @@ public class FavoriteCompanyCardRepository {
                 .addValue("offset", pageable.getOffset());
 
         List<CompanySummary> content = jdbc.query(
-                "SELECT " + CompanyCardSql.CARD_COLUMNS + FROM + WHERE + ORDER_BY + " LIMIT :limit OFFSET :offset",
-                params, CompanyCardSql.ROW_MAPPER);
+                        "SELECT " + CompanyCardSql.CARD_COLUMNS + FROM + WHERE + ORDER_BY + " LIMIT :limit OFFSET :offset",
+                        params, CompanyCardSql.ROW_MAPPER)
+                .stream().map(CompanySummary::fromPublic).toList();
 
         return PageableExecutionUtils.getPage(content, pageable, () -> {
             Long total = jdbc.queryForObject("SELECT count(*)" + FROM + WHERE, params, Long.class);

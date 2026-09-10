@@ -11,10 +11,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
-import project.plantly.companyTest.support.CompanyVerificationFixture;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
 import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.entity.CompanyDraft;
+import project.plantly.domain.company.enums.VerificationStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.repository.CompanyDraftRepository;
 import project.plantly.domain.company.repository.CompanyVerificationRepository;
@@ -28,6 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -37,6 +38,7 @@ import static org.mockito.Mockito.verify;
 //    조회는 저장 문자열을 그대로 역직렬화하는 왕복까지 확인된다(record equals 로 동치 비교).
 //  - upsert(신규 save vs 기존 updatePayload), CONSUMED 저장 거절, 매 요청 소유권 검사(크로스키 방어),
 //    404/409 에러코드 매핑을 확인한다. (초안은 저장 시 값 검증을 하지 않는 "느슨한 저장"이라 그 경계도 함께 못 박는다.)
+//  - 키가 사업자번호라는 사실에서 오는 두 가지도 여기서 고정한다: 하이픈 표기 정규화와, 형식이 아닌 값의 조기 거절.
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CompanyDraftService: 임시저장 초안")
 class CompanyDraftServiceTest {
@@ -50,6 +52,10 @@ class CompanyDraftServiceTest {
     private static final Long USER_ID = 7L;
     private static final Long VERIFICATION_ID = 99L;
 
+    // 초안의 키. 저장은 정규화된(하이픈 없는) 형태로만 이뤄진다.
+    private static final String BUSINESS_NUMBER = "1234567890";
+    private static final String HYPHENATED = "123-45-67890";
+
     // 관심 필드만 채운 자가등록 폼(부분 입력). 초안 payload 로 직렬화되는 원본이다.
     private final MyCompanyCreateRequest payload = CompanyCreateRequestBuilder.aRequest()
             .videoUrl("https://youtu.be/demo")
@@ -62,10 +68,15 @@ class CompanyDraftServiceTest {
         service = new CompanyDraftService(draftRepository, verificationRepository, objectMapper);
     }
 
-    // 본인이 받은, 사용 가능한(미소비) 인증이 조회된다고 가정한다.
-    private void givenUsableVerification() {
-        given(verificationRepository.findByIdAndUserId(VERIFICATION_ID, USER_ID))
-                .willReturn(Optional.of(CompanyVerificationFixture.usable(VERIFICATION_ID, USER_ID)));
+    // 이 사용자가 이 번호로 국세청을 통과한 이력이 있다고 가정한다(초안 접근 권한의 근거).
+    private void givenVerifiedBusinessNumber() {
+        given(verificationRepository.existsByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER)).willReturn(true);
+    }
+
+    // 아직 회사 등록에 쓰이지 않은 상태.
+    private void givenNotConsumed() {
+        given(verificationRepository.existsByUserIdAndBusinessNumberAndStatus(
+                USER_ID, BUSINESS_NUMBER, VerificationStatus.CONSUMED)).willReturn(false);
     }
 
     private String serialized(MyCompanyCreateRequest request) {
@@ -81,70 +92,105 @@ class CompanyDraftServiceTest {
     class Save {
 
         @Test
-        @DisplayName("초안이 없으면 새 CompanyDraft 를 verificationId·userId·직렬화 payload 로 저장한다")
+        @DisplayName("초안이 없으면 새 CompanyDraft 를 userId·사업자번호·직렬화 payload 로 저장한다")
         void newDraft_isCreated() {
-            givenUsableVerification();
-            given(draftRepository.findByVerificationId(VERIFICATION_ID)).willReturn(Optional.empty());
+            givenVerifiedBusinessNumber();
+            givenNotConsumed();
+            given(draftRepository.findByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER))
+                    .willReturn(Optional.empty());
 
-            service.save(USER_ID, VERIFICATION_ID, payload);
+            service.save(USER_ID, BUSINESS_NUMBER, payload);
 
             ArgumentCaptor<CompanyDraft> captor = ArgumentCaptor.forClass(CompanyDraft.class);
             verify(draftRepository).save(captor.capture());
             CompanyDraft saved = captor.getValue();
-            assertThat(saved.getVerificationId()).isEqualTo(VERIFICATION_ID);
             assertThat(saved.getUserId()).isEqualTo(USER_ID);
+            assertThat(saved.getBusinessNumber()).isEqualTo(BUSINESS_NUMBER);
             assertThat(saved.getPayload()).isEqualTo(serialized(payload));
         }
 
         @Test
-        @DisplayName("초안이 이미 있으면 새로 저장하지 않고 기존 payload 를 통째 교체한다 (인증당 1행 유지)")
+        @DisplayName("초안이 이미 있으면 새로 저장하지 않고 기존 payload 를 통째 교체한다 (사업자번호당 1행 유지)")
         void existingDraft_isReplacedInPlace() {
-            givenUsableVerification();
-            CompanyDraft existing = CompanyDraft.create(VERIFICATION_ID, USER_ID, "{\"old\":true}");
-            given(draftRepository.findByVerificationId(VERIFICATION_ID)).willReturn(Optional.of(existing));
+            givenVerifiedBusinessNumber();
+            givenNotConsumed();
+            CompanyDraft existing = CompanyDraft.create(USER_ID, BUSINESS_NUMBER, "{}");
+            given(draftRepository.findByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER))
+                    .willReturn(Optional.of(existing));
 
-            service.save(USER_ID, VERIFICATION_ID, payload);
+            service.save(USER_ID, BUSINESS_NUMBER, payload);
 
             assertThat(existing.getPayload()).isEqualTo(serialized(payload));
             verify(draftRepository, never()).save(any());
         }
 
+        // 표기가 섞이면 같은 사업자의 초안이 두 행으로 갈린다. 경로에 무엇이 오든 저장 키는 하나여야 한다.
         @Test
-        @DisplayName("이미 등록에 소비된(CONSUMED) 인증에는 저장을 거절한다 (409 VERIFICATION_ALREADY_USED)")
-        void consumedVerification_isRejected() {
-            given(verificationRepository.findByIdAndUserId(VERIFICATION_ID, USER_ID))
-                    .willReturn(Optional.of(CompanyVerificationFixture.consumed(VERIFICATION_ID, USER_ID, 55L)));
+        @DisplayName("하이픈이 섞인 사업자번호도 정규화한 같은 키로 저장한다")
+        void hyphenatedNumber_isNormalized() {
+            givenVerifiedBusinessNumber();
+            givenNotConsumed();
+            given(draftRepository.findByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER))
+                    .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.save(USER_ID, VERIFICATION_ID, payload))
+            service.save(USER_ID, HYPHENATED, payload);
+
+            ArgumentCaptor<CompanyDraft> captor = ArgumentCaptor.forClass(CompanyDraft.class);
+            verify(draftRepository).save(captor.capture());
+            assertThat(captor.getValue().getBusinessNumber()).isEqualTo(BUSINESS_NUMBER);
+        }
+
+        @Test
+        @DisplayName("이미 등록에 소비된(CONSUMED) 인증이 있으면 저장을 거절한다 (409 VERIFICATION_ALREADY_USED)")
+        void consumedVerification_isRejected() {
+            givenVerifiedBusinessNumber();
+            given(verificationRepository.existsByUserIdAndBusinessNumberAndStatus(
+                    USER_ID, BUSINESS_NUMBER, VerificationStatus.CONSUMED)).willReturn(true);
+
+            assertThatThrownBy(() -> service.save(USER_ID, BUSINESS_NUMBER, payload))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.VERIFICATION_ALREADY_USED);
 
-            verify(draftRepository, never()).findByVerificationId(any());
+            verify(draftRepository, never()).findByUserIdAndBusinessNumber(any(), anyString());
             verify(draftRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("남의(혹은 없는) 인증 식별자로는 저장할 수 없다 (400 VERIFICATION_NOT_FOUND)")
-        void foreignVerification_isRejected() {
-            given(verificationRepository.findByIdAndUserId(VERIFICATION_ID, USER_ID)).willReturn(Optional.empty());
+        @DisplayName("국세청을 통과한 적 없는 사업자번호로는 저장할 수 없다 (400 VERIFICATION_NOT_FOUND)")
+        void unverifiedBusinessNumber_isRejected() {
+            given(verificationRepository.existsByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER))
+                    .willReturn(false);
 
-            assertThatThrownBy(() -> service.save(USER_ID, VERIFICATION_ID, payload))
+            assertThatThrownBy(() -> service.save(USER_ID, BUSINESS_NUMBER, payload))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.VERIFICATION_NOT_FOUND);
 
             verify(draftRepository, never()).save(any());
         }
 
-        // 계약 경계: 저장은 값 검증을 하지 않는다. 구조적으로만 막는 것은 CONSUMED 뿐이라,
-        // 만료된 인증이어도 작성 중 폼은 계속 저장된다(필수값·만료 검증은 발행 시점에서만).
+        // 형식이 아닌 값은 조회하기 전에 끊는다 — 경로가 문자열이라 아무 값이나 들어올 수 있다.
         @Test
-        @DisplayName("만료된 인증이어도 저장은 허용된다 (막는 것은 CONSUMED 뿐 — 느슨한 저장)")
-        void expiredVerification_isStillAllowed() {
-            given(verificationRepository.findByIdAndUserId(VERIFICATION_ID, USER_ID))
-                    .willReturn(Optional.of(CompanyVerificationFixture.expired(VERIFICATION_ID, USER_ID)));
-            given(draftRepository.findByVerificationId(VERIFICATION_ID)).willReturn(Optional.empty());
+        @DisplayName("사업자번호 형식이 아니면 조회 전에 400 (BUSINESS_NUMBER_INVALID_FORMAT)")
+        void malformedNumber_isRejectedBeforeLookup() {
+            assertThatThrownBy(() -> service.save(USER_ID, "not-a-number", payload))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.BUSINESS_NUMBER_INVALID_FORMAT);
 
-            service.save(USER_ID, VERIFICATION_ID, payload);
+            verify(verificationRepository, never()).existsByUserIdAndBusinessNumber(any(), anyString());
+            verify(draftRepository, never()).save(any());
+        }
+
+        // 계약 경계: 저장은 값 검증을 하지 않는다. 인증이 만료됐든 재발급됐든 초안은 계속 저장된다 —
+        // 초안의 수명이 인증의 수명에 묶이지 않는다는 것이 사업자번호 키잉의 핵심이다.
+        @Test
+        @DisplayName("인증이 만료돼 있어도 저장은 허용된다 (막는 것은 CONSUMED 뿐 — 느슨한 저장)")
+        void expiredVerification_isStillAllowed() {
+            givenVerifiedBusinessNumber();
+            givenNotConsumed();
+            given(draftRepository.findByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER))
+                    .willReturn(Optional.empty());
+
+            service.save(USER_ID, BUSINESS_NUMBER, payload);
 
             verify(draftRepository).save(any(CompanyDraft.class));
         }
@@ -157,13 +203,14 @@ class CompanyDraftServiceTest {
         @Test
         @DisplayName("저장된 초안을 역직렬화한 payload 와 마지막 저장 시각을 돌려준다 (직렬화 왕복)")
         void returnsDeserializedPayloadAndTimestamp() {
-            givenUsableVerification();
+            givenVerifiedBusinessNumber();
             LocalDateTime updatedAt = LocalDateTime.of(2026, 7, 23, 10, 0);
-            CompanyDraft draft = CompanyDraft.create(VERIFICATION_ID, USER_ID, serialized(payload));
+            CompanyDraft draft = CompanyDraft.create(USER_ID, BUSINESS_NUMBER, serialized(payload));
             ReflectionTestUtils.setField(draft, "updatedAt", updatedAt); // @UpdateTimestamp 는 영속 시 채워지므로 심어준다
-            given(draftRepository.findByVerificationId(VERIFICATION_ID)).willReturn(Optional.of(draft));
+            given(draftRepository.findByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER))
+                    .willReturn(Optional.of(draft));
 
-            CompanyDraftResponse response = service.get(USER_ID, VERIFICATION_ID);
+            CompanyDraftResponse response = service.get(USER_ID, BUSINESS_NUMBER);
 
             assertThat(response.payload()).isEqualTo(payload); // record equals: 저장→복원 왕복이 원본과 동일
             assertThat(response.updatedAt()).isEqualTo(updatedAt);
@@ -172,24 +219,26 @@ class CompanyDraftServiceTest {
         @Test
         @DisplayName("저장된 초안이 없으면 404 (DRAFT_NOT_FOUND)")
         void noDraft_isNotFound() {
-            givenUsableVerification();
-            given(draftRepository.findByVerificationId(VERIFICATION_ID)).willReturn(Optional.empty());
+            givenVerifiedBusinessNumber();
+            given(draftRepository.findByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER))
+                    .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.get(USER_ID, VERIFICATION_ID))
+            assertThatThrownBy(() -> service.get(USER_ID, BUSINESS_NUMBER))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.DRAFT_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("남의 인증으로는 조회할 수 없다 — 소유권 검사가 초안 조회보다 먼저 걸린다")
-        void foreignVerification_isRejectedBeforeDraftLookup() {
-            given(verificationRepository.findByIdAndUserId(VERIFICATION_ID, USER_ID)).willReturn(Optional.empty());
+        @DisplayName("남의 사업자번호로는 조회할 수 없다 — 인증 이력 검사가 초안 조회보다 먼저 걸린다")
+        void foreignBusinessNumber_isRejectedBeforeDraftLookup() {
+            given(verificationRepository.existsByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER))
+                    .willReturn(false);
 
-            assertThatThrownBy(() -> service.get(USER_ID, VERIFICATION_ID))
+            assertThatThrownBy(() -> service.get(USER_ID, BUSINESS_NUMBER))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.VERIFICATION_NOT_FOUND);
 
-            verify(draftRepository, never()).findByVerificationId(any());
+            verify(draftRepository, never()).findByUserIdAndBusinessNumber(any(), anyString());
         }
     }
 
@@ -198,25 +247,26 @@ class CompanyDraftServiceTest {
     class Delete {
 
         @Test
-        @DisplayName("본인 인증이면 초안을 삭제한다")
-        void ownedVerification_deletesDraft() {
-            givenUsableVerification();
+        @DisplayName("인증 이력이 있는 사업자번호면 초안을 삭제한다")
+        void verifiedBusinessNumber_deletesDraft() {
+            givenVerifiedBusinessNumber();
 
-            service.delete(USER_ID, VERIFICATION_ID);
+            service.delete(USER_ID, BUSINESS_NUMBER);
 
-            verify(draftRepository).deleteByVerificationId(VERIFICATION_ID);
+            verify(draftRepository).deleteByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER);
         }
 
         @Test
-        @DisplayName("남의 인증으로는 폐기할 수 없고, 삭제도 시도하지 않는다 (400 VERIFICATION_NOT_FOUND)")
-        void foreignVerification_isRejected() {
-            given(verificationRepository.findByIdAndUserId(VERIFICATION_ID, USER_ID)).willReturn(Optional.empty());
+        @DisplayName("남의 사업자번호로는 폐기할 수 없고, 삭제도 시도하지 않는다 (400 VERIFICATION_NOT_FOUND)")
+        void foreignBusinessNumber_isRejected() {
+            given(verificationRepository.existsByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER))
+                    .willReturn(false);
 
-            assertThatThrownBy(() -> service.delete(USER_ID, VERIFICATION_ID))
+            assertThatThrownBy(() -> service.delete(USER_ID, BUSINESS_NUMBER))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.VERIFICATION_NOT_FOUND);
 
-            verify(draftRepository, never()).deleteByVerificationId(any());
+            verify(draftRepository, never()).deleteByUserIdAndBusinessNumber(any(), anyString());
         }
     }
 }

@@ -9,7 +9,14 @@ import java.time.LocalDateTime;
 public interface CompanyVerificationAttemptRepository extends JpaRepository<CompanyVerificationAttempt, Long> {
 
     /**
-     * 일일 재시도 제한 집계. 국세청 장애로 판정을 못 받은 시도(UNAVAILABLE)는 사용자 잘못이 아니므로 제외한다.
+     * 일일 재시도 제한 집계. 두 종류를 뺀다.
+     *
+     * <ul>
+     *   <li>{@code UNAVAILABLE} — 국세청 장애로 판정을 못 받은 시도. 사용자 잘못이 아니다.</li>
+     *   <li>{@code automatic} — 발행 시점의 자동 재질의. 사용자가 누른 적 없는 호출이라
+     *       이걸 세면 "가만히 있었는데 한도를 다 썼다" 가 성립한다.</li>
+     * </ul>
      */
-    long countByUserIdAndCreatedAtAfterAndOutcomeNot(Long userId, LocalDateTime since, VerificationOutcome excluded);
+    long countByUserIdAndCreatedAtAfterAndOutcomeNotAndAutomaticFalse(
+            Long userId, LocalDateTime since, VerificationOutcome excluded);
 }

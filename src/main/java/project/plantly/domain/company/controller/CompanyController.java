@@ -42,7 +42,7 @@ import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.domain.company.service.CompanyDraftService;
 import project.plantly.domain.company.service.CompanyStatsService;
 import project.plantly.domain.company.service.CompanyQueryService;
-import project.plantly.domain.company.service.CompanyService;
+import project.plantly.domain.company.service.CompanyRegistrationService;
 import project.plantly.domain.company.service.CompanyUpdateService;
 import project.plantly.domain.company.service.CompanyVerificationService;
 import project.plantly.global.PageResponse;
@@ -56,7 +56,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CompanyController {
 
-    private final CompanyService companyService;
+    private final CompanyRegistrationService companyRegistrationService;
     private final CompanyQueryService companyQueryService;
     private final CompanyUpdateService companyUpdateService;
     private final CompanyVerificationService companyVerificationService;
@@ -89,42 +89,52 @@ public class CompanyController {
 
     // 유저 자가등록 — 인증된 본인이 소유자가 되고, 선행 인증을 소비해 사업자 인증 완료 상태로 생성된다.
     // 요청 본문에 사업자번호·대표자명·개업일자 자리가 없다(MyCompanyCreateRequest) — 서버가 인증본에서만 채운다.
+    //
+    // CompanyService 가 아니라 CompanyRegistrationService 를 부르는 이유는 트랜잭션 경계다 — 인증이 만료된
+    // 경우 발행 직전에 국세청 재질의가 끼어들 수 있고, 그 HTTP 호출은 등록 트랜잭션 밖에서 끝나야 한다.
+    // 사용자에게 다시 받을 값이 없으므로 이 단계는 폼에 드러나지 않는다(그 빈의 주석 참고).
     @PostMapping("/api/v1/companies")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<IdResponse> createMyCompany(@AuthenticationPrincipal UserPrincipal principal,
                                                    @Valid @RequestBody MyCompanyCreateRequest request) {
 
-        Long id = companyService.createByUser(principal.getUser().getId(), request);
+        Long id = companyRegistrationService.register(principal.getUser().getId(), request);
         return ApiResponse.success("회사 등록이 완료되었습니다.", new IdResponse(id));
     }
 
-    // ===== 임시저장(초안) — 발행(POST /companies) 전, 작성 중인 폼 상태를 인증 1건당 1개 보관한다. =====
-    // 경로 키는 선행 인증 식별자(verificationId). 'drafts' 는 두 세그먼트라 공개 상세(/{id}, 단일 세그먼트)와 겹치지
-    // 않으며, SecurityConfig 의 기본 규칙(anyRequest().authenticated())으로 보호된다.
+    // ===== 임시저장(초안) — 발행(POST /companies) 전, 작성 중인 폼 상태를 사업자번호 1건당 1개 보관한다. =====
+    // 경로 키는 사업자등록번호다(선행 인증 식별자가 아니다). 인증은 만료·재발급되며 id 가 바뀌지만 사용자가 쓴
+    // 글은 그럴 이유가 없어서다 — 인증 id 로 키잉하면 재인증하는 순간 작성분에 닿을 수 없게 된다(CompanyDraft 주석).
+    // 덕분에 클라이언트는 인증 식별자를 잃어버려도(기기 변경·저장소 초기화) 폼 첫 칸의 사업자번호만으로 이어쓸 수 있다.
+    // 하이픈은 있어도 되고 없어도 된다(서버가 정규화한다). 접근 권한은 여전히 인증 이력이 준다.
+    //
+    // 'drafts' 는 두 세그먼트라 공개 상세(/{id}, 단일 세그먼트)와 겹치지 않으며, SecurityConfig 의 기본
+    // 규칙(anyRequest().authenticated())으로 보호된다.
 
     // 자동저장(upsert). @Valid 를 붙이지 않아 부분 입력을 그대로 저장한다 — 필수값·마스터 검증은 발행 시점에만 한다.
     // 컬렉션도 요청 본문에 함께 실려 초안 payload 안에 보관되므로, 회사 생성 전까지 한 문서로 관리된다.
-    @PutMapping("/api/v1/companies/drafts/{verificationId}")
+    @PutMapping("/api/v1/companies/drafts/{businessNumber}")
     public ApiResponse<Void> saveDraft(@AuthenticationPrincipal UserPrincipal principal,
-                                       @PathVariable Long verificationId,
+                                       @PathVariable String businessNumber,
                                        @RequestBody MyCompanyCreateRequest request) {
-        companyDraftService.save(principal.getUser().getId(), verificationId, request);
+        companyDraftService.save(principal.getUser().getId(), businessNumber, request);
         return ApiResponse.ok();
     }
 
     // 재진입 시 폼 복원 — 저장했던 폼 상태(기본 필드 + 컬렉션)와 마지막 저장 시각을 반환한다. 초안이 없으면 404.
-    @GetMapping("/api/v1/companies/drafts/{verificationId}")
+    // payload 안의 verificationId 는 저장 당시 값이라 낡을 수 있다 — 발행 시에는 현재 유효한 값으로 덮어써 보낸다.
+    @GetMapping("/api/v1/companies/drafts/{businessNumber}")
     public ApiResponse<CompanyDraftResponse> getDraft(@AuthenticationPrincipal UserPrincipal principal,
-                                                      @PathVariable Long verificationId) {
-        return ApiResponse.success(companyDraftService.get(principal.getUser().getId(), verificationId));
+                                                      @PathVariable String businessNumber) {
+        return ApiResponse.success(companyDraftService.get(principal.getUser().getId(), businessNumber));
     }
 
     // 임시저장 수동 폐기. 발행이 성공하면 초안은 서버가 자동 삭제하므로(CompanyService.createByUser), 이 경로는
     // 사용자가 작성을 포기할 때만 쓴다. 초안이 없어도 멱등하게 성공한다.
-    @DeleteMapping("/api/v1/companies/drafts/{verificationId}")
+    @DeleteMapping("/api/v1/companies/drafts/{businessNumber}")
     public ApiResponse<Void> deleteDraft(@AuthenticationPrincipal UserPrincipal principal,
-                                         @PathVariable Long verificationId) {
-        companyDraftService.delete(principal.getUser().getId(), verificationId);
+                                         @PathVariable String businessNumber) {
+        companyDraftService.delete(principal.getUser().getId(), businessNumber);
         return ApiResponse.ok();
     }
 

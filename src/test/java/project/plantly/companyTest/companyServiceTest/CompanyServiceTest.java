@@ -122,7 +122,7 @@ class CompanyServiceTest {
     }
 
     @Test
-    @DisplayName("유저 자가등록: 발행이 성공하면 소임을 다한 임시저장 초안을 verificationId 로 삭제한다")
+    @DisplayName("유저 자가등록: 발행이 성공하면 소임을 다한 임시저장 초안을 (userId, 사업자번호) 로 삭제한다")
     void createByUser_deletesDraftOnPublish() {
         givenSaveAssignsId(10L);
         givenUsableVerification();
@@ -130,7 +130,10 @@ class CompanyServiceTest {
         service().createByUser(USER_ID, myRequest);
 
         // 발행 성공 후 같은 트랜잭션에서 초안을 제거한다(초안 없이 등록했다면 멱등하게 아무 일도 안 함).
-        verify(draftRepository).deleteByVerificationId(VERIFICATION_ID);
+        // 초안은 인증 레코드가 아니라 사업자번호로 키잉된다 — 인증이 중간에 만료·재발급됐어도
+        // 발행에 실제로 쓴 번호의 초안이 지워져야 한다(CompanyDraft 주석).
+        verify(draftRepository).deleteByUserIdAndBusinessNumber(
+                USER_ID, CompanyVerificationFixture.BUSINESS_NUMBER);
     }
 
     @Test

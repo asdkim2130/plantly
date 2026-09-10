@@ -131,7 +131,8 @@ public class ShowcaseCardRepository {
      */
     public List<CompanySummary> findLatest(int slots) {
         MapSqlParameterSource params = new MapSqlParameterSource().addValue("slots", slots);
-        return jdbc.query(LATEST_SQL, params, CompanyCardSql.ROW_MAPPER);
+        return jdbc.query(LATEST_SQL, params, CompanyCardSql.ROW_MAPPER)
+                .stream().map(CompanySummary::fromPublic).toList();
     }
 
     private ShowcaseRail queryRail(String sql, int slots) {
@@ -142,7 +143,7 @@ public class ShowcaseCardRepository {
             int candidateCount = 0;
             int row = 0;
             while (rs.next()) {
-                cards.add(CompanyCardSql.ROW_MAPPER.mapRow(rs, row++));
+                cards.add(CompanySummary.fromPublic(CompanyCardSql.ROW_MAPPER.mapRow(rs, row++)));
                 // 모든 행에 같은 값이 실려 온다. 0 건이면 루프를 안 타므로 초기값 0 이 그대로 맞다.
                 candidateCount = rs.getInt("candidate_count");
             }

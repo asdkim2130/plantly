@@ -23,13 +23,18 @@ public enum CommonErrorCode implements ErrorCode {
     // 실제 형식/허용 형식은 로그로 남긴다(GlobalExceptionHandler).
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 요청 형식입니다."),
 
-    // 아래 셋은 도메인이 던지는 코드가 아니라, 스프링이 요청 자체를 거절할 때 GlobalExceptionHandler 가
-    // 상태 코드로부터 골라 쓰는 기본 문구다. 도메인은 여전히 자기 enum 의 코드를 던진다 -
+    // 아래 넷은 도메인이 던지는 코드가 아니라, 스프링이 요청 자체를 거절할 때 GlobalExceptionHandler 가
+    // 상태 코드로부터 골라 쓰는 기본값이다(문구와 응답 code 둘 다). 도메인은 여전히 자기 enum 의 코드를 던진다 -
     // 예를 들어 "존재하지 않는 회사"는 CompanyErrorCode 의 404 지 여기 NOT_FOUND 가 아니다.
     // 여기 NOT_FOUND 는 매핑 자체가 없는 URL(오타 주소 등)용이다.
     NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 경로를 찾을 수 없습니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식입니다."),
     NOT_ACCEPTABLE(HttpStatus.NOT_ACCEPTABLE, "요청한 형식으로는 응답할 수 없습니다."),
+
+    // 상태만 선언된 규약 밖 예외(@ResponseStatus)가 409 로 나갈 때의 코드. 이게 없으면 4xx 기본값인
+    // INVALID_INPUT 으로 떨어져 "충돌"이 "잘못된 입력값"으로 나가고, 클라이언트가 검증 오류로 분기한다.
+    // 도메인 409(사업자번호 중복 등)는 여전히 자기 코드를 던진다.
+    CONFLICT(HttpStatus.CONFLICT, "요청이 현재 상태와 충돌합니다."),
 
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
 

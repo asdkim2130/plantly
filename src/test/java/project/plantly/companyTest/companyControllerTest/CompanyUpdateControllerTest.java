@@ -33,7 +33,7 @@ import project.plantly.domain.company.service.CompanyQueryService;
 import project.plantly.domain.company.service.CompanyDraftService;
 import project.plantly.domain.company.service.CompanyStatsService;
 import project.plantly.domain.company.service.CompanyVerificationService;
-import project.plantly.domain.company.service.CompanyService;
+import project.plantly.domain.company.service.CompanyRegistrationService;
 import project.plantly.domain.company.service.CompanyUpdateService;
 import project.plantly.domain.user.User;
 import project.plantly.domain.user.enums.UserRole;
@@ -80,7 +80,7 @@ public class CompanyUpdateControllerTest {
 
     // 컨트롤러가 함께 주입받는 협력 객체. 이 테스트에서 직접 쓰진 않지만 컨텍스트 로딩을 위해 모킹한다.
     @MockitoBean
-    private CompanyService companyService;
+    private CompanyRegistrationService companyRegistrationService;
 
     @MockitoBean
     private CompanyQueryService companyQueryService;
