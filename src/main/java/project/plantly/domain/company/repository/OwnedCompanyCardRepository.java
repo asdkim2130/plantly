@@ -17,6 +17,9 @@ import java.util.List;
  * <p>공개 검색({@code PostgresTrigramCompanySearch})과 동일한 카드 프로젝션({@link CompanyCardSql})을 재사용하되,
  * 검색 도큐먼트 JOIN·키워드·패싯은 없다 — 소유자 필터 + 미삭제 + 최신 등록순뿐이다. 검색 seam(ES 교체 지점)과
  * 무관한 소유자 스코프 조회라 검색 인터페이스가 아닌 별도 경로로 둔다.
+ *
+ * <p>행 → 응답 변환은 {@code CompanySummary::fromOwner} 다. 카드 프로젝션은 공개 경로와 공유하지만
+ * 소유자에게만 보여야 하는 값(공개 범위)이 있어 변환 지점에서 갈린다.
  */
 @Repository
 public class OwnedCompanyCardRepository {
@@ -45,9 +48,12 @@ public class OwnedCompanyCardRepository {
                 .addValue("limit", pageable.getPageSize())
                 .addValue("offset", pageable.getOffset());
 
+        // fromOwner — 이 목록만 공개 범위를 함께 내보낸다. 본인 회사가 지금 공개인지 비공개인지
+        // 목록에서 보여야 하기 때문이다(공개 경로는 fromPublic 을 쓴다).
         List<CompanySummary> content = jdbc.query(
-                "SELECT " + CompanyCardSql.CARD_COLUMNS + FROM + WHERE + ORDER_BY + " LIMIT :limit OFFSET :offset",
-                params, CompanyCardSql.ROW_MAPPER);
+                        "SELECT " + CompanyCardSql.CARD_COLUMNS + FROM + WHERE + ORDER_BY + " LIMIT :limit OFFSET :offset",
+                        params, CompanyCardSql.ROW_MAPPER)
+                .stream().map(CompanySummary::fromOwner).toList();
 
         return PageableExecutionUtils.getPage(content, pageable, () -> {
             Long total = jdbc.queryForObject("SELECT count(*)" + FROM + WHERE, params, Long.class);

@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.companyTest.support.PostgresContainerTest;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.category.Category;
 import project.plantly.domain.company.entity.Address;
 import project.plantly.domain.company.entity.Company;
@@ -20,6 +21,8 @@ import project.plantly.domain.company.repository.OwnedCompanyCardRepository;
 import project.plantly.domain.company.search.dto.CompanySummary;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -72,6 +75,27 @@ class OwnedCompanyCardRepositoryTest extends PostgresContainerTest {
         assertThat(card.categoryNames()).containsExactly("정밀가공"); // 직접 링크만, closure 조상(제조) 제외
         assertThat(card.tagNames()).containsExactly("스마트팜", "IoT"); // display_order 순
         assertThat(card.industryNames()).containsExactly("농업기술");
+    }
+
+    // 소유자 목록만 공개 범위를 실어 보낸다(CompanySummary::fromOwner). 카드 프로젝션은 공개 경로와 공유하므로
+    // 이 값이 실제로 SQL 에서 읽혀 응답 객체까지 닿는지는 실 DB 로 확인해야 한다 —
+    // 컬럼(c.visibility)이 빠지거나 fromPublic 으로 잘못 매핑되면 조용히 null 이 되고, 그러면
+    // 소유자 화면에서 공개/비공개를 구분할 수 없게 된다.
+    @Test
+    @DisplayName("소유자 카드는 공개 범위를 담는다 — 비공개 회사도 내 목록에는 보이고 PRIVATE 로 구분된다")
+    void ownerCardCarriesVisibility() {
+        Company open = persistCompany(OWNER, "공개회사");
+        Company hidden = persistCompany(OWNER, "비공개회사");
+        hidden.changeVisibility(CompanyVisibility.PRIVATE);
+        em.flush();
+
+        Map<Long, CompanyVisibility> byId = repository.findOwnedBy(OWNER, PageRequest.of(0, 20))
+                .getContent().stream()
+                .collect(Collectors.toMap(CompanySummary::id, CompanySummary::visibility));
+
+        // 비공개 회사가 목록에서 빠지지 않는다는 것 자체도 계약이다(공개 목록과 갈리는 지점).
+        assertThat(byId).containsEntry(open.getId(), CompanyVisibility.PUBLIC);
+        assertThat(byId).containsEntry(hidden.getId(), CompanyVisibility.PRIVATE);
     }
 
     // 카드 프로젝션(CompanyCardSql.CARD_COLUMNS)은 공개 검색·내 회사·즐겨찾기·스팟라이트·관리자 목록이 공유한다.

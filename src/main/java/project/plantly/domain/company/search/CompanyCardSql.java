@@ -1,6 +1,7 @@
 package project.plantly.domain.company.search;
 
 import org.springframework.jdbc.core.RowMapper;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.domain.company.support.RegionLabels;
 
@@ -11,8 +12,12 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * 요약 카드({@link CompanySummary}) 프로젝션 SQL 과 RowMapper. 공개 검색({@link PostgresTrigramCompanySearch})과
- * 내 회사 목록 등 '카드 형태로 회사를 나열'하는 읽기 경로가 공통으로 재사용한다.
+ * 요약 카드 프로젝션 SQL 과 RowMapper. 공개 검색({@link PostgresTrigramCompanySearch})과 내 회사 목록 등
+ * '카드 형태로 회사를 나열'하는 읽기 경로가 공통으로 재사용한다.
+ *
+ * <p>RowMapper 가 만드는 것은 응답({@link CompanySummary})이 아니라 행({@link CompanyCardProjection})이다.
+ * 같은 행이 경로마다 다른 응답이 되기 때문이다 — 호출부가 {@code .map(CompanySummary::fromPublic)} 또는
+ * {@code ::fromOwner} 로 무엇을 내보낼지 고른다. 이유는 {@link CompanyCardProjection} 주석 참고.
  *
  * <p>{@link #CARD_COLUMNS} 는 별칭 {@code c = company} 를 전제로 한 SELECT 컬럼 목록이다(SELECT/FROM 은 호출부가 붙인다).
  * 회사 스칼라 + 회사가 연결한 카테고리/태그/산업군 이름을 회사당 array_agg 로 집계한다. 카테고리는 직접 링크
@@ -40,7 +45,7 @@ public final class CompanyCardSql {
     public static final String CARD_COLUMNS = """
             c.id, c.company_name, c.intro_title, c.logo_url, c.cover_image_url, c.brand_color,
             c.road_address AS address,
-            c.verified, c.featured, c.spotlight,
+            c.verified, c.featured, c.spotlight, c.visibility,
             (SELECT array_agg(cat.category_name ORDER BY cc.display_order)
                FROM company_category cc JOIN category cat ON cat.id = cc.category_id
                WHERE cc.company_id = c.id AND cc.active) AS category_names,
@@ -51,7 +56,7 @@ public final class CompanyCardSql {
                WHERE ci.company_id = c.id) AS industry_names
             """;
 
-    public static final RowMapper<CompanySummary> ROW_MAPPER = (rs, i) -> new CompanySummary(
+    public static final RowMapper<CompanyCardProjection> ROW_MAPPER = (rs, i) -> new CompanyCardProjection(
             rs.getLong("id"),
             rs.getString("company_name"),
             rs.getString("intro_title"),
@@ -66,9 +71,7 @@ public final class CompanyCardSql {
             toList(rs.getArray("category_names")),
             toList(rs.getArray("tag_names")),
             toList(rs.getArray("industry_names")),
-            // 개인화(likedByMe/favoritedByMe)는 viewer 독립인 카드 프로젝션 밖에서 채운다 → 여기선 false 기본값.
-            false,
-            false);
+            CompanyVisibility.valueOf(rs.getString("visibility")));
 
     // PG text[] → List<String>. 매칭 행이 없으면 array_agg 는 NULL → 빈 리스트. null 원소는 제거.
     // 관리자 카드 매퍼(AdminCompanyCardSql)도 같은 패키지에서 재사용한다.

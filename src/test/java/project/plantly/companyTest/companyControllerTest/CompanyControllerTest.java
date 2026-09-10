@@ -42,6 +42,7 @@ import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.search.CompanySearchCriteria;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.domain.company.service.CompanyDraftService;
 import project.plantly.domain.company.service.CompanyStatsService;
@@ -511,7 +512,8 @@ public class CompanyControllerTest {
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
                 "https://cdn/logo.png", "https://cdn/cover.png", "#2E7D32", "서울 강남구", true, false, true,
                 List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
-                true, false);   // likedByMe, favoritedByMe
+                true, false,    // likedByMe, favoritedByMe
+                null);          // 공개 목록은 공개 범위를 싣지 않는다 (CompanySummary.fromPublic)
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
         given(companyQueryService.search(any(CompanySearchCriteria.class), any(Pageable.class), isNull())).willReturn(page);
 
@@ -539,19 +541,19 @@ public class CompanyControllerTest {
         CompanySummary paid = new CompanySummary(1L, "유료노출사", "정밀 부품",
                 "https://cdn/logo1.png", "https://cdn/cover1.png", "#2E7D32", "서울 강남구", true, false, false,
                 List.of("제조"), List.of("정밀가공"), List.of("기계"),
-                false, false);
+                false, false, null);
         // 커버·브랜드 컬러는 선택 필드다. 둘 다 비운 카드를 섞어 레일이 null 을 그대로 통과시키는지 함께 확인한다
         // (프론트가 자리표시자·기본 배너 색으로 폴백하는 근거).
         CompanySummary recommended = new CompanySummary(2L, "추천사", "스마트팜 솔루션",
                 "https://cdn/logo2.png", null, null, "경기 화성시", true, true, false,
                 List.of("농업"), List.of("IoT"), List.of("농업기술"),
-                true, false);
+                true, false, null);
         // 최근 등록 레일은 자격도 큐레이션도 보지 않는다 — verified/featured/spotlight 가 전부 꺼진 평범한
         // 회사가 올라오는 것이 정상이고, 그게 이 레일이 위 둘과 다른 지면이라는 표시다.
         CompanySummary newcomer = new CompanySummary(3L, "신규등록사", "금형 설계",
                 "https://cdn/logo3.png", null, null, "인천 남동구", false, false, false,
                 List.of("제조"), List.of("금형"), List.of("기계"),
-                false, false);
+                false, false, null);
         given(companyQueryService.getShowcase(isNull()))
                 .willReturn(new CompanyShowcaseResponse(List.of(paid), List.of(recommended), List.of(newcomer)));
 
@@ -604,7 +606,8 @@ public class CompanyControllerTest {
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
                 "https://cdn/logo.png", "https://cdn/cover.png", "#2E7D32", "서울 강남구", true, false, true,
                 List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
-                false, false);   // 내 회사 목록은 개인화 미적용
+                false, false,                  // 내 회사 목록은 개인화 미적용
+                CompanyVisibility.PRIVATE);    // 소유자 목록만 공개 범위를 싣는다 (fromOwner)
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
         given(companyQueryService.listMyCompanies(eq(7L), any(Pageable.class))).willReturn(page);
         authenticate(7L, UserRole.MEMBER);
@@ -617,6 +620,9 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.data.content[0].categoryNames[0]").value("제조"))
                 .andExpect(jsonPath("$.data.content[0].tagNames[1]").value("IoT"))
                 .andExpect(jsonPath("$.data.content[0].industryNames[0]").value("농업기술"))
+                // 공개 목록과 갈리는 지점: 소유자 목록만 공개 범위를 받는다. 비공개 회사도 여기엔 보이므로
+                // 목록에서 바로 공개 여부를 구분할 수 있어야 한다.
+                .andExpect(jsonPath("$.data.content[0].visibility").value("PRIVATE"))
                 .andExpect(jsonPath("$.data.pageInfo.totalElement").value(1))
                 .andDo(document("company-my",
                         queryParameters(CompanyApiDocs.companyMyQueryParameters()),
@@ -630,7 +636,7 @@ public class CompanyControllerTest {
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
                 "https://cdn/logo.png", "https://cdn/cover.png", "#2E7D32", "서울 강남구", true, false, true,
                 List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
-                true, true);
+                true, true, null);
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
         given(companyQueryService.listMyFavorites(eq(7L), any(Pageable.class))).willReturn(page);
         authenticate(7L, UserRole.MEMBER);

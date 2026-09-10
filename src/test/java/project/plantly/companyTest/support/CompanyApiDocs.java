@@ -307,7 +307,11 @@ public class CompanyApiDocs {
                 fieldWithPath(prefix + ".favoritedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 즐겨찾기 했는지 (익명·내 회사 목록은 false / 즐겨찾기 목록은 정의상 항상 true)"),
                 fieldWithPath(prefix + ".categoryNames").type(JsonFieldType.ARRAY).description("회사가 연결한 카테고리명 목록"),
                 fieldWithPath(prefix + ".tagNames").type(JsonFieldType.ARRAY).description("태그명 목록"),
-                fieldWithPath(prefix + ".industryNames").type(JsonFieldType.ARRAY).description("산업군명 목록"));
+                fieldWithPath(prefix + ".industryNames").type(JsonFieldType.ARRAY).description("산업군명 목록"),
+                fieldWithPath(prefix + ".visibility").type(JsonFieldType.STRING).optional()
+                        .description("공개 범위 PUBLIC/PRIVATE. **내 회사 목록에만 실린다** — 공개 목록·검색·"
+                                + "메인 노출·즐겨찾기에는 키가 없다(그쪽엔 비공개 회사가 들어오지 않아 항상 PUBLIC 이라서). "
+                                + "표시 문구(\"공개\"/\"비공개\")는 서버가 주지 않으므로 화면이 정한다"));
     }
 
     // 목록/검색 응답(ApiResponse<PageResponse<CompanySummary>>). content[] = 요약 카드, pageInfo = 페이지 메타.
