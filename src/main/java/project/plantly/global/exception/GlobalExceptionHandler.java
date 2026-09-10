@@ -48,14 +48,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ErrorCode code = e.getErrorCode();
 
         return ResponseEntity.status(code.getStatus())
-                .body(ApiResponse.failure(code.getMessage()));
+                .body(ApiResponse.failure(code));
     }
 
     // 접근 권한이 없습니다.
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiResponse.failure(CommonErrorCode.FORBIDDEN.getMessage()));
+                .body(ApiResponse.failure(CommonErrorCode.FORBIDDEN));
     }
 
     // 500 서버 오류 - 부모가 다루지 않는, 예상치 못한 모든 예외의 fallback
@@ -75,7 +75,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatus status = declared.code();
             // reason 은 개발자가 "이 문구로 내보내라"고 적어 둔 것이므로 있으면 그대로 쓰고,
             // 없으면 상태 코드로 고른 기본 문구를 쓴다.
-            String message = StringUtils.hasText(declared.reason()) ? declared.reason() : defaultMessage(status);
+            // 코드는 상태에서 고른다 — 이 예외는 우리 규약(BusinessException + ErrorCode) 밖이라
+            // 실어 보낼 도메인 코드가 없다. 상태 단위 코드라도 있으면 클라이언트가 최소한 갈래는 나눌 수 있다.
+            CommonErrorCode declaredCode = defaultErrorCode(status);
+            String message = StringUtils.hasText(declared.reason()) ? declared.reason() : declaredCode.getMessage();
 
             if (status.is5xxServerError()) {
                 log.error("상태가 선언된 예외 (status={})", status.value(), e);
@@ -83,13 +86,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 log.warn("상태가 선언된 예외 (status={}): {}: {}", status.value(), e.getClass().getSimpleName(), e.getMessage());
             }
 
-            return ResponseEntity.status(status).body(ApiResponse.failure(message));
+            return ResponseEntity.status(status).body(ApiResponse.failure(declaredCode, message));
         }
 
         log.error("예상치 못한 서버 오류", e);  //실제 원인은 로그로 기록
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.failure("서버 오류가 발생했습니다."));  //클라이언트에는 일괄적으로 서버 오류로 내려줌
+                .body(ApiResponse.failure(CommonErrorCode.INTERNAL_ERROR));  //클라이언트에는 일괄적으로 서버 오류로 내려줌
     }
 
     // --- 아래는 부모가 이미 @ExceptionHandler 로 잡는 예외들의 처리 지점(protected 훅) ---
@@ -123,10 +126,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // 기본 문구로 떨어진다.
     private ApiResponse<Void> validationBody(List<ValidationError> errors) {
         if (errors.isEmpty()) {
-            return ApiResponse.failure(CommonErrorCode.INVALID_INPUT.getMessage());
+            return ApiResponse.failure(CommonErrorCode.INVALID_INPUT);
         }
 
-        return ApiResponse.failure(errors.get(0).message(), errors);
+        return ApiResponse.failure(CommonErrorCode.INVALID_INPUT, errors.get(0).message(), errors);
     }
 
     // 400 업로드 용량 초과 - 서블릿 컨테이너가 요청을 다 받기 전에 끊고 던진다. 컨트롤러에 닿지 않으므로
@@ -136,7 +139,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
             MaxUploadSizeExceededException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
-        return handleExceptionInternal(ex, ApiResponse.failure(CommonErrorCode.FILE_TOO_LARGE.getMessage()),
+        return handleExceptionInternal(ex, ApiResponse.failure(CommonErrorCode.FILE_TOO_LARGE),
                 headers, CommonErrorCode.FILE_TOO_LARGE.getStatus(), request);
     }
 
@@ -169,28 +172,37 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return new ResponseEntity<>(body, headers, statusCode);
         }
 
-        return new ResponseEntity<>(ApiResponse.failure(defaultMessage(statusCode)), headers, statusCode);
+        return new ResponseEntity<>(ApiResponse.failure(defaultErrorCode(statusCode)), headers, statusCode);
     }
 
-    // 스프링이 요청 자체를 거절한 경우의 문구. 예외 종류가 아니라 상태 코드로 고른다 -
-    // 부모가 다루는 예외가 20여 종이라 종류마다 문구를 두면 다시 "빠뜨린 예외" 문제가 생기고,
+    // 스프링이 요청 자체를 거절한 경우의 코드. 예외 종류가 아니라 상태 코드로 고른다 -
+    // 부모가 다루는 예외가 20여 종이라 종류마다 두면 다시 "빠뜨린 예외" 문제가 생기고,
     // 클라이언트에게 유의미한 구분은 어차피 상태 코드 단위다.
-    private String defaultMessage(HttpStatusCode statusCode) {
+    //
+    // 문구가 아니라 ErrorCode 를 돌려주는 이유: 코드가 자기 문구를 들고 있어 둘을 따로 고를 이유가 없고,
+    // 문구만 돌려주면 이 경로의 응답에 code 가 빠진다(클라이언트가 분기할 수 없는 응답이 하나 생긴다).
+    private CommonErrorCode defaultErrorCode(HttpStatusCode statusCode) {
         HttpStatus status = HttpStatus.resolve(statusCode.value());
 
         if (status == null) {
-            return CommonErrorCode.INTERNAL_ERROR.getMessage();
+            return CommonErrorCode.INTERNAL_ERROR;
         }
 
         return switch (status) {
-            case NOT_FOUND -> CommonErrorCode.NOT_FOUND.getMessage();
-            case METHOD_NOT_ALLOWED -> CommonErrorCode.METHOD_NOT_ALLOWED.getMessage();
-            case NOT_ACCEPTABLE -> CommonErrorCode.NOT_ACCEPTABLE.getMessage();
-            case UNSUPPORTED_MEDIA_TYPE -> CommonErrorCode.UNSUPPORTED_MEDIA_TYPE.getMessage();
-            case PAYLOAD_TOO_LARGE -> CommonErrorCode.FILE_TOO_LARGE.getMessage();
+            case NOT_FOUND -> CommonErrorCode.NOT_FOUND;
+            case METHOD_NOT_ALLOWED -> CommonErrorCode.METHOD_NOT_ALLOWED;
+            case NOT_ACCEPTABLE -> CommonErrorCode.NOT_ACCEPTABLE;
+            case UNSUPPORTED_MEDIA_TYPE -> CommonErrorCode.UNSUPPORTED_MEDIA_TYPE;
+            case PAYLOAD_TOO_LARGE -> CommonErrorCode.FILE_TOO_LARGE;
+            case UNAUTHORIZED -> CommonErrorCode.UNAUTHORIZED;
+            case FORBIDDEN -> CommonErrorCode.FORBIDDEN;
+            case CONFLICT -> CommonErrorCode.CONFLICT;
+            // 여기 없는 상태는 갈래만 나눈다. 표준 MVC 예외의 4xx 는 대부분 실제로 입력 문제(깨진 JSON·
+            // 타입 불일치·필수 파라미터 누락)라 INVALID_INPUT 이 맞지만, 규약 밖 예외가 낯선 4xx 를 선언해
+            // 오면 그 코드가 정확하지 않을 수 있다. 정확한 코드가 필요해지면 위 switch 에 상태를 추가한다.
             default -> statusCode.is4xxClientError()
-                    ? CommonErrorCode.INVALID_INPUT.getMessage()
-                    : CommonErrorCode.INTERNAL_ERROR.getMessage();
+                    ? CommonErrorCode.INVALID_INPUT
+                    : CommonErrorCode.INTERNAL_ERROR;
         };
     }
 }

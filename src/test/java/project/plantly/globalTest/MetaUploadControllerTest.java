@@ -101,6 +101,8 @@ class MetaUploadControllerTest {
                                                 + "보낸 Content-Type 을 믿지 않고 실제 바이트 시그니처로 판별한다"),
                                 fieldWithPath("data.allowedExtensions").type(JsonFieldType.ARRAY)
                                         .description("허용 확장자. 안내 문구·파일 선택 필터에 쓴다"),
+                                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("오류 메시지 (성공 시 생략)")
                         )));
