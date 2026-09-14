@@ -41,6 +41,9 @@ public class UploadController {
      *
      * <p>{@code required = false} 인 이유는 파트가 없을 때 스프링이 던지는 예외가 전역 fallback 에
      * 걸려 500 으로 나가기 때문이다. null 로 받아 서비스가 400(FILE_REQUIRED)으로 끊는다.
+     *
+     * <p>클라이언트가 <b>고르는 순간</b> 스스로 막을 근거는 {@code GET /api/v1/meta/upload} 가 준다
+     * (한 장당 용량·허용 형식). 상한이 환경변수로 배포마다 달라지므로 화면에 하드코딩하면 조용히 어긋난다.
      */
     @PostMapping(value = "/api/v1/uploads", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)

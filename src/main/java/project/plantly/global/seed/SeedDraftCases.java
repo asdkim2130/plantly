@@ -65,7 +65,9 @@ public class SeedDraftCases {
         refs.add(new SeedDraftRef("D04", publishableDraft, owner.code(),
                 "발행 가능한 완전 초안. POST /api/v1/companies 로 그대로 보내면 회사가 생기고 초안은 삭제되어야 한다"));
 
-        // D05 — 초안은 남았지만 인증이 만료된 상태. 발행 시도가 실패해야 한다.
+        // D05 — 초안은 남았고 인증만 만료된 상태. 만료가 곧 실패는 아니다: 발행하면 서버가 저장된 값 그대로
+        //       국세청에 다시 물어(자동 재질의) 통과하면 조용히 되살리고 그대로 등록한다. 사용자에게 다시
+        //       받을 값이 없으므로 폼에는 아무것도 드러나지 않는 것이 정상이다.
         Long expiredVerification = verifications.issueExpired(
                 owner.userId(),
                 SeedBusinessNumbers.draftNumber(5),
@@ -74,7 +76,22 @@ public class SeedDraftCases {
         verifications.saveDraft(expiredVerification, owner.userId(),
                 fullPayload(expiredVerification, SeedIndexes.forDraft(5)));
         refs.add(new SeedDraftRef("D05", expiredVerification, owner.code(),
-                "인증이 만료된 초안. 조회는 되지만 발행하면 VERIFICATION_EXPIRED 로 막혀야 한다"));
+                "인증이 만료된 초안(국세청은 여전히 통과). 발행하면 자동 재질의로 되살아나 그대로 등록되어야 한다 "
+                        + "— 사용자에게 만료가 드러나면 안 된다"));
+
+        // D05B — 같은 만료 상태지만 국세청이 실제로 다른 답을 주는 경우(폐업). 자동 재질의가 있어도 여기서는
+        //        되살릴 수 없고, 이때만 사용자가 만료를 만난다. 프론트가 이 갈래의 안내를 그려볼 대상이다.
+        //        번호 끝 4자리로 FakeNtsClient 의 폐업 분기를 태운다.
+        Long closedVerification = verifications.issueExpired(
+                owner.userId(),
+                SeedBusinessNumbers.NTS_CLOSED,
+                SeedVocabulary.ceoName(SeedIndexes.forDraft(5)),
+                SeedVocabulary.establishmentDate(SeedIndexes.forDraft(5)));
+        verifications.saveDraft(closedVerification, owner.userId(),
+                fullPayload(closedVerification, SeedIndexes.forDraft(5)));
+        refs.add(new SeedDraftRef("D05B", closedVerification, owner.code(),
+                "만료 + 국세청이 폐업으로 답하는 초안. 발행하면 VERIFICATION_CLOSED 로 막히고 인증은 EXPIRED 로 "
+                        + "확정된다. 작성분은 사업자번호로 키잉돼 있어 그대로 남아야 한다"));
 
         // D06 — 발행까지 끝낸 상태. 인증은 CONSUMED 가 되고 초안은 사라지며 회사가 남는다.
         //       이 세 가지가 한 트랜잭션에서 함께 일어나는지를 실제 경로로 확인하는 케이스다.

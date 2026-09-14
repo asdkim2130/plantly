@@ -16,11 +16,14 @@ import java.time.LocalDate;
  *
  * <p>개업일자는 설립일자가 아니라 사업자등록증의 개업연월일이다. 국세청 등록 정보가 바뀌었을 수 있으므로
  * 서버는 이전 값과 비교하지 않고, 새로 입력한 두 값이 국세청 재확인을 통과하면 그대로 DB 를 갱신한다.
+ *
+ * <p>메시지를 적어두는 이유는 선행 인증({@link CompanyVerificationRequest})과 같다 — 생략하면 기본 문구가
+ * 나가 이 폼만 말투가 튄다.
  */
 public record CompanyReverificationRequest(
-        @NotBlank
+        @NotBlank(message = "대표자명은 필수입니다.")
         String ceoName,
-        @NotNull
+        @NotNull(message = "개업일자는 필수입니다.")
         @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate businessStartDate
 ) {

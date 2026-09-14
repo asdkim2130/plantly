@@ -15,7 +15,9 @@ import java.util.List;
  * 지금 열려 있는 폼에는 없어 대개 응답에서 키가 빠진다.
  *
  * <p>제약이 하나도 없는 필드는 목록에 나오지 않는다. 검증이 걸리지 않는 자리이기 때문이며,
- * enum 필드({@code trlLevel} 등)가 여기 해당한다 — 선택지 목록은 제약이 아니라 옵션 조회 API 의 몫이다.
+ * enum 필드({@code trlLevel} 등)가 여기 해당한다 — 선택지 목록은 제약이 아니라 옵션 조회
+ * ({@code GET /api/v1/meta/options}, {@link project.plantly.global.meta.OptionCatalog})의 몫이다.
+ * 두 응답은 같은 필드 이름을 키로 쓰므로 프론트가 칸 이름 하나로 이어 붙일 수 있다.
  */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public record FormConstraintsResponse(

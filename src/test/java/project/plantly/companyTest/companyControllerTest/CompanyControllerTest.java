@@ -42,11 +42,12 @@ import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.enums.SubscriptionStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.search.CompanySearchCriteria;
+import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.search.dto.CompanySummary;
 import project.plantly.domain.company.service.CompanyDraftService;
 import project.plantly.domain.company.service.CompanyStatsService;
 import project.plantly.domain.company.service.CompanyQueryService;
-import project.plantly.domain.company.service.CompanyService;
+import project.plantly.domain.company.service.CompanyRegistrationService;
 import project.plantly.domain.company.service.CompanyUpdateService;
 import project.plantly.domain.company.service.CompanyVerificationService;
 import project.plantly.global.PageInfo;
@@ -102,8 +103,10 @@ public class CompanyControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    // 자가등록 진입점. 컨트롤러는 CompanyService 가 아니라 이 빈을 부른다 — 만료 인증 자동 재질의(국세청 HTTP)를
+    // 등록 트랜잭션 밖에서 끝내기 위한 경계라서다(CompanyRegistrationService 주석).
     @MockitoBean
-    private CompanyService companyService;
+    private CompanyRegistrationService companyRegistrationService;
 
     // 컨트롤러가 상세 조회용으로 주입받는 협력 객체. 등록 슬라이스 테스트에서는 사용하지 않지만 컨텍스트 로딩을 위해 모킹한다.
     @MockitoBean
@@ -125,6 +128,9 @@ public class CompanyControllerTest {
     private CompanyStatsService companyStatsService;
 
     private MockMvc mockMvc;
+
+    // 초안 경로 키. 인증 식별자가 아니라 사업자등록번호이며, 정규화(하이픈 제거)는 서비스가 한다.
+    private static final String BUSINESS_NUMBER = "1234567890";
 
     @BeforeEach
     void setUpMockMvc(RestDocumentationContextProvider restDocumentation) {
@@ -245,7 +251,7 @@ public class CompanyControllerTest {
     @DisplayName("인증된 유저가 회사를 등록하면 201 Created 와 생성된 회사 id 를 반환한다")
     void createMyCompany_success() throws Exception {
         MyCompanyCreateRequest request = CompanyCreateRequestSamples.myFull();
-        given(companyService.createByUser(eq(7L), any(MyCompanyCreateRequest.class))).willReturn(100L);
+        given(companyRegistrationService.register(eq(7L), any(MyCompanyCreateRequest.class))).willReturn(100L);
         authenticate(7L, UserRole.MEMBER);
 
         mockMvc.perform(post("/api/v1/companies")
@@ -283,7 +289,7 @@ public class CompanyControllerTest {
     @DisplayName("등록 정책(등급 한도/마스터 유효성 등)에 걸리면 400(정책 위반 메시지) 를 반환한다")
     void createMyCompany_policyViolation() throws Exception {
         // 정책 위반은 서비스가 BusinessException(400)으로 던진다. 대표로 카테고리 한도 초과를 사용한다.
-        given(companyService.createByUser(eq(7L), any(MyCompanyCreateRequest.class)))
+        given(companyRegistrationService.register(eq(7L), any(MyCompanyCreateRequest.class)))
                 .willThrow(new BusinessException(CompanyErrorCode.CATEGORY_LIMIT_EXCEEDED));
         authenticate(7L, UserRole.MEMBER);
 
@@ -297,26 +303,29 @@ public class CompanyControllerTest {
                         responseFields(CompanyApiDocs.errorResponseFields())));
     }
 
-    // ===== 임시저장(초안) PUT/GET/DELETE /api/v1/companies/drafts/{verificationId} =====
+    // ===== 임시저장(초안) PUT/GET/DELETE /api/v1/companies/drafts/{businessNumber} =====
+    // 경로 키는 인증 식별자가 아니라 사업자등록번호다 — 인증은 만료·재발급되며 id 가 바뀌지만 작성분은
+    // 그 수명에 묶이면 안 되기 때문이다(CompanyDraft 주석). 하이픈 유무는 서버가 정규화한다.
 
     @Test
-    @DisplayName("임시저장은 자가등록 폼을 인증 1건당 1개 보관하고 성공 플래그만 반환한다 (@Valid 없이 부분 입력 허용)")
+    @DisplayName("임시저장은 자가등록 폼을 사업자번호 1건당 1개 보관하고 성공 플래그만 반환한다 (@Valid 없이 부분 입력 허용)")
     void saveDraft_success() throws Exception {
-        // save 는 void — 기본 mock 이 삼킨다. 경로의 verificationId(99)와 인증 principal(7)이 서비스로 전달되는지 verify 로 확인한다.
+        // save 는 void — 기본 mock 이 삼킨다. 경로의 사업자번호와 인증 principal(7)이 서비스로 전달되는지 verify 로 확인한다.
         MyCompanyCreateRequest request = CompanyCreateRequestSamples.myFull();
         authenticate(7L, UserRole.MEMBER);
 
-        mockMvc.perform(put("/api/v1/companies/drafts/{verificationId}", 99L)
+        mockMvc.perform(put("/api/v1/companies/drafts/{businessNumber}", BUSINESS_NUMBER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andDo(document("company-draft-save",
-                        pathParameters(parameterWithName("verificationId").description("선행 사업자 인증 식별자")),
+                        pathParameters(parameterWithName("businessNumber").description(
+                                "사업자등록번호(하이픈 유무 무관). 인증 식별자가 아니라 이 값이 초안의 키다")),
                         requestFields(CompanyApiDocs.myCompanyCreateRequestFields()),
                         responseFields(CompanyApiDocs.okResponseFields())));
 
-        verify(companyDraftService).save(eq(7L), eq(99L), any(MyCompanyCreateRequest.class));
+        verify(companyDraftService).save(eq(7L), eq(BUSINESS_NUMBER), any(MyCompanyCreateRequest.class));
     }
 
     @Test
@@ -324,10 +333,10 @@ public class CompanyControllerTest {
     void getDraft_success() throws Exception {
         CompanyDraftResponse response = new CompanyDraftResponse(
                 CompanyCreateRequestSamples.myFull(), LocalDateTime.of(2026, 7, 23, 10, 0));
-        given(companyDraftService.get(7L, 99L)).willReturn(response);
+        given(companyDraftService.get(7L, BUSINESS_NUMBER)).willReturn(response);
         authenticate(7L, UserRole.MEMBER);
 
-        mockMvc.perform(get("/api/v1/companies/drafts/{verificationId}", 99L))
+        mockMvc.perform(get("/api/v1/companies/drafts/{businessNumber}", BUSINESS_NUMBER))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.payload.verificationId").value(99L))
@@ -335,18 +344,19 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.data.updatedAt").value("2026-07-23T10:00:00"))
                 // payload 내부 필드는 회사 등록 요청과 동일하므로 relaxed 로 봉투·저장시각만 문서화한다(중복 방지).
                 .andDo(document("company-draft-get",
-                        pathParameters(parameterWithName("verificationId").description("선행 사업자 인증 식별자")),
+                        pathParameters(parameterWithName("businessNumber").description(
+                                "사업자등록번호(하이픈 유무 무관). 인증 식별자가 아니라 이 값이 초안의 키다")),
                         relaxedResponseFields(CompanyApiDocs.companyDraftResponseFields())));
     }
 
     @Test
     @DisplayName("저장된 초안이 없으면 404(DRAFT_NOT_FOUND) 를 반환한다")
     void getDraft_notFound() throws Exception {
-        given(companyDraftService.get(7L, 99L))
+        given(companyDraftService.get(7L, BUSINESS_NUMBER))
                 .willThrow(new BusinessException(CompanyErrorCode.DRAFT_NOT_FOUND));
         authenticate(7L, UserRole.MEMBER);
 
-        mockMvc.perform(get("/api/v1/companies/drafts/{verificationId}", 99L))
+        mockMvc.perform(get("/api/v1/companies/drafts/{businessNumber}", BUSINESS_NUMBER))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error").value("저장된 임시저장 내역이 없습니다."))
@@ -358,10 +368,10 @@ public class CompanyControllerTest {
     @DisplayName("이미 등록에 소비된 인증에 임시저장하면 409(VERIFICATION_ALREADY_USED) 를 반환한다")
     void saveDraft_alreadyUsed() throws Exception {
         willThrow(new BusinessException(CompanyErrorCode.VERIFICATION_ALREADY_USED))
-                .given(companyDraftService).save(eq(7L), eq(99L), any(MyCompanyCreateRequest.class));
+                .given(companyDraftService).save(eq(7L), eq(BUSINESS_NUMBER), any(MyCompanyCreateRequest.class));
         authenticate(7L, UserRole.MEMBER);
 
-        mockMvc.perform(put("/api/v1/companies/drafts/{verificationId}", 99L)
+        mockMvc.perform(put("/api/v1/companies/drafts/{businessNumber}", BUSINESS_NUMBER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(CompanyCreateRequestSamples.myFull())))
                 .andExpect(status().isConflict())
@@ -376,14 +386,15 @@ public class CompanyControllerTest {
     void deleteDraft_success() throws Exception {
         authenticate(7L, UserRole.MEMBER);
 
-        mockMvc.perform(delete("/api/v1/companies/drafts/{verificationId}", 99L))
+        mockMvc.perform(delete("/api/v1/companies/drafts/{businessNumber}", BUSINESS_NUMBER))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andDo(document("company-draft-delete",
-                        pathParameters(parameterWithName("verificationId").description("선행 사업자 인증 식별자")),
+                        pathParameters(parameterWithName("businessNumber").description(
+                                "사업자등록번호(하이픈 유무 무관). 인증 식별자가 아니라 이 값이 초안의 키다")),
                         responseFields(CompanyApiDocs.okResponseFields())));
 
-        verify(companyDraftService).delete(eq(7L), eq(99L));
+        verify(companyDraftService).delete(eq(7L), eq(BUSINESS_NUMBER));
     }
 
     @Test
@@ -501,7 +512,8 @@ public class CompanyControllerTest {
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
                 "https://cdn/logo.png", "https://cdn/cover.png", "#2E7D32", "서울 강남구", true, false, true,
                 List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
-                true, false);   // likedByMe, favoritedByMe
+                true, false,    // likedByMe, favoritedByMe
+                null);          // 공개 목록은 공개 범위를 싣지 않는다 (CompanySummary.fromPublic)
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
         given(companyQueryService.search(any(CompanySearchCriteria.class), any(Pageable.class), isNull())).willReturn(page);
 
@@ -529,19 +541,19 @@ public class CompanyControllerTest {
         CompanySummary paid = new CompanySummary(1L, "유료노출사", "정밀 부품",
                 "https://cdn/logo1.png", "https://cdn/cover1.png", "#2E7D32", "서울 강남구", true, false, false,
                 List.of("제조"), List.of("정밀가공"), List.of("기계"),
-                false, false);
+                false, false, null);
         // 커버·브랜드 컬러는 선택 필드다. 둘 다 비운 카드를 섞어 레일이 null 을 그대로 통과시키는지 함께 확인한다
         // (프론트가 자리표시자·기본 배너 색으로 폴백하는 근거).
         CompanySummary recommended = new CompanySummary(2L, "추천사", "스마트팜 솔루션",
                 "https://cdn/logo2.png", null, null, "경기 화성시", true, true, false,
                 List.of("농업"), List.of("IoT"), List.of("농업기술"),
-                true, false);
+                true, false, null);
         // 최근 등록 레일은 자격도 큐레이션도 보지 않는다 — verified/featured/spotlight 가 전부 꺼진 평범한
         // 회사가 올라오는 것이 정상이고, 그게 이 레일이 위 둘과 다른 지면이라는 표시다.
         CompanySummary newcomer = new CompanySummary(3L, "신규등록사", "금형 설계",
                 "https://cdn/logo3.png", null, null, "인천 남동구", false, false, false,
                 List.of("제조"), List.of("금형"), List.of("기계"),
-                false, false);
+                false, false, null);
         given(companyQueryService.getShowcase(isNull()))
                 .willReturn(new CompanyShowcaseResponse(List.of(paid), List.of(recommended), List.of(newcomer)));
 
@@ -594,7 +606,8 @@ public class CompanyControllerTest {
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
                 "https://cdn/logo.png", "https://cdn/cover.png", "#2E7D32", "서울 강남구", true, false, true,
                 List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
-                false, false);   // 내 회사 목록은 개인화 미적용
+                false, false,                  // 내 회사 목록은 개인화 미적용
+                CompanyVisibility.PRIVATE);    // 소유자 목록만 공개 범위를 싣는다 (fromOwner)
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
         given(companyQueryService.listMyCompanies(eq(7L), any(Pageable.class))).willReturn(page);
         authenticate(7L, UserRole.MEMBER);
@@ -607,6 +620,9 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.data.content[0].categoryNames[0]").value("제조"))
                 .andExpect(jsonPath("$.data.content[0].tagNames[1]").value("IoT"))
                 .andExpect(jsonPath("$.data.content[0].industryNames[0]").value("농업기술"))
+                // 공개 목록과 갈리는 지점: 소유자 목록만 공개 범위를 받는다. 비공개 회사도 여기엔 보이므로
+                // 목록에서 바로 공개 여부를 구분할 수 있어야 한다.
+                .andExpect(jsonPath("$.data.content[0].visibility").value("PRIVATE"))
                 .andExpect(jsonPath("$.data.pageInfo.totalElement").value(1))
                 .andDo(document("company-my",
                         queryParameters(CompanyApiDocs.companyMyQueryParameters()),
@@ -620,7 +636,7 @@ public class CompanyControllerTest {
         CompanySummary item = new CompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
                 "https://cdn/logo.png", "https://cdn/cover.png", "#2E7D32", "서울 강남구", true, false, true,
                 List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"),
-                true, true);
+                true, true, null);
         PageResponse<CompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
         given(companyQueryService.listMyFavorites(eq(7L), any(Pageable.class))).willReturn(page);
         authenticate(7L, UserRole.MEMBER);

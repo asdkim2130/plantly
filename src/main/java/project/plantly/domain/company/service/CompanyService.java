@@ -88,7 +88,9 @@ public class CompanyService {
 
         // 발행 성공 → 임시저장 초안은 소임을 다했으므로 제거한다. 초안 없이 바로 등록했다면 아무 일도 안 한다(멱등).
         // 등록이 실패하면 이 트랜잭션이 롤백되어 초안도 그대로 남는다.
-        draftRepository.deleteByVerificationId(myRequest.verificationId());
+        // 삭제 키가 (userId, businessNumber) 인 것은 초안이 인증 레코드가 아니라 사업자번호로 키잉되기 때문이다
+        // (CompanyDraft 주석 참고). 인증이 중간에 만료·재발급됐어도 발행에 쓴 번호의 초안이 정확히 지워진다.
+        draftRepository.deleteByUserIdAndBusinessNumber(userId, verification.getBusinessNumber());
 
         // 자가등록자 = OWNER. 관리자 등록(createByAdmin)은 소유자 미연동이라 멤버를 만들지 않는다.
         // 소유의 단일 진실원(SSOT) — Company 는 소유자를 직접 참조하지 않고 이 멤버십으로만 표현한다.

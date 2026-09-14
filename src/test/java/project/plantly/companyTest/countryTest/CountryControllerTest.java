@@ -102,6 +102,8 @@ public class CountryControllerTest {
                                 fieldWithPath("data[].continent").type(JsonFieldType.STRING)
                                         .description("대륙 구분: ASIA / EUROPE / AFRICA / NORTH_AMERICA / "
                                                 + "SOUTH_AMERICA / OCEANIA / ANTARCTICA. 그룹 라벨과 노출 순서는 클라이언트가 정한다"),
+                                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 생략됨)")
                         )

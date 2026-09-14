@@ -146,6 +146,8 @@ class MetaConstraintsControllerTest {
                                         .description("규칙의 값(길이·개수)"),
                                 fieldWithPath("data.fields[].items.rules[].message").type(JsonFieldType.STRING)
                                         .description("규칙을 어겼을 때 띄울 문구"),
+                                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 생략됨)")
                         )

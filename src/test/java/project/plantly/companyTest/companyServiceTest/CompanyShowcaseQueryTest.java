@@ -142,6 +142,7 @@ class CompanyShowcaseQueryTest {
 
     private CompanySummary card(Long id) {
         return new CompanySummary(id, "회사" + id, null, "logo", "cover", "#2E7D32", "서울 강남구",
-                false, false, false, List.of(), List.of(), List.of(), false, false);
+                false, false, false, List.of(), List.of(), List.of(), false, false,
+                null);   // 공개 레일은 공개 범위를 싣지 않는다 (CompanySummary.fromPublic)
     }
 }

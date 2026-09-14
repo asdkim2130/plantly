@@ -130,6 +130,8 @@ public class CategoryAdminControllerTest {
                                         .description("생성된 카테고리 정보"),
                                 fieldWithPath("data.id").type(JsonFieldType.NUMBER)
                                         .description("생성된 카테고리 ID"),
+                                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 응답에서 생략됨)")
                         )
@@ -150,6 +152,8 @@ public class CategoryAdminControllerTest {
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
                                         .description("에러 메시지 (접근 권한 없음)")
                         )
@@ -175,6 +179,8 @@ public class CategoryAdminControllerTest {
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
                                         .description("검증 실패 메시지 (첫 번째 위반 항목)"),
                                 fieldWithPath("errors").type(JsonFieldType.ARRAY).optional()
@@ -207,6 +213,8 @@ public class CategoryAdminControllerTest {
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
                                         .description("에러 메시지 (카테고리 코드 중복)")
                         )
@@ -296,6 +304,8 @@ public class CategoryAdminControllerTest {
                                 // 자식은 동일 구조가 재귀되므로 subsection 으로 묶어 문서화
                                 subsectionWithPath("data[].children").type(JsonFieldType.ARRAY)
                                         .description("하위 카테고리 목록 (동일 구조 재귀)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 생략됨)")
                         )
@@ -314,6 +324,8 @@ public class CategoryAdminControllerTest {
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
                                         .description("에러 메세지 (접근 권한 없음)")
                         )

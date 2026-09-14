@@ -23,7 +23,7 @@ import org.springframework.web.context.WebApplicationContext;
 import project.plantly.domain.company.controller.CompanyController;
 import project.plantly.domain.company.service.CompanyDraftService;
 import project.plantly.domain.company.service.CompanyQueryService;
-import project.plantly.domain.company.service.CompanyService;
+import project.plantly.domain.company.service.CompanyRegistrationService;
 import project.plantly.domain.company.service.CompanyStatsService;
 import project.plantly.domain.company.service.CompanyUpdateService;
 import project.plantly.domain.company.service.CompanyVerificationService;
@@ -60,7 +60,7 @@ class CompanyCollectionBodyValidationTest {
 
     @Autowired WebApplicationContext context;
 
-    @MockitoBean CompanyService companyService;
+    @MockitoBean CompanyRegistrationService companyRegistrationService;
     @MockitoBean CompanyQueryService companyQueryService;
     @MockitoBean CompanyUpdateService companyUpdateService;
     @MockitoBean CompanyVerificationService companyVerificationService;

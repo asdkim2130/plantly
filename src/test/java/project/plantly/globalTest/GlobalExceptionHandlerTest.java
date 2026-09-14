@@ -25,6 +25,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.global.exception.BusinessException;
+import project.plantly.global.exception.CommonErrorCode;
 import project.plantly.global.response.ApiResponse;
 
 import java.util.Map;
@@ -253,6 +258,20 @@ class GlobalExceptionHandlerTest {
             return ApiResponse.success(Map.of("keyword", keyword));
         }
 
+        // 우리 규약(BusinessException + ErrorCode)을 타는 경로. 응답 code 가 도메인 상수명이어야 한다.
+        @GetMapping("/business")
+        void business() {
+            throw new BusinessException(CompanyErrorCode.VERIFICATION_EXPIRED);
+        }
+
+        // 본문 검증 실패 경로. code 는 항목이 아니라 폼 전체의 판정(INVALID_INPUT)이어야 한다.
+        record ValidatedBody(@NotBlank(message = "이름은 필수입니다.") String name) {
+        }
+
+        @PostMapping(value = "/validated", consumes = MediaType.APPLICATION_JSON_VALUE)
+        void validated(@Valid @RequestBody ValidatedBody body) {
+        }
+
         @GetMapping("/declared-status")
         ApiResponse<Void> declaredStatus() {
             throw new DeclaredStatusException();
@@ -280,5 +299,63 @@ class GlobalExceptionHandlerTest {
 
     @ResponseStatus(code = HttpStatus.GONE, reason = "만료된 초대입니다.")
     static class DeclaredReasonException extends RuntimeException {
+    }
+
+    // 응답의 code 는 클라이언트가 분기에 쓰는 유일한 값이다(error 는 사람이 읽는 문구다). 그래서
+    // "코드가 붙는가" 가 아니라 "경로마다 옳은 코드가 붙는가" 를 본다 — 여기 실린 넷은 출처가 전부 다르다:
+    // 도메인 예외(ErrorCode 직접) / 검증(폼 전체 판정) / 상태만 선언된 예외(상태→코드) / 표준 MVC 예외(부모 경유).
+    // 한 곳이라도 코드를 빠뜨리면 그 경로만 클라이언트가 분기할 수 없게 되고, 그건 응답을 봐야만 드러난다.
+    @Nested
+    @DisplayName("응답 code - 경로마다 옳은 식별자가 실리는가")
+    class ErrorCodes {
+
+        @Test
+        @DisplayName("도메인 예외는 ErrorCode 상수명을 그대로 싣는다")
+        void businessException_carriesDomainCode() throws Exception {
+            mockMvc.perform(get("/probe/business"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value(CompanyErrorCode.VERIFICATION_EXPIRED.name()))
+                    // 코드와 문구가 같은 출처에서 나온다 — 둘이 어긋날 자리가 없다.
+                    .andExpect(jsonPath("$.error").value(CompanyErrorCode.VERIFICATION_EXPIRED.getMessage()));
+        }
+
+        @Test
+        @DisplayName("검증 실패의 code 는 폼 전체 판정(INVALID_INPUT)이고, 어느 칸인지는 errors 가 말한다")
+        void validationFailure_carriesInvalidInput() throws Exception {
+            mockMvc.perform(post("/probe/validated")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value(CommonErrorCode.INVALID_INPUT.name()))
+                    // error 에는 첫 위반 문구가, errors 에는 칸 이름이 실린다.
+                    .andExpect(jsonPath("$.error").value("이름은 필수입니다."))
+                    .andExpect(jsonPath("$.errors[0].field").value("name"));
+        }
+
+        // 규약(BusinessException + ErrorCode) 밖 예외라 실어 보낼 도메인 코드가 없다. 상태에서 고른 코드라도
+        // 붙어야 "클라이언트가 분기할 수 없는 응답" 이 하나도 남지 않는다.
+        @Test
+        @DisplayName("상태만 선언된 규약 밖 예외도 상태에서 고른 code 를 받는다 (409 가 INVALID_INPUT 으로 뭉개지지 않는다)")
+        void declaredStatusException_carriesStatusCode() throws Exception {
+            mockMvc.perform(get("/probe/declared-status"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value(CommonErrorCode.CONFLICT.name()));
+        }
+
+        @Test
+        @DisplayName("표준 MVC 예외(부모 경유)도 같은 봉투에 code 를 싣는다")
+        void standardMvcException_carriesStatusCode() throws Exception {
+            mockMvc.perform(delete("/probe/search"))
+                    .andExpect(status().isMethodNotAllowed())
+                    .andExpect(jsonPath("$.code").value(CommonErrorCode.METHOD_NOT_ALLOWED.name()));
+        }
+
+        @Test
+        @DisplayName("성공 응답에는 code 가 없다 (성공은 갈래가 하나라 분기할 것이 없다)")
+        void successResponse_hasNoCode() throws Exception {
+            mockMvc.perform(get("/probe/items/1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").doesNotExist());
+        }
     }
 }

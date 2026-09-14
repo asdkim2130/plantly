@@ -60,6 +60,8 @@ public class CompanyApiDocs {
                         .description("레퍼런스 1건당 이미지 최대 장수 (0 = 업로드 비활성)"),
                 fieldWithPath("data.limits.videoAllowed").type(JsonFieldType.BOOLEAN)
                         .description("동영상 공개 노출 가능 여부. 저장은 등급과 무관하게 허용되므로, false 면 입력란을 감추거나 자물쇠 안내를 붙인다"),
+                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                 fieldWithPath("error").type(JsonFieldType.STRING).optional().description("오류 메시지 (성공 시 null)")
         };
     }
@@ -83,6 +85,8 @@ public class CompanyApiDocs {
                 fieldWithPath("data.businessStartDate").type(JsonFieldType.STRING).description("재인증을 통과해 갱신된 개업일자"),
                 fieldWithPath("data.verifiedAt").type(JsonFieldType.STRING)
                         .description("이번 재인증 시각. 최초 인증 후 1년 재인증 주기의 기준점이 이 값으로 갱신된다"),
+                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                 fieldWithPath("error").type(JsonFieldType.STRING).optional().description("오류 메시지 (성공 시 null)")
         };
     }
@@ -163,6 +167,8 @@ public class CompanyApiDocs {
                 fieldWithPath("message").type(JsonFieldType.STRING).description("응답 메시지"),
                 fieldWithPath("data").type(JsonFieldType.OBJECT).description("생성 결과"),
                 fieldWithPath("data.id").type(JsonFieldType.NUMBER).description("생성된 회사 ID"),
+                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                 fieldWithPath("error").type(JsonFieldType.STRING).optional().description("에러 메시지 (성공 시 생략됨)")
         };
     }
@@ -172,6 +178,8 @@ public class CompanyApiDocs {
     public static FieldDescriptor[] errorResponseFields() {
         return new FieldDescriptor[]{
                 fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부 (실패 시 false)"),
+                fieldWithPath("code").type(JsonFieldType.STRING)
+                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                 fieldWithPath("error").type(JsonFieldType.STRING).description("에러 메시지"),
                 fieldWithPath("errors").type(JsonFieldType.ARRAY).optional()
                         .description("입력 검증 실패일 때만 존재. 위반 전체가 화면의 폼 순서로 담긴다"),
@@ -307,7 +315,11 @@ public class CompanyApiDocs {
                 fieldWithPath(prefix + ".favoritedByMe").type(JsonFieldType.BOOLEAN).description("로그인 뷰어가 이 회사를 즐겨찾기 했는지 (익명·내 회사 목록은 false / 즐겨찾기 목록은 정의상 항상 true)"),
                 fieldWithPath(prefix + ".categoryNames").type(JsonFieldType.ARRAY).description("회사가 연결한 카테고리명 목록"),
                 fieldWithPath(prefix + ".tagNames").type(JsonFieldType.ARRAY).description("태그명 목록"),
-                fieldWithPath(prefix + ".industryNames").type(JsonFieldType.ARRAY).description("산업군명 목록"));
+                fieldWithPath(prefix + ".industryNames").type(JsonFieldType.ARRAY).description("산업군명 목록"),
+                fieldWithPath(prefix + ".visibility").type(JsonFieldType.STRING).optional()
+                        .description("공개 범위 PUBLIC/PRIVATE. **내 회사 목록에만 실린다** — 공개 목록·검색·"
+                                + "메인 노출·즐겨찾기에는 키가 없다(그쪽엔 비공개 회사가 들어오지 않아 항상 PUBLIC 이라서). "
+                                + "표시 문구(\"공개\"/\"비공개\")는 서버가 주지 않으므로 화면이 정한다"));
     }
 
     // 목록/검색 응답(ApiResponse<PageResponse<CompanySummary>>). content[] = 요약 카드, pageInfo = 페이지 메타.
@@ -342,6 +354,8 @@ public class CompanyApiDocs {
                         .description("공개 옵션으로 제공되는 업종 수"),
                 fieldWithPath("data.certificationCount").type(JsonFieldType.NUMBER)
                         .description("공개 옵션으로 제공되는 인증 항목 수"),
+                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                 fieldWithPath("error").type(JsonFieldType.STRING).optional().description("오류 메시지 (성공 시 null)")
         };
     }
@@ -472,6 +486,8 @@ public class CompanyApiDocs {
         return new FieldDescriptor[]{
                 fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
                 fieldWithPath("message").type(JsonFieldType.STRING).optional().description("응답 메시지 (조회는 생략될 수 있음)"),
+                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                 fieldWithPath("error").type(JsonFieldType.STRING).optional().description("에러 메시지 (성공 시 생략됨)"),
                 fieldWithPath("data").type(JsonFieldType.OBJECT).description(dataDescription)
         };

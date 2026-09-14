@@ -126,6 +126,8 @@ public class IndustryControllerTest {
                                         .description("생성된 산업군 정보"),
                                 fieldWithPath("data.id").type(JsonFieldType.NUMBER)
                                         .description("생성된 산업군 ID"),
+                                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 응답에서 생략됨)")
                         )
@@ -146,6 +148,8 @@ public class IndustryControllerTest {
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
                                         .description("에러 메시지 (접근 권한 없음)")
                         )
@@ -170,6 +174,8 @@ public class IndustryControllerTest {
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
                                         .description("검증 실패 메시지 (첫 번째 위반 항목)"),
                                 fieldWithPath("errors").type(JsonFieldType.ARRAY).optional()
@@ -200,6 +206,8 @@ public class IndustryControllerTest {
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
                                         .description("에러 메시지 (산업군 이름 중복)")
                         )
@@ -224,6 +232,8 @@ public class IndustryControllerTest {
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
                                         .description("에러 메시지 (산업군 코드 중복)")
                         )
@@ -287,6 +297,8 @@ public class IndustryControllerTest {
                                         .description("노출 순서"),
                                 fieldWithPath("data[].active").type(JsonFieldType.BOOLEAN)
                                         .description("활성화 여부"),
+                                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 생략됨)")
                         )
@@ -328,6 +340,8 @@ public class IndustryControllerTest {
                                         .description("산업 슬러그"),
                                 fieldWithPath("data[].iconUrl").type(JsonFieldType.STRING).optional()
                                         .description("아이콘 URL (미등록 시 null)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 생략됨)")
                         )
@@ -345,6 +359,8 @@ public class IndustryControllerTest {
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
                                         .description("에러 메시지 (접근 권한 없음)")
                         )

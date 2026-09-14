@@ -10,6 +10,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.InitialSubscriptionPolicy;
+import project.plantly.domain.company.policy.VerificationProperties;
 import project.plantly.companyTest.support.CompanyVerificationFixture;
 import project.plantly.domain.company.dto.CompanyReverificationRequest;
 import project.plantly.domain.company.dto.CompanyReverificationResponse;
@@ -50,6 +51,9 @@ class CompanyVerificationServiceTest {
 
     // 등급 쪽은 외부 의존이 없는 순수 계산이라 mock 이 아니라 실물을 넣는다 — 발급 응답이 실어 내리는
     // 초기 등급·한도가 실제 정책 표와 같은 값인지까지 이 테스트가 함께 보게 된다.
+    // 유효기간·일일 한도도 실물을 넣는다(기본 7일 / 5회). 설정 기본값이 바뀌면 이 테스트가 먼저 알려준다.
+    @Spy VerificationProperties properties = new VerificationProperties(null, null);
+
     @Spy InitialSubscriptionPolicy initialSubscriptionPolicy = new InitialSubscriptionPolicy();
     @Spy GradePolicyRegistry gradePolicyRegistry = new GradePolicyRegistry();
 
@@ -174,17 +178,19 @@ class CompanyVerificationServiceTest {
         verify(ntsClient).verify(any(), any(), any());
     }
 
+    // TTL 은 상수가 아니라 설정값이다(app.verification.ttl, 기본 7일). 짧게 잡아도 막히는 것이 거의 없고
+    // 정상 사용자만 폼 작성 중 만료를 만나므로 며칠 단위로 둔다 — 근거는 VerificationProperties 주석 참고.
     @Test
-    @DisplayName("발급 시 TTL 30분이 적용된다")
-    void verify_appliesThirtyMinuteTtl() {
+    @DisplayName("발급 시 설정된 TTL(기본 7일)이 적용된다")
+    void verify_appliesConfiguredTtl() {
         givenNtsReturns(VerificationOutcome.VALID);
-        given(writer.issue(anyLong(), any(), any(), any(), any(), any(), eq(Duration.ofMinutes(30))))
+        given(writer.issue(anyLong(), any(), any(), any(), any(), any(), eq(Duration.ofDays(7))))
                 .willReturn(CompanyVerificationFixture.usable(99L, USER_ID));
 
         service.verify(USER_ID, request);
 
         verify(writer).issue(eq(USER_ID), eq("1234567890"), eq("홍길동"), eq(LocalDate.of(2020, 1, 2)),
-                any(), any(LocalDateTime.class), eq(Duration.ofMinutes(30)));
+                any(), any(LocalDateTime.class), eq(Duration.ofDays(7)));
     }
 
     // 재인증: 등록·인증된 회사의 대표자명·개업일자를 국세청에 다시 확인해 갱신한다.
@@ -271,6 +277,103 @@ class CompanyVerificationServiceTest {
 
             assertThatThrownBy(() -> service.reverify(USER_ID, COMPANY_ID, request))
                     .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.VERIFICATION_LIMIT_EXCEEDED);
+
+            verify(ntsClient, never()).verify(any(), any(), any());
+        }
+    }
+
+    // 발행 직전의 만료 인증 자동 갱신. 이 경로의 핵심은 "사용자에게 다시 받을 값이 없다" 는 것이라,
+    // 정상 사용자는 만료를 인지하지 못한 채 저장이 성공해야 한다. 만료가 드러나야 하는 유일한 경우는
+    // 국세청이 실제로 다른 답을 줬을 때(폐업·휴업·불일치)다.
+    @Nested
+    @DisplayName("refreshIfExpired (발행 직전 자동 재질의)")
+    class RefreshIfExpired {
+
+        private static final Long VERIFICATION_ID = 99L;
+
+        @Test
+        @DisplayName("아직 유효한 인증이면 국세청을 부르지 않고 아무것도 바꾸지 않는다 (멱등)")
+        void usableVerification_isLeftAlone() {
+            given(writer.loadOwned(USER_ID, VERIFICATION_ID))
+                    .willReturn(CompanyVerificationFixture.usable(VERIFICATION_ID, USER_ID));
+
+            service.refreshIfExpired(USER_ID, VERIFICATION_ID);
+
+            verify(ntsClient, never()).verify(any(), any(), any());
+            verify(writer, never()).refresh(any(), any(), any(), any(), any());
+            verify(writer, never()).markExpired(any(), any(), any(), any());
+        }
+
+        // 이 테스트가 이 작업 전체의 목적이다: 며칠 걸려 폼을 쓴 사용자가 저장을 눌렀을 때
+        // 만료 화면이 아니라 등록 성공을 봐야 한다.
+        @Test
+        @DisplayName("만료됐지만 국세청이 여전히 통과시키면 저장값 그대로 재질의해 조용히 되살린다")
+        void expiredButStillValid_isRefreshedSilently() {
+            given(writer.loadOwned(USER_ID, VERIFICATION_ID))
+                    .willReturn(CompanyVerificationFixture.expired(VERIFICATION_ID, USER_ID));
+            givenNtsReturns(VerificationOutcome.VALID);
+
+            service.refreshIfExpired(USER_ID, VERIFICATION_ID);
+
+            // 사용자 입력이 아니라 저장된 검증값 그대로 다시 묻는다 — 타사 번호를 끼워 넣을 자리가 없다.
+            verify(ntsClient).verify(CompanyVerificationFixture.BUSINESS_NUMBER,
+                    CompanyVerificationFixture.CEO_NAME, CompanyVerificationFixture.START_DATE);
+            verify(writer).refresh(eq(USER_ID), eq(VERIFICATION_ID), any(), any(), any());
+            verify(writer, never()).markExpired(any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("국세청이 폐업으로 답하면 만료를 확정하고 판정별 안내(VERIFICATION_CLOSED)로 막는다")
+        void expiredAndClosed_isRejectedAndMarked() {
+            given(writer.loadOwned(USER_ID, VERIFICATION_ID))
+                    .willReturn(CompanyVerificationFixture.expired(VERIFICATION_ID, USER_ID));
+            givenNtsReturns(VerificationOutcome.CLOSED);
+
+            assertThatThrownBy(() -> service.refreshIfExpired(USER_ID, VERIFICATION_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.VERIFICATION_CLOSED);
+
+            verify(writer).markExpired(eq(USER_ID), eq(VERIFICATION_ID), eq(VerificationOutcome.CLOSED), any());
+            verify(writer, never()).refresh(any(), any(), any(), any(), any());
+        }
+
+        // 국세청 장애로 만료를 확정하면 멀쩡한 인증이 남의 사정 때문에 죽는다. 잠시 뒤 다시 누르면 통과해야 한다.
+        @Test
+        @DisplayName("국세청 장애면 만료를 확정하지 않고 503(VERIFICATION_UNAVAILABLE)만 돌려준다")
+        void ntsUnavailable_doesNotMarkExpired() {
+            given(writer.loadOwned(USER_ID, VERIFICATION_ID))
+                    .willReturn(CompanyVerificationFixture.expired(VERIFICATION_ID, USER_ID));
+            willThrow(new NtsClient.UnavailableException("점검"))
+                    .given(ntsClient).verify(any(), any(), any());
+
+            assertThatThrownBy(() -> service.refreshIfExpired(USER_ID, VERIFICATION_ID))
+                    .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.VERIFICATION_UNAVAILABLE);
+
+            verify(writer).recordAutomaticAttempt(eq(USER_ID), any(), any(), any(),
+                    eq(VerificationOutcome.UNAVAILABLE), eq(null));
+            verify(writer, never()).markExpired(any(), any(), any(), any());
+            verify(writer, never()).refresh(any(), any(), any(), any(), any());
+        }
+
+        // 한도는 사용자가 누른 시도만 센다. 자동 재질의가 한도를 보면 "가만히 있었는데 등록이 막히는" 상태가 된다.
+        @Test
+        @DisplayName("일일 시도 한도와 무관하게 동작한다 — 한도를 채운 사용자도 발행은 된다")
+        void ignoresDailyAttemptLimit() {
+            given(writer.loadOwned(USER_ID, VERIFICATION_ID))
+                    .willReturn(CompanyVerificationFixture.expired(VERIFICATION_ID, USER_ID));
+            givenNtsReturns(VerificationOutcome.VALID);
+
+            service.refreshIfExpired(USER_ID, VERIFICATION_ID);
+
+            verify(writer, never()).countTodayAttempts(any(), any());
+            verify(writer).refresh(eq(USER_ID), eq(VERIFICATION_ID), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("인증 식별자가 없으면 국세청을 부르지 않고 400 (VERIFICATION_NOT_FOUND)")
+        void nullVerificationId_isRejected() {
+            assertThatThrownBy(() -> service.refreshIfExpired(USER_ID, null))
+                    .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.VERIFICATION_NOT_FOUND);
 
             verify(ntsClient, never()).verify(any(), any(), any());
         }

@@ -89,6 +89,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/countries").permitAll()
                         // 국내 지역 트리도 공개 — 등록/수정 폼의 커버리지 선택지이자 향후 검색 패싯이다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/domestic-regions").permitAll()
+                        // 고정 선택지 카탈로그(TRL·견적방식)도 공개. 등록 폼은 로그인 뒤에 열리지만, 같은 라벨을
+                        // 공개 상세 화면이 값을 그리는 데도 쓴다(trlLevel: "MASS_PRODUCTION" → "양산 적용 가능").
+                        // 공개 상세가 익명에게 열려 있으므로 여기 인증을 걸면 로그인한 사람에게만 라벨이 보인다.
+                        // (제약 조회 /meta/constraints 는 폼 전용이라 반대로 인증이 필요한 채로 둔다)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/meta/options").permitAll()
                         // 업로드된 이미지 서빙은 공개. 이 파일들은 공개 회사 상세/카드에 실려 나가므로
                         // 인증을 걸면 브라우저의 <img> 가 읽지 못한다. 반대로 업로드(POST /api/v1/uploads)는
                         // 아래 anyRequest().authenticated() 에 그대로 걸려 로그인이 필요하다 - 여기서 여는 것은

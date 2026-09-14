@@ -64,7 +64,8 @@ public class PostgresTrigramCompanySearch implements CompanySearchRepository {
 
         List<CompanySummary> content = jdbc.query(
                 SELECT_CARD + where + ORDER_BY + " LIMIT :limit OFFSET :offset",
-                params, CompanyCardSql.ROW_MAPPER);
+                        params, CompanyCardSql.ROW_MAPPER)
+                .stream().map(CompanySummary::fromPublic).toList();
 
         return PageableExecutionUtils.getPage(content, pageable, () -> {
             Long total = jdbc.queryForObject("SELECT count(*) " + FROM + where, params, Long.class);

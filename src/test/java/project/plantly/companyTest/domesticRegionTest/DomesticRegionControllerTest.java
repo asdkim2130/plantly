@@ -130,6 +130,8 @@ public class DomesticRegionControllerTest {
                                 // 자식(시군구)은 동일 구조가 재귀되므로 subsection 으로 묶어 문서화
                                 subsectionWithPath("data[].children").type(JsonFieldType.ARRAY)
                                         .description("하위 시군구 목록 (동일 구조 재귀, 없으면 빈 배열)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 생략됨)")
                         )
@@ -147,6 +149,8 @@ public class DomesticRegionControllerTest {
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
                                         .description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(JsonFieldType.STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING)
                                         .description("에러 메시지 (접근 권한 없음)")
                         )
@@ -213,6 +217,8 @@ public class DomesticRegionControllerTest {
                                 subsectionWithPath("data[].children").type(JsonFieldType.ARRAY)
                                         .description("하위 시군구 목록 (동일 구조 재귀). 비어 있으면 1차에서 바로 확정하고, "
                                                 + "비어 있지 않으면 2차 드롭다운을 열되 첫 항목 '전역'에는 부모 자신의 id 를 쓴다"),
+                                fieldWithPath("code").type(JsonFieldType.STRING).optional()
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
                                         .description("에러 메시지 (성공 시 생략됨)")
                         )

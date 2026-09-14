@@ -29,7 +29,8 @@ public final class AdminCompanyCardSql {
     }
 
     public static final String COLUMNS = CompanyCardSql.CARD_COLUMNS
-            + ", c.deleted, c.visibility"
+            // visibility 는 공개 카드 컬럼(CARD_COLUMNS)에 이미 있다 — 여기서 다시 붙이면 같은 컬럼이 두 번 나간다.
+            + ", c.deleted"
             + ", (SELECT cm.user_id FROM company_member cm WHERE cm.company_id = c.id AND cm.role = 'OWNER' LIMIT 1) AS owner_user_id"
             + ", c.registration_source, c.created_at"
             // 구독 요약: effective_grade 는 엔티티 effectiveGrade() 규칙을 그대로 옮긴 CASE. status/만료일은 원본 그대로.

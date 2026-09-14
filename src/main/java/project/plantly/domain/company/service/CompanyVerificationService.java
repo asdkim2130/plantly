@@ -13,10 +13,10 @@ import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.nts.NtsClient;
 import project.plantly.domain.company.policy.GradePolicyRegistry;
 import project.plantly.domain.company.policy.InitialSubscriptionPolicy;
+import project.plantly.domain.company.policy.VerificationProperties;
 import project.plantly.domain.company.support.BusinessNumbers;
 import project.plantly.global.exception.BusinessException;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
@@ -30,12 +30,8 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class CompanyVerificationService {
 
-    // 국세청 API 일일 쿼터 보호 + 대표자명을 바꿔가며 찔러보는 시도 차단.
-    private static final int DAILY_ATTEMPT_LIMIT = 5;
-
-    // 발급된 인증의 유효기간. 인증만 받아두고 방치한 레코드가 영원히 유효하면, 그 사이 사업자 상태가
-    // 바뀌어도(폐업 등) 옛 판정으로 등록할 수 있게 된다.
-    private static final Duration VERIFICATION_TTL = Duration.ofMinutes(30);
+    // 유효기간·일일 한도는 설정값이다(기본 7일 / 5회). 두 값의 근거는 VerificationProperties 주석 참고.
+    private final VerificationProperties properties;
 
     private final NtsClient ntsClient;
     private final CompanyVerificationWriter writer;
@@ -54,7 +50,7 @@ public class CompanyVerificationService {
 
         LocalDateTime now = LocalDateTime.now();
         long used = writer.countTodayAttempts(userId, now.toLocalDate().atStartOfDay());
-        if (used >= DAILY_ATTEMPT_LIMIT) {
+        if (used >= properties.dailyAttemptLimit()) {
             throw new BusinessException(CompanyErrorCode.VERIFICATION_LIMIT_EXCEEDED);
         }
 
@@ -76,12 +72,66 @@ public class CompanyVerificationService {
         }
 
         CompanyVerification verification = writer.issue(userId, businessNumber, request.ceoName(),
-                request.businessStartDate(), result.rawResponse(), now, VERIFICATION_TTL);
+                request.businessStartDate(), result.rawResponse(), now, properties.ttl());
 
         // 이 인증으로 만들 회사가 받을 등급을 지금 확정해 폼에 함께 내린다. 회사가 생기기 전이라
         // '등급을 알려면 회사가 있어야 한다'는 순서 문제가 여기서 풀린다(등급 = 인증의 결과).
         CompanyGrade initialGrade = initialSubscriptionPolicy.initialGrade(verification);
         return CompanyVerificationResponse.from(verification, initialGrade, gradePolicyRegistry.of(initialGrade));
+    }
+
+    /**
+     * 발행 직전, 만료된 인증을 사용자 모르게 되살린다. 만료가 아니면 아무 일도 하지 않는다(멱등).
+     *
+     * <p><b>사용자에게 다시 받을 값이 없다</b>는 것이 이 경로의 핵심이다. 국세청에 물어볼 세 값
+     * (사업자번호·대표자명·개업일자)은 이미 인증 레코드에 검증된 상태로 저장돼 있으므로, 저장값 그대로
+     * 다시 질의하면 된다. 사용자 입력이 개입하지 않으니 재인증(reverify)과 같은 안전성을 갖는다 —
+     * 타사 번호를 끼워 넣어 배지를 갈아끼울 자리가 없다.
+     *
+     * <p>그래서 정상 사용자는 만료라는 개념 자체를 만나지 않는다. 폼을 며칠 붙들고 있다가 저장을 눌러도
+     * 저장이 될 뿐이다. 만료가 사용자에게 드러나는 것은 국세청이 실제로 "이제 이 사업자는 아니다" 라고
+     * 답했을 때(휴업·폐업·정보 불일치)뿐이고, 그건 정말로 등록을 막아야 하는 상태다.
+     *
+     * <p>이 호출은 일일 시도 한도를 소모하지 않는다 — 사용자가 누른 적 없는 호출이기 때문이다
+     * ({@code CompanyVerificationAttempt#automatic}).
+     *
+     * <p>등록 트랜잭션 <b>밖에서</b> 불려야 한다. 국세청 HTTP 호출이 끼어 있어 트랜잭션 안에서 부르면
+     * 응답을 기다리는 내내 DB 커넥션을 붙잡는다. 그 경계는 {@link CompanyRegistrationService} 가 세운다.
+     */
+    public void refreshIfExpired(Long userId, Long verificationId) {
+        if (verificationId == null) {
+            // 본문 검증(@NotNull)이 먼저 걸러주지만, 이 경로가 검증 없는 호출부에서도 안전해야 한다.
+            throw new BusinessException(CompanyErrorCode.VERIFICATION_NOT_FOUND);
+        }
+
+        CompanyVerification verification = writer.loadOwned(userId, verificationId);
+        LocalDateTime now = LocalDateTime.now();
+        if (!verification.needsRefresh(now)) {
+            // 아직 유효하거나, 만료가 아닌 다른 사유(CONSUMED/REVOKED)다. 후자의 판단은 등록 경로가 한다 —
+            // 여기서 같이 던지면 "만료 갱신" 이라는 이 메서드의 책임을 넘는다.
+            return;
+        }
+
+        NtsClient.Result result;
+        try {
+            result = ntsClient.verify(verification.getBusinessNumber(), verification.getCeoName(),
+                    verification.getBusinessStartDate());
+        } catch (NtsClient.UnavailableException e) {
+            // 국세청 장애다. 인증을 만료로 확정하지 않는다 — 사용자 잘못이 아니라서 잠시 뒤 다시 누르면
+            // 그대로 통과해야 하고, 여기서 EXPIRED 로 찍으면 멀쩡한 인증이 장애 때문에 죽는다.
+            writer.recordAutomaticAttempt(userId, verification.getBusinessNumber(), verification.getCeoName(),
+                    verification.getBusinessStartDate(), VerificationOutcome.UNAVAILABLE, null);
+            throw new BusinessException(CompanyErrorCode.VERIFICATION_UNAVAILABLE);
+        }
+
+        if (!result.isValid()) {
+            // 국세청이 실제로 다른 답을 줬다(폐업·휴업·불일치). 이건 되살릴 수 없는 만료라 확정 기록하고
+            // 판정별 안내를 그대로 내보낸다. 작성분은 사업자번호로 키잉된 초안에 그대로 남아 있다.
+            writer.markExpired(userId, verificationId, result.outcome(), result.rawResponse());
+            throw new BusinessException(toErrorCode(result.outcome()));
+        }
+
+        writer.refresh(userId, verificationId, now, properties.ttl(), result.rawResponse());
     }
 
     /**
@@ -101,7 +151,7 @@ public class CompanyVerificationService {
 
         LocalDateTime now = LocalDateTime.now();
         long used = writer.countTodayAttempts(userId, now.toLocalDate().atStartOfDay());
-        if (used >= DAILY_ATTEMPT_LIMIT) {
+        if (used >= properties.dailyAttemptLimit()) {
             throw new BusinessException(CompanyErrorCode.VERIFICATION_LIMIT_EXCEEDED);
         }
 

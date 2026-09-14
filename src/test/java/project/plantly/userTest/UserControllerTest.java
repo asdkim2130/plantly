@@ -159,6 +159,8 @@ public class UserControllerTest {
                 .andDo(document("users-sign-up-duplicate-email",
                         responseFields(
                                 fieldWithPath("success").description("요청 성공 여부 (false)"),
+                                fieldWithPath("code")
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").description("에러 메시지 (이미 사용 중인 이메일)")
                         )
                 ));
@@ -179,6 +181,8 @@ public class UserControllerTest {
                 .andDo(document("users-sign-up-validation-error",
                         responseFields(
                                 fieldWithPath("success").description("요청 성공 여부 (false)"),
+                                fieldWithPath("code")
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").description("검증 실패 메시지 (첫 번째 위반 항목)"),
                                 fieldWithPath("errors").type(ARRAY).optional()
                                         .description("입력 검증 실패일 때만 존재. 위반 전체가 화면의 폼 순서로 담긴다"),
@@ -239,6 +243,8 @@ public class UserControllerTest {
                 .andDo(document("users-me-not-found",
                         responseFields(
                                 fieldWithPath("success").type(BOOLEAN).description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(STRING).description("에러 메시지 (회원을 찾을 수 없음)")
                         )
                 ));
@@ -347,6 +353,8 @@ public class UserControllerTest {
                 .andDo(document("admin-user-detail-forbidden",
                         responseFields(
                                 fieldWithPath("success").type(BOOLEAN).description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(STRING).description("에러 메시지 (접근 권한 없음)")
                         )
                 ));
@@ -421,6 +429,8 @@ public class UserControllerTest {
                 .andDo(document("admin-user-list-forbidden",
                         responseFields(
                                 fieldWithPath("success").type(BOOLEAN).description("요청 성공 여부 (false)"),
+                                fieldWithPath("code").type(STRING)
+                                        .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다"),
                                 fieldWithPath("error").type(STRING).description("에러 메시지 (접근 권한 없음)")
                         )
                 ));
