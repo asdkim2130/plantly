@@ -13,8 +13,8 @@ public enum CommonErrorCode implements ErrorCode {
     FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
 
     // 업로드 용량 초과. 도메인 코드가 아니라 여기 있는 이유는 이 한계가 두 층에서 걸리기 때문이다 —
-    // 서블릿 상한(spring.servlet.multipart.max-file-size)은 컨트롤러에 닿기도 전에 터지고(전역),
-    // 애플리케이션 상한(app.upload.max-file-size)은 UploadService 가 확인한다. 같은 사실을 두 문장으로
+    // 서블릿 상한(StorageConfig 가 app.upload.max-file-size 에서 만든다)은 컨트롤러에 닿기도 전에 터지고(전역),
+    // 애플리케이션 상한(같은 값)은 UploadService 가 확인한다. 같은 사실을 두 문장으로
     // 말하지 않으려고 한 곳에 둔다. 413 이 아니라 400 인 것은 "입력 오류는 400" 이라는 이 API 의 규칙에 맞춘 것.
     FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "업로드 가능한 파일 용량을 초과했습니다."),
 

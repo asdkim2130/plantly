@@ -18,6 +18,13 @@ final class ImageBytes {
         return withPadding(new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF});
     }
 
+    /** 정확히 {@code size} 바이트인 JPEG. 용량 상한 경계를 실제 요청으로 확인할 때 쓴다. */
+    static byte[] jpegOfSize(int size) {
+        byte[] result = new byte[size];
+        System.arraycopy(jpeg(), 0, result, 0, 3);
+        return result;
+    }
+
     static byte[] png() {
         return withPadding(pngSignature());
     }
