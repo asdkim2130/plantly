@@ -259,7 +259,8 @@ public class CertificationControllerTest {
                                 fieldWithPath("data[].slug").type(JsonFieldType.STRING)
                                         .description("인증 슬러그"),
                                 fieldWithPath("data[].type").type(JsonFieldType.STRING)
-                                        .description("인증 구분: MANAGEMENT_SYSTEM(경영시스템), INDUSTRY_SPECIFIC(산업특화), MARKET_ACCESS(시장진입)"),
+                                        .description("인증 구분: MANAGEMENT_SYSTEM(경영시스템), INDUSTRY_SPECIFIC(산업특화), MARKET_ACCESS(시장진입), "
+                                                + "ETC(기타 — 목록에 없는 인증을 직접 입력할 때 고르는 항목. 등록·수정 요청에 이 id 와 customName 을 함께 보낸다)"),
                                 fieldWithPath("data[].displayOrder").type(JsonFieldType.NUMBER)
                                         .description("노출 순서"),
                                 fieldWithPath("data[].active").type(JsonFieldType.BOOLEAN)
@@ -306,7 +307,8 @@ public class CertificationControllerTest {
                                 fieldWithPath("data[].slug").type(JsonFieldType.STRING)
                                         .description("인증 슬러그"),
                                 fieldWithPath("data[].type").type(JsonFieldType.STRING)
-                                        .description("인증 구분: MANAGEMENT_SYSTEM(경영시스템), INDUSTRY_SPECIFIC(산업특화), MARKET_ACCESS(시장진입)"),
+                                        .description("인증 구분: MANAGEMENT_SYSTEM(경영시스템), INDUSTRY_SPECIFIC(산업특화), MARKET_ACCESS(시장진입), "
+                                                + "ETC(기타 — 목록에 없는 인증을 직접 입력할 때 고르는 항목. 등록·수정 요청에 이 id 와 customName 을 함께 보낸다)"),
                                 fieldWithPath("code").type(JsonFieldType.STRING).optional()
                                         .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()
