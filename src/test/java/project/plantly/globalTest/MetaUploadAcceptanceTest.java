@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.equalTo;
  *
  * <p>슬라이스 테스트는 시큐리티 필터체인을 붙이지 않아 "로그인이 필요하다" 를 확인하지 못하고,
  * {@code StorageProperties} 를 대역으로 세워 실제 설정이 바인딩되는지도 확인하지 못한다. 둘을 여기서 본다.
+ * (알려준 상한을 서블릿이 실제로 받는지는 업로드 요청이 필요해 {@code UploadSizeLimitAcceptanceTest} 가 본다.)
  *
  * <p>기대 상한을 숫자로 적지 않고 주입된 {@code StorageProperties} 와 대조한다 — 숫자를 적으면
  * "응답이 설정을 따라온다"를 아무도 확인하지 않게 되고, 이 API 를 만든 이유가 바로 그 추적성이다.

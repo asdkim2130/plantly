@@ -40,8 +40,8 @@ public class UploadService {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(UploadErrorCode.FILE_REQUIRED);
         }
-        // 서블릿 상한(spring.servlet.multipart.max-file-size)이 보통 먼저 끊지만, 그 값은 배포마다
-        // 다르게 조정될 수 있는 방어선이고 이쪽이 서비스가 보장하는 계약이다.
+        // 서블릿 상한(같은 설정에서 StorageConfig 가 만든다)이 보통 먼저 끊지만, 그건 요청을 다 받기 전에
+        // 끊는 방어선이고 이쪽이 서비스가 보장하는 계약이다 — 서블릿을 거치지 않는 호출에도 선다.
         if (file.getSize() > storageProperties.maxFileSize().toBytes()) {
             throw new BusinessException(CommonErrorCode.FILE_TOO_LARGE);
         }

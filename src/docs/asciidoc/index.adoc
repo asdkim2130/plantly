@@ -1421,3 +1421,40 @@ include::{snippets}/meta-form-constraints/path-parameters.adoc[]
 include::{snippets}/meta-form-constraints/http-response.adoc[]
 
 include::{snippets}/meta-form-constraints/response-fields.adoc[]
+
+[[meta-upload]]
+=== 이미지 업로드 제약 조회
+
+이미지를 고르는 순간 프론트가 스스로 막을 근거입니다. 한 장당 최대 용량과 허용 형식을 내려줍니다.
+업로드(`POST /api/v1/uploads`) 자체가 로그인을 요구하므로 이 조회도 세션 쿠키가 필요합니다(<<overview-auth>> 참고).
+
+==== 용량 (`maxFileSizeBytes`)
+
+* *배포마다 다른 값입니다.* 환경변수로 조정되므로 화면에 하드코딩하지 마세요. 바이트 단위라 `File.size` 와 그대로
+  비교하면 되고, "10MB" 같은 표기는 화면이 만듭니다.
+* 서버의 요청 상한도 이 값에서 만들어지므로, *이 크기 이하의 파일은 용량 때문에 거절되지 않습니다.*
+* *넘는 파일은 반드시 올리기 전에 막으세요.* 조금 넘으면 `400`(`FILE_TOO_LARGE`)이 오지만, 크게(수 MB 이상) 넘으면
+  서버가 본문을 끝까지 받지 않고 연결을 닫습니다. 이때 클라이언트는 응답 대신 네트워크 오류를 받습니다.
+
+==== 형식 (`allowedContentTypes` · `allowedExtensions`)
+
+* 서버는 파일명과 `Content-Type` 을 보지 않고 *실제 바이트로 형식을 판별*합니다. 최종 판정은 서버가 하므로,
+  프론트의 사전 검사는 *서버가 받을 파일을 막지 않는 선에서만* 쓰세요.
+* `<input accept>` 에는 `allowedContentTypes` 를 넣으면 됩니다. MIME 타입을 주면 운영체제가 확장자 별칭까지 묶어 보여줍니다.
+
+등급별 *장수* 제한은 여기 없습니다. 회사마다 다른 값이라 자가등록 폼은 사업자 인증 응답의 `limits`,
+수정 폼은 구독 조회의 `limits` 를 봅니다. 이 응답은 등급과 무관한 "한 장당" 제약입니다.
+
+==== 요청
+
+include::{snippets}/meta-upload/http-request.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/meta-upload/http-response.adoc[]
+
+include::{snippets}/meta-upload/response-fields.adoc[]
+
+==== 예외 응답
+
+미인증 상태로 접근하면 `401`(`UNAUTHORIZED`)이 반환됩니다(공통 규약, <<overview-auth>> 참고).

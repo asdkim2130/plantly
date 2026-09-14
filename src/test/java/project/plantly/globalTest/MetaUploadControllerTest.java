@@ -97,8 +97,10 @@ class MetaUploadControllerTest {
                                         .description("요청 성공 여부"),
                                 fieldWithPath("data.maxFileSizeBytes").type(JsonFieldType.NUMBER)
                                         .description("한 장당 최대 용량(바이트). File.size 와 그대로 비교한다. "
-                                                + "환경변수로 배포마다 조정되므로 하드코딩하지 말 것 — 초과분은 서버가 400 으로 "
-                                                + "되돌린다. \"10MB\" 같은 사람이 읽는 표기는 화면이 만든다"),
+                                                + "환경변수로 배포마다 조정되므로 하드코딩하지 말 것. 서버의 multipart 상한도 이 값에서 "
+                                                + "도출되므로 이 크기 이하는 용량 때문에 거절되지 않는다. 넘는 파일은 올리기 전에 막을 것 — "
+                                                + "조금 넘으면 400(FILE_TOO_LARGE)이지만 크게 넘으면 서버가 연결을 닫아 응답을 받지 못한다. "
+                                                + "\"10MB\" 같은 사람이 읽는 표기는 화면이 만든다"),
                                 fieldWithPath("data.allowedContentTypes").type(JsonFieldType.ARRAY)
                                         .description("허용 MIME 타입. <input accept> 에 그대로 쓴다. 서버는 클라이언트가 "
                                                 + "보낸 Content-Type 을 믿지 않고 실제 바이트 시그니처로 판별한다"),
