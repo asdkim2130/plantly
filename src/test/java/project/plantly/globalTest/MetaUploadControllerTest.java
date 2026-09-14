@@ -78,7 +78,7 @@ class MetaUploadControllerTest {
         String[] contentTypes = Arrays.stream(ImageFormat.values())
                 .map(ImageFormat::getContentType).toArray(String[]::new);
         String[] extensions = Arrays.stream(ImageFormat.values())
-                .map(ImageFormat::getExtension).toArray(String[]::new);
+                .flatMap(format -> format.getAcceptedExtensions().stream()).toArray(String[]::new);
 
         mockMvc.perform(get("/api/v1/meta/upload"))
                 .andExpect(status().isOk())
@@ -88,6 +88,9 @@ class MetaUploadControllerTest {
                 // 목록은 ImageFormat 선언 순서 그대로 도출된다.
                 .andExpect(jsonPath("$.data.allowedContentTypes").value(org.hamcrest.Matchers.contains(contentTypes)))
                 .andExpect(jsonPath("$.data.allowedExtensions").value(org.hamcrest.Matchers.contains(extensions)))
+                // 저장 확장자(jpg 하나)가 아니라 입력 허용 목록이 나간다. 이게 빠지면 서버는 받는
+                // .jpeg 파일을 프론트 필터가 막는다 — 도출 비교만으로는 잡히지 않아 문자열로 못 박는다.
+                .andExpect(jsonPath("$.data.allowedExtensions").value(org.hamcrest.Matchers.hasItems("jpeg", "jfif")))
                 .andDo(document("meta-upload",
                         responseFields(
                                 fieldWithPath("success").type(JsonFieldType.BOOLEAN)
@@ -100,7 +103,10 @@ class MetaUploadControllerTest {
                                         .description("허용 MIME 타입. <input accept> 에 그대로 쓴다. 서버는 클라이언트가 "
                                                 + "보낸 Content-Type 을 믿지 않고 실제 바이트 시그니처로 판별한다"),
                                 fieldWithPath("data.allowedExtensions").type(JsonFieldType.ARRAY)
-                                        .description("허용 확장자. 안내 문구·파일 선택 필터에 쓴다"),
+                                        .description("입력으로 받는 확장자(소문자, 점 없음). 한 형식에 여럿일 수 있다"
+                                                + "(JPEG: jpg·jpeg·jpe·jfif). 파일명과 비교할 때는 대소문자를 무시하고, "
+                                                + "<input accept> 에 쓸 때는 앞에 점을 붙인다. 서버는 파일명을 보지 않고 바이트로 "
+                                                + "최종 판정하므로 프론트 사전 검사는 서버가 받을 파일을 거부하지 않는 선에서만 쓴다"),
                                 fieldWithPath("code").type(JsonFieldType.STRING).optional()
                                         .description("에러 코드(ErrorCode 상수명). 클라이언트는 문구가 아니라 이 값으로 분기한다. 성공 응답에는 없다"),
                                 fieldWithPath("error").type(JsonFieldType.STRING).optional()

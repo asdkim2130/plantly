@@ -9,6 +9,8 @@ import project.plantly.domain.upload.ImageFormat;
 import project.plantly.domain.upload.storage.StorageProperties;
 import project.plantly.global.exception.CommonErrorCode;
 
+import java.util.Arrays;
+
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
@@ -67,9 +69,9 @@ class MetaUploadAcceptanceTest extends AcceptanceTest {
                         ImageFormat.JPEG.getContentType(),
                         ImageFormat.PNG.getContentType(),
                         ImageFormat.WEBP.getContentType()))
-                .body("data.allowedExtensions", contains(
-                        ImageFormat.JPEG.getExtension(),
-                        ImageFormat.PNG.getExtension(),
-                        ImageFormat.WEBP.getExtension()));
+                // 저장 확장자가 아니라 입력 허용 확장자다 — JPEG 의 별칭(jpeg 등)까지 실린다.
+                .body("data.allowedExtensions", contains(Arrays.stream(ImageFormat.values())
+                        .flatMap(format -> format.getAcceptedExtensions().stream())
+                        .toArray(String[]::new)));
     }
 }

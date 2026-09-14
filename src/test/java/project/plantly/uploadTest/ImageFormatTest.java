@@ -49,8 +49,22 @@ class ImageFormatTest {
         assertThat(ImageFormat.fromExtension("gif")).isEmpty();
         assertThat(ImageFormat.fromExtension("svg")).isEmpty();
         // 우리가 발급하는 확장자는 jpg 하나뿐이라 jpeg 는 존재할 수 없는 key 다.
+        // 입력으로는 jpeg 를 받지만(acceptedExtensions) 그 별칭이 key 해석으로 새면 안 된다.
         assertThat(ImageFormat.fromExtension("jpeg")).isEmpty();
+        assertThat(ImageFormat.fromExtension("jfif")).isEmpty();
         assertThat(ImageFormat.fromExtension("PNG")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("입력 허용 확장자는 저장 확장자를 포함하고, JPEG 는 사용자 파일에 흔한 별칭까지 받는다")
+    void acceptedExtensions() {
+        // 저장 확장자가 빠지면 우리가 발급한 key 와 같은 이름의 파일을 프론트가 막는다.
+        for (ImageFormat format : ImageFormat.values()) {
+            assertThat(format.getAcceptedExtensions()).contains(format.getExtension());
+            // 계약상 소문자·점 없음. 프론트는 이 형태를 전제로 대소문자를 무시해 비교한다.
+            assertThat(format.getAcceptedExtensions()).allMatch(ext -> ext.matches("[a-z0-9]+"));
+        }
+        assertThat(ImageFormat.JPEG.getAcceptedExtensions()).containsExactly("jpg", "jpeg", "jpe", "jfif");
     }
 
     @Test

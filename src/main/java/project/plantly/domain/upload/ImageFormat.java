@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -21,12 +22,28 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public enum ImageFormat {
 
-    JPEG("image/jpeg", "jpg"),
-    PNG("image/png", "png"),
-    WEBP("image/webp", "webp");
+    JPEG("image/jpeg", "jpg", List.of("jpg", "jpeg", "jpe", "jfif")),
+    PNG("image/png", "png", List.of("png")),
+    WEBP("image/webp", "webp", List.of("webp"));
 
     private final String contentType;
+
+    /**
+     * <b>저장용</b> 대표 확장자. 우리가 발급하는 key 의 확장자이고, 서빙 시 이 값으로 형식을 되찾는다.
+     * 형식당 하나뿐이어야 한다 — 같은 형식이 두 확장자로 저장되면 key 공간만 넓어지고 얻는 것이 없다.
+     */
     private final String extension;
+
+    /**
+     * <b>입력</b>으로 받아들이는 확장자(소문자, 점 없음). 사용자 파일은 같은 JPEG 라도 {@code .jpeg}·
+     * {@code .jfif}(Windows 에서 웹 이미지를 저장하면 흔히 생긴다) 등으로 온다.
+     *
+     * <p>서버는 파일명을 보지 않고 바이트로 판별하므로 이 목록은 서버 검사에 쓰이지 않는다. 쓰이는 곳은
+     * 업로드 제약 계약뿐이고, 목적은 <b>프론트의 사전 검사가 서버가 받을 파일을 막지 않게 하는 것</b>이다.
+     * 그래서 저장용 {@link #extension} 과 섞으면 안 된다 — 이 목록을 {@link #fromExtension} 에 넣으면
+     * 발급한 적 없는 {@code xxx.jpeg} 가 유효한 key 로 통과한다.
+     */
+    private final List<String> acceptedExtensions;
 
     // 판별에 필요한 최소 길이(WebP 의 12바이트)보다 짧으면 볼 것도 없이 실패다.
     private static final int MIN_HEADER_LENGTH = 12;
@@ -66,7 +83,10 @@ public enum ImageFormat {
         return Optional.empty();
     }
 
-    /** 저장된 key 의 확장자로 서빙 시 Content-Type 을 되찾는다. */
+    /**
+     * 저장된 key 의 확장자로 서빙 시 Content-Type 을 되찾는다.
+     * 저장용 {@link #extension} 만 본다 — 입력 별칭({@link #acceptedExtensions})은 key 가 될 수 없다.
+     */
     public static Optional<ImageFormat> fromExtension(String extension) {
         return Arrays.stream(values())
                 .filter(format -> format.extension.equals(extension))
