@@ -19,6 +19,12 @@ import java.util.List;
  *       {@code <input accept>} 가 따라오지 않으면 사용자는 고를 수 없는 형식을 서버만 받아들이는 상태가 된다.</li>
  * </ul>
  *
+ * <p>{@code allowedExtensions} 는 <b>입력으로 받아들이는</b> 확장자다({@link ImageFormat#getAcceptedExtensions}).
+ * 저장용 대표 확장자({@link ImageFormat#getExtension}, JPEG 는 {@code jpg} 하나)를 내보내면 서버는 받는
+ * {@code .jpeg}·{@code .jfif} 파일을 프론트가 막는다. 서버가 파일명을 보지 않고 바이트로 최종 판정하므로,
+ * 프론트 사전 검사의 기준은 "서버가 받을 파일을 거부하지 않는다" 이고 이 목록은 그 기준에 맞춰 넓게 잡는다.
+ * 저장 확장자는 계약에 싣지 않는다 — 발급된 URL 은 클라이언트에게 불투명한 값이다.
+ *
  * <p>바이트로 내려보내는 이유는 프론트가 비교할 대상이 {@code File.size}(바이트)이기 때문이다.
  * "10MB" 같은 표기는 화면이 만든다 — 사람이 읽는 문구는 서버가 소유하지 않는다
  * ({@link project.plantly.global.meta.OptionCatalog} 의 라벨 기준과 같은 판단).
@@ -41,6 +47,8 @@ public record UploadConstraintsResponse(
         return new UploadConstraintsResponse(
                 storageProperties.maxFileSize().toBytes(),
                 Arrays.stream(ImageFormat.values()).map(ImageFormat::getContentType).toList(),
-                Arrays.stream(ImageFormat.values()).map(ImageFormat::getExtension).toList());
+                Arrays.stream(ImageFormat.values())
+                        .flatMap(format -> format.getAcceptedExtensions().stream())
+                        .toList());
     }
 }
