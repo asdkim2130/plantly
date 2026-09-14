@@ -69,9 +69,40 @@ tasks.named('test') {
 	outputs.dir snippetsDir          // 테스트가 스니펫을 이 디렉토리에 생성
 }
 
+// 테스트가 만든 스니펫 중 index.adoc 이 가져가지 않은 것이 있으면 문서 빌드를 실패시킨다.
+// Asciidoctor 는 포함되지 않은 스니펫에 아무 경고도 내지 않아서, 테스트로 문서화한 API 가 문서에서 조용히 빠진다
+// (meta-upload·임시저장·공개 선택지 목록 등이 그렇게 빠져 있었다).
+// JUnit 테스트가 아니라 여기 두는 이유: 스니펫은 테스트 실행의 산출물이라, 전체 테스트가 끝난 뒤에야 빠짐없이 볼 수 있다.
+// 일부러 싣지 않는 스니펫은 index.adoc 에 `// restdocs-omit: <id> — <이유>` 로 적는다 — 생략 결정이 문서 옆에 남는다.
+def checkSnippetsIncluded = tasks.register('checkSnippetsIncluded') {
+	group = 'documentation'
+	description = '테스트가 만든 REST Docs 스니펫이 모두 index.adoc 에 포함(또는 생략 사유 기재)됐는지 확인한다.'
+	dependsOn test
+	def indexFile = file('src/docs/asciidoc/index.adoc')
+	def snippets = snippetsDir
+	doLast {
+		def text = indexFile.getText('UTF-8')
+		def included = (text =~ /include::\{snippets\}\/([^\/\[]+)\//).collect { it[1] } as Set
+		def omitted = (text =~ /(?m)^\/\/ restdocs-omit: (\S+)/).collect { it[1] } as Set
+		def generated = (snippets.listFiles()?.findAll { it.directory }*.name ?: []) as Set
+
+		def contradicted = (included.intersect(omitted)).sort()
+		if (contradicted) {
+			throw new GradleException("index.adoc 이 포함하면서 생략으로도 적은 스니펫: ${contradicted}")
+		}
+		def missing = (generated - included - omitted).sort()
+		if (missing) {
+			throw new GradleException("index.adoc 에 포함되지 않은 스니펫: ${missing}\n" +
+					"문서에 include 하거나, 일부러 뺀 것이면 index.adoc 에 `// restdocs-omit: <id> — <이유>` 로 적는다.\n" +
+					"(테스트에서 이름을 바꾼 스니펫이라면 build/generated-snippets 에 옛 디렉터리가 남은 것일 수 있다 — clean 후 다시 실행)")
+		}
+	}
+}
+
 // 스니펫 -> HTML 문서로 변환. build/docs/asciidoc/index.html 생성
 tasks.named('asciidoctor') {
 	dependsOn test                   // 항상 최신 스니펫으로 문서화
+	dependsOn checkSnippetsIncluded  // 테스트가 문서화한 API 가 문서에서 빠지지 않게
 	inputs.dir snippetsDir
 	attributes 'snippets': snippetsDir   // index.adoc 의 {snippets} 가 가리킬 스니펫 경로
 	sources {

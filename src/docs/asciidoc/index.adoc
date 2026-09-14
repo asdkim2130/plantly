@@ -328,6 +328,68 @@ include::{snippets}/company-create-policy-violation/response-fields.adoc[]
 | 존재하지 않는 산업군 ID | 존재하지 않는 산업군이 포함되어 있습니다.
 |===
 
+[[company-draft]]
+=== 회사 등록 임시저장 (인증)
+
+자가등록 폼을 작성하는 도중의 상태를 서버에 보관합니다. 발행(<<company-create>>) 전까지 *사용자·사업자번호당 1개* 가
+유지되고, 발행이 성공하면 서버가 자동으로 지웁니다. 세션 쿠키가 필요하며, 저장·폐기는 변경 요청이라 CSRF 토큰도
+필요합니다(<<overview-auth>> 참고).
+
+* *키는 사업자등록번호입니다* (`verificationId` 가 아닙니다). 인증은 만료·재발급되며 식별자가 바뀌지만 작성 내용은 그
+  수명에 묶이지 않습니다. 인증 식별자를 잃어버려도(기기 변경·저장소 초기화) 폼 첫 칸의 사업자번호만으로 이어 쓸 수 있습니다.
+  하이픈은 있어도 없어도 됩니다(서버가 정규화합니다).
+* *접근 권한은 인증 이력이 줍니다.* 본인이 그 번호로 사업자 인증(<<company-verification>>)을 통과한 적이 없으면
+  `400`(`VERIFICATION_NOT_FOUND`), 번호 형식이 틀리면 `400`(`BUSINESS_NUMBER_INVALID_FORMAT`)입니다.
+* *저장은 검증하지 않습니다.* 부분 입력을 그대로 담으며, 필수값·마스터 ID 검증은 발행 때만 합니다.
+  본문은 <<company-create>> 의 요청과 같은 형태이고(컬렉션 포함), 모든 필드가 선택입니다.
+* 복원한 `payload.verificationId` 는 저장 당시 값이라 낡았을 수 있습니다. 발행할 때는 현재 유효한 값으로 덮어써 보내세요.
+
+==== 저장 (자동저장)
+
+있으면 교체하고 없으면 만듭니다(upsert). 요청 필드는 <<company-create>> 와 같아 여기 다시 싣지 않습니다.
+
+include::{snippets}/company-draft-save/http-request.adoc[]
+
+include::{snippets}/company-draft-save/path-parameters.adoc[]
+
+include::{snippets}/company-draft-save/http-response.adoc[]
+
+include::{snippets}/company-draft-save/response-fields.adoc[]
+
+===== 이미 등록된 사업자 (409 Conflict)
+
+이 번호로 이미 회사를 등록했으면(인증이 발행에 쓰였으면) 초안이 아니라 수정(<<company-update>>) 대상이라 저장을 거절합니다.
+
+include::{snippets}/company-draft-already-used/http-response.adoc[]
+
+include::{snippets}/company-draft-already-used/response-fields.adoc[]
+
+==== 조회 (재진입 시 폼 복원)
+
+include::{snippets}/company-draft-get/http-request.adoc[]
+
+include::{snippets}/company-draft-get/path-parameters.adoc[]
+
+include::{snippets}/company-draft-get/http-response.adoc[]
+
+include::{snippets}/company-draft-get/response-fields.adoc[]
+
+===== 초안 없음 (404 Not Found)
+
+include::{snippets}/company-draft-not-found/http-response.adoc[]
+
+include::{snippets}/company-draft-not-found/response-fields.adoc[]
+
+==== 폐기
+
+사용자가 작성을 포기할 때만 씁니다(발행이 성공하면 서버가 지웁니다). 초안이 없어도 성공합니다(멱등).
+
+include::{snippets}/company-draft-delete/http-request.adoc[]
+
+include::{snippets}/company-draft-delete/path-parameters.adoc[]
+
+include::{snippets}/company-draft-delete/http-response.adoc[]
+
 [[company-search]]
 === 회사 목록/검색 (공개)
 
@@ -397,6 +459,24 @@ include::{snippets}/company-showcase/http-request.adoc[]
 include::{snippets}/company-showcase/http-response.adoc[]
 
 include::{snippets}/company-showcase/response-fields.adoc[]
+
+[[company-stats]]
+=== 메인 화면 현황 지표 (공개)
+
+메인 화면에 띄우는 집계 숫자 네 개를 내려줍니다. 누구에게나 열려 있는 공개 API 입니다.
+
+개수만 필요한 화면이 목록 API(<<company-search>>)를 `size=1` 로 불러 총수만 빼 가지 않게 따로 둔 엔드포인트라,
+목록이나 페이지 정보는 담기지 않습니다. `categoryCount` 는 대분류 개수가 아니라 공개 트리 전체 노드 수(대+중+소)입니다.
+
+==== 요청
+
+include::{snippets}/company-stats/http-request.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/company-stats/http-response.adoc[]
+
+include::{snippets}/company-stats/response-fields.adoc[]
 
 [[company-my]]
 === 내 회사 목록 (인증)
@@ -731,6 +811,8 @@ include::{snippets}/company-delete/response-fields.adoc[]
 
 미인증 `401`, 소유자 아님 `403`(`COMPANY_ACCESS_DENIED`)는 <<company-update>> 와 동일합니다.
 
+// restdocs-omit: company-delete-forbidden — 403 응답 형태가 company-update-forbidden 과 같아 위 문장으로 갈음한다
+
 [[company-like-favorite]]
 === 회사 좋아요 / 즐겨찾기 (인증)
 
@@ -753,6 +835,9 @@ include::{snippets}/company-delete/response-fields.adoc[]
 |===
 
 아래는 좋아요 등록/해제를 대표 예시로 든 것입니다. 즐겨찾기(`/favorite`)도 경로만 다를 뿐 요청/응답 형태가 동일합니다.
+
+// restdocs-omit: company-favorite — 경로만 다르고 형태가 같아 좋아요(company-like) 예시로 갈음한다
+// restdocs-omit: company-unfavorite — 경로만 다르고 형태가 같아 좋아요 해제(company-unlike) 예시로 갈음한다
 
 ==== 좋아요 등록 요청
 
@@ -786,6 +871,165 @@ include::{snippets}/company-unlike/http-response.adoc[]
 include::{snippets}/company-like-not-found/http-response.adoc[]
 
 include::{snippets}/company-like-not-found/response-fields.adoc[]
+
+[[options]]
+== 선택지 목록 (Options)
+
+회사 등록·수정 폼과 검색 필터가 쓰는 마스터 선택지입니다. 모두 *인증 없이* 조회할 수 있습니다 — 비로그인 사용자도
+검색 화면과 등록 전 화면을 둘러보기 때문입니다. 활성 항목만 내려가며, 응답의 `id` 를 아래 요청 필드에 그대로 실어 보냅니다.
+비활성·운영 필드까지 담긴 관리자용 전체 조회는 <<admin>> 에 따로 있습니다.
+
+[cols="3,2,5"]
+|===
+| 엔드포인트 | 형태 | 쓰는 곳
+
+| `GET /api/v1/categories` | 트리 (대→중→소) | 등록 `categoryIds`, 검색 `categoryIds`
+| `GET /api/v1/certifications` | 평면 (`type` 으로 그룹핑) | 등록 `certifications`, 검색 `certificationIds`
+| `GET /api/v1/industries` | 평면 | 등록 `industryIds`, 검색 `industryIds`
+| `GET /api/v1/countries` | 평면 (`continent` 로 그룹핑) | 등록 `countryIds` (검색 필터 아님)
+| `GET /api/v1/domestic-regions` | 트리 (루트 → 시군구) | 등록 `domesticRegionIds` (검색 필터 아님)
+|===
+
+[[options-categories]]
+=== 카테고리 트리
+
+대분류 아래 중·소분류가 중첩된 트리입니다. 비활성 노드는 그 하위까지 함께 빠집니다.
+검색 필터에는 어느 단계의 `id` 든 보낼 수 있습니다 — 대분류를 고르면 그 아래 소분류만 등록한 회사도 잡힙니다.
+
+include::{snippets}/category-public-tree/http-request.adoc[]
+
+include::{snippets}/category-public-tree/http-response.adoc[]
+
+include::{snippets}/category-public-tree/response-fields.adoc[]
+
+[[options-certifications]]
+=== 인증 목록
+
+평면 목록이며, `type` 별 그룹핑은 화면이 합니다.
+`type=ETC` 인 '기타' 항목은 목록에 없는 인증을 직접 입력할 때 고르는 자리입니다. 이 `id` 와 함께 `customName` 을 보냅니다
+(<<company-update-collections>> 의 인증 안내 참고).
+
+include::{snippets}/certification-public-list/http-request.adoc[]
+
+include::{snippets}/certification-public-list/http-response.adoc[]
+
+include::{snippets}/certification-public-list/response-fields.adoc[]
+
+[[options-industries]]
+=== 산업군 목록
+
+include::{snippets}/industry-public-list/http-request.adoc[]
+
+include::{snippets}/industry-public-list/http-response.adoc[]
+
+include::{snippets}/industry-public-list/response-fields.adoc[]
+
+[[options-countries]]
+=== 국가 목록
+
+전체 국가(ISO 3166-1, 250건)를 한글 국가명 순 평면 목록으로 한 번에 내려줍니다. 대륙 → 국가 2단 선택은 화면이 `continent` 로
+묶어 그리며, 대륙 라벨과 노출 순서도 화면이 정합니다. 평면이라 대륙을 넘나드는 국가명 검색도 클라이언트에서 바로 됩니다.
+
+include::{snippets}/country-public-list/http-request.adoc[]
+
+include::{snippets}/country-public-list/http-response.adoc[]
+
+include::{snippets}/country-public-list/response-fields.adoc[]
+
+[[options-domestic-regions]]
+=== 국내 지역 트리
+
+회사가 커버하는 국내 지역을 고르는 2단 선택의 소스입니다. 루트는 전국 · 권역(수도권) · 시도 17개이고, code 순이라
+전국 → 수도권 → 서울 … 으로 나옵니다.
+
+* `children` 이 비어 있는 루트(전국·수도권·광역시)는 1차 선택에서 바로 확정합니다.
+* `children` 이 있는 루트(도)는 2차 드롭다운을 열고, 그 첫 항목 '전역'에는 *부모 자신의 `id`* 를 씁니다.
+* 고른 지역은 *그 범위 전체를 커버한다* 는 뜻입니다. 수도권은 서울·인천·경기를 모두 커버하는 경우에만 고릅니다
+  (경기만 커버하는 회사는 수도권이 아니라 경기를 고릅니다).
+* 드롭다운 항목에는 `shortName`, 확정 후 배지에는 `displayName` 을 씁니다.
+
+include::{snippets}/domestic-region-public-list/http-request.adoc[]
+
+include::{snippets}/domestic-region-public-list/http-response.adoc[]
+
+include::{snippets}/domestic-region-public-list/response-fields.adoc[]
+
+[[upload]]
+== 이미지 업로드 (Upload)
+
+[[upload-create]]
+=== 이미지 업로드 (인증)
+
+이미지 한 장을 올리고 조회 URL 을 받습니다. 회사 등록/수정 화면에서 파일을 고르는 *즉시* 호출하고, 응답의 `url` 을 폼 상태에 담아
+`logoUrl` · `coverImageUrl` · `images[].imageUrl` 에 그대로 넣습니다. 임시저장(<<company-draft>>)에도 이 URL 문자열만 실립니다.
+변경 요청이므로 세션 쿠키와 CSRF 토큰이 필요합니다(<<overview-auth>> 참고).
+
+* 요청은 `multipart/form-data` 이고 파트 이름은 `file` 입니다. `Content-Type` 헤더는 직접 지정하지 말고 브라우저가 boundary 와 함께
+  채우게 두세요.
+* *한 요청에 한 장입니다.* 갤러리처럼 여러 장을 고르면 장마다 호출합니다 — 장별 재시도와 진행률이 따로 생깁니다.
+* 이 API 는 파일을 URL 로 바꿀 뿐, 회사에 몇 장까지 붙일 수 있는지는 보지 않습니다. 등급별 장수 제한은 발행·수정 때 검사합니다.
+* 올리기 전에 <<meta-upload>> 의 용량·형식으로 먼저 거르세요.
+
+[cols="3,1,3"]
+|===
+| 사유 | 상태 | `code`
+
+| `file` 파트 없음 | `400` | `FILE_REQUIRED`
+| 허용하지 않는 형식 (실제 바이트 기준) | `400` | `UNSUPPORTED_IMAGE_TYPE`
+| 용량 초과 (크게 넘으면 응답 대신 연결 끊김 — <<meta-upload>> 참고) | `400` | `FILE_TOO_LARGE`
+| multipart 가 아닌 요청 | `415` | `UNSUPPORTED_MEDIA_TYPE`
+| 서버 저장 실패 | `500` | `STORAGE_FAILURE`
+|===
+
+==== 요청
+
+include::{snippets}/upload/http-request.adoc[]
+
+include::{snippets}/upload/request-parts.adoc[]
+
+==== 성공 응답 (201 Created)
+
+include::{snippets}/upload/http-response.adoc[]
+
+include::{snippets}/upload/response-fields.adoc[]
+
+==== 예외 응답
+
+===== 허용하지 않는 형식 (400 Bad Request)
+
+include::{snippets}/upload-unsupported-type/http-response.adoc[]
+
+include::{snippets}/upload-unsupported-type/response-fields.adoc[]
+
+[[upload-serve]]
+=== 이미지 조회 (공개)
+
+업로드 응답의 `url` 이 가리키는 경로입니다. 공개 회사 상세의 `<img>` 가 읽어야 하므로 *인증 없이* 열려 있습니다.
+
+* 응답 봉투(`ApiResponse`) 없이 이미지 바이너리를 그대로 내려줍니다. 이 문서에는 응답 본문 대신 헤더만 싣습니다.
+* 같은 URL 의 내용은 바뀌지 않으므로(교체 = 새 업로드 = 새 URL) 영구 캐시 헤더가 붙습니다.
+* URL 은 클라이언트가 조립하지 말고 업로드 응답의 `url` 을 그대로 쓰세요. 저장소가 바뀌면 이 경로가 다른 곳으로 리다이렉트할 수 있지만,
+  이미 발급된 URL 은 그대로 동작합니다.
+
+==== 요청
+
+include::{snippets}/file-serve/http-request.adoc[]
+
+include::{snippets}/file-serve/path-parameters.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/file-serve/response-headers.adoc[]
+
+==== 예외 응답
+
+===== 파일 없음 (404 Not Found)
+
+없는 파일은 봉투에 담긴 `404`(`FILE_NOT_FOUND`)입니다.
+
+include::{snippets}/file-not-found/http-response.adoc[]
+
+include::{snippets}/file-not-found/response-fields.adoc[]
 
 [[admin]]
 == 관리자 (Admin)
@@ -1421,6 +1665,28 @@ include::{snippets}/meta-form-constraints/path-parameters.adoc[]
 include::{snippets}/meta-form-constraints/http-response.adoc[]
 
 include::{snippets}/meta-form-constraints/response-fields.adoc[]
+
+[[meta-options]]
+=== 고정 선택지 카탈로그 (공개)
+
+서버 enum 으로 정해진 선택지(기술성숙도 · 견적 산출방식 등)의 값과 화면 문구를 한 번에 내려줍니다.
+공개 회사 상세도 `trlLevel: "MASS_PRODUCTION"` 을 "양산 적용 가능" 으로 그려야 하므로 *인증 없이* 열려 있습니다.
+
+* 키는 요청 DTO 의 필드 이름입니다. 폼 제약(<<meta-form-constraints>>)의 `fields[].field`, 검증 실패의 `errors[].field` 와
+  같은 어휘라 같은 키로 이어 붙이면 됩니다.
+* `value` 는 요청·응답에 오가는 값이고, `label` 은 화면에 그대로 쓰는 문구입니다. 프론트가 문구를 따로 짓지 않습니다.
+* 사용자가 고르지 않는 값(등급 · 구독 상태 · 인증 그룹 · 대륙)은 실리지 않습니다. 이런 값의 표기는 화면이 정합니다.
+* 낱개 조회 경로는 없습니다. 전부 합쳐도 작고 사실상 바뀌지 않으므로 폼을 열 때 한 번 받아 두세요.
+
+==== 요청
+
+include::{snippets}/meta-options/http-request.adoc[]
+
+==== 성공 응답 (200 OK)
+
+include::{snippets}/meta-options/http-response.adoc[]
+
+include::{snippets}/meta-options/response-fields.adoc[]
 
 [[meta-upload]]
 === 이미지 업로드 제약 조회

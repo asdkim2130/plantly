@@ -204,7 +204,7 @@ public class DomesticRegionControllerTest {
                                 fieldWithPath("message").type(JsonFieldType.STRING).optional()
                                         .description("응답 메시지 (단순 조회는 생략됨)"),
                                 fieldWithPath("data").type(JsonFieldType.ARRAY)
-                                        .description("최상위 지역 목록 — 전국 + 시도 17개, code 순(전국이 첫 항목)"),
+                                        .description("최상위 지역 목록 — 전국 · 권역(수도권) · 시도 17개, code 순(전국 → 수도권 → 서울 …)"),
                                 fieldWithPath("data[].id").type(JsonFieldType.NUMBER)
                                         .description("지역 ID — 등록/수정 요청의 domesticRegionIds 에 그대로 넣는다"),
                                 fieldWithPath("data[].shortName").type(JsonFieldType.STRING)
