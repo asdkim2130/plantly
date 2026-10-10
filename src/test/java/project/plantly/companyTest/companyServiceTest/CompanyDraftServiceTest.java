@@ -12,16 +12,24 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
+import project.plantly.domain.company.dto.CompanyVerificationResponse;
+import project.plantly.domain.company.entity.CompanyVerification;
+import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.enums.VerificationStatus;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
+import project.plantly.domain.company.policy.InitialSubscriptionPolicy;
 import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.entity.CompanyDraft;
-import project.plantly.domain.company.enums.VerificationStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.repository.CompanyDraftRepository;
 import project.plantly.domain.company.repository.CompanyVerificationRepository;
 import project.plantly.domain.company.service.CompanyDraftService;
 import project.plantly.global.exception.BusinessException;
 
+import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -65,7 +73,8 @@ class CompanyDraftServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CompanyDraftService(draftRepository, verificationRepository, objectMapper);
+        service = new CompanyDraftService(draftRepository, verificationRepository, objectMapper,
+                new InitialSubscriptionPolicy(), new GradePolicyRegistry());
     }
 
     // 이 사용자가 이 번호로 국세청을 통과한 이력이 있다고 가정한다(초안 접근 권한의 근거).
@@ -73,10 +82,14 @@ class CompanyDraftServiceTest {
         given(verificationRepository.existsByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER)).willReturn(true);
     }
 
-    // 아직 회사 등록에 쓰이지 않은 상태.
+    // 이 번호로 만든 회사가 없거나(미소비) 삭제된 상태.
     private void givenNotConsumed() {
-        given(verificationRepository.existsByUserIdAndBusinessNumberAndStatus(
-                USER_ID, BUSINESS_NUMBER, VerificationStatus.CONSUMED)).willReturn(false);
+        given(verificationRepository.existsConsumedByLiveCompany(USER_ID, BUSINESS_NUMBER)).willReturn(false);
+    }
+
+    private void givenDraftStored() {
+        given(draftRepository.findByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER))
+                .willReturn(Optional.of(CompanyDraft.create(USER_ID, BUSINESS_NUMBER, serialized(payload))));
     }
 
     private String serialized(MyCompanyCreateRequest request) {
@@ -141,11 +154,10 @@ class CompanyDraftServiceTest {
         }
 
         @Test
-        @DisplayName("이미 등록에 소비된(CONSUMED) 인증이 있으면 저장을 거절한다 (409 VERIFICATION_ALREADY_USED)")
+        @DisplayName("이 번호로 만든 회사가 살아 있으면 저장을 거절한다 (409 VERIFICATION_ALREADY_USED)")
         void consumedVerification_isRejected() {
             givenVerifiedBusinessNumber();
-            given(verificationRepository.existsByUserIdAndBusinessNumberAndStatus(
-                    USER_ID, BUSINESS_NUMBER, VerificationStatus.CONSUMED)).willReturn(true);
+            given(verificationRepository.existsConsumedByLiveCompany(USER_ID, BUSINESS_NUMBER)).willReturn(true);
 
             assertThatThrownBy(() -> service.save(USER_ID, BUSINESS_NUMBER, payload))
                     .isInstanceOf(BusinessException.class)
@@ -214,6 +226,43 @@ class CompanyDraftServiceTest {
 
             assertThat(response.payload()).isEqualTo(payload); // record equals: 저장→복원 왕복이 원본과 동일
             assertThat(response.updatedAt()).isEqualTo(updatedAt);
+        }
+
+        @Test
+        @DisplayName("이어쓸 인증(신원 3종·초기 등급·한도)을 함께 실어 재인증 없이 폼을 그리게 한다")
+        void includesResumableVerification() {
+            givenVerifiedBusinessNumber();
+            givenDraftStored();
+            CompanyVerification verification = CompanyVerification.issue(USER_ID, BUSINESS_NUMBER, "홍길동",
+                    LocalDate.of(2018, 3, 2), LocalDateTime.of(2026, 7, 20, 9, 0), Duration.ofDays(7));
+            ReflectionTestUtils.setField(verification, "id", 123L);
+            given(verificationRepository.findFirstByUserIdAndBusinessNumberAndStatusInOrderByIdDesc(
+                    USER_ID, BUSINESS_NUMBER, EnumSet.of(VerificationStatus.VERIFIED, VerificationStatus.EXPIRED)))
+                    .willReturn(Optional.of(verification));
+
+            CompanyVerificationResponse resumed = service.get(USER_ID, BUSINESS_NUMBER).verification();
+
+            // payload 안의 낡은 verificationId(99)가 아니라 지금 쓸 인증(123)이 실린다
+            assertThat(resumed.verificationId()).isEqualTo(123L);
+            assertThat(resumed.ceoName()).isEqualTo("홍길동");
+            assertThat(resumed.businessStartDate()).isEqualTo(LocalDate.of(2018, 3, 2));
+            // 발급 응답과 같은 정책에서 계산된다 — 자가등록 체험 최고등급
+            assertThat(resumed.initialGrade()).isEqualTo(CompanyGrade.ENTERPRISE);
+            assertThat(resumed.limits().maxDetailImages()).isEqualTo(30);
+        }
+
+        @Test
+        @DisplayName("이어쓸 인증이 없으면(전부 소비·회수) verification 은 null — 초안 자체는 돌려준다")
+        void noResumableVerification_isNull() {
+            givenVerifiedBusinessNumber();
+            givenDraftStored();
+            given(verificationRepository.findFirstByUserIdAndBusinessNumberAndStatusInOrderByIdDesc(
+                    any(), anyString(), any())).willReturn(Optional.empty());
+
+            CompanyDraftResponse response = service.get(USER_ID, BUSINESS_NUMBER);
+
+            assertThat(response.payload()).isEqualTo(payload);
+            assertThat(response.verification()).isNull();
         }
 
         @Test
