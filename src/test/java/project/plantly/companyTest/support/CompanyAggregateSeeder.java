@@ -187,13 +187,14 @@ public class CompanyAggregateSeeder {
         return verification.getId();
     }
 
-    // 이미 어떤 회사 등록에 소비된(CONSUMED) 인증. 초안 저장을 거절해야 함(회사가 이미 존재 → 수정 대상)을 검증하는 데 쓴다.
-    // companyId 컬럼은 FK 가 아니라 raw Long 이므로 실제 회사 없이 임의 값으로 소비 상태만 만든다.
+    // 주어진 회사의 등록에 소비된(CONSUMED) 인증. 번호는 그 회사의 사업자번호를 따른다 — 초안 저장 거절 판정이
+    // "소비한 회사가 살아 있는가" 라서, 실제 회사 행(삭제 여부 포함)에 묶여 있어야 판정이 재현된다.
     @Transactional
-    public Long seedConsumedVerification(Long userId) {
+    public Long seedConsumedVerification(Long userId, Long companyId) {
+        Company company = em.find(Company.class, companyId);
         CompanyVerification verification = CompanyVerification.issue(
-                userId, BUSINESS_NUMBER, CEO_NAME, ESTABLISHMENT_DATE, LocalDateTime.now(), Duration.ofMinutes(30));
-        verification.consume(999L);
+                userId, company.getBusinessNumber(), CEO_NAME, ESTABLISHMENT_DATE, LocalDateTime.now(), Duration.ofMinutes(30));
+        verification.consume(companyId);
         em.persist(verification);
         return verification.getId();
     }

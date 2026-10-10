@@ -38,6 +38,8 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
     // 그 수명에 묶이면 안 되기 때문이다(CompanyDraft 주석). 시더의 인증은 모두 이 번호로 발급된다.
     private static final String DRAFT_PATH = "/api/v1/companies/drafts/{businessNumber}";
     private static final String BUSINESS_NUMBER = CompanyAggregateSeeder.BUSINESS_NUMBER;
+    // seedDeletedCompany 가 쓰는 번호. 삭제 후 재등록 케이스에서 경로 키가 된다.
+    private static final String DELETED_BUSINESS_NUMBER = "9998887776";
 
     @Nested
     @DisplayName("저장·조회 왕복 PUT/GET /api/v1/companies/drafts/{businessNumber}")
@@ -237,10 +239,11 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
         }
 
         @Test
-        @DisplayName("이미 등록에 소비된(CONSUMED) 인증이 있는 사업자번호에 저장하면 409(VERIFICATION_ALREADY_USED)")
+        @DisplayName("이 번호로 만든 회사가 살아 있으면 저장은 409(VERIFICATION_ALREADY_USED) — 초안이 아니라 수정 대상")
         void consumedVerification_saveRejected() {
             Session owner = signUpMember("draft-consumed@example.com");
-            long vid = seeder.seedConsumedVerification(owner.userId());
+            Long companyId = seeder.seedPublishedCompany(owner.userId());
+            long vid = seeder.seedConsumedVerification(owner.userId(), companyId);
 
             putDraft(owner, """
                     {"verificationId":%d,"companyName":"이미소비된인증"}
@@ -248,6 +251,26 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
                     .then()
                     .statusCode(409)
                     .body("success", equalTo(false));
+        }
+
+        @Test
+        @DisplayName("소비한 회사가 삭제됐으면 같은 번호로 재등록 초안을 저장할 수 있다")
+        void consumedByDeletedCompany_saveAllowed() {
+            Session owner = signUpMember("draft-reregister@example.com");
+            Long deletedId = seeder.seedDeletedCompany(owner.userId());
+            long vid = seeder.seedConsumedVerification(owner.userId(), deletedId);
+
+            putDraft(owner, DELETED_BUSINESS_NUMBER, """
+                    {"verificationId":%d,"companyName":"재등록"}
+                    """.formatted(vid))
+                    .then()
+                    .statusCode(200);
+
+            given().filter(owner.cookies())
+                    .when().get(DRAFT_PATH, DELETED_BUSINESS_NUMBER)
+                    .then()
+                    .statusCode(200)
+                    .body("data.payload.companyName", equalTo("재등록"));
         }
     }
 
@@ -269,13 +292,17 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
     }
 
     private Response putDraft(Session session, String jsonBody) {
+        return putDraft(session, BUSINESS_NUMBER, jsonBody);
+    }
+
+    private Response putDraft(Session session, String businessNumber, String jsonBody) {
         return given()
                 .filter(session.cookies())
                 .header("X-XSRF-TOKEN", session.csrf())
                 .contentType(ContentType.JSON)
                 .body(jsonBody)
                 .when()
-                .put(DRAFT_PATH, BUSINESS_NUMBER);
+                .put(DRAFT_PATH, businessNumber);
     }
 
     private Response deleteDraft(Session session) {

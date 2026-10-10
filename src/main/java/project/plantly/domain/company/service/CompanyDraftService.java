@@ -8,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
 import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.entity.CompanyDraft;
-import project.plantly.domain.company.enums.VerificationStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.repository.CompanyDraftRepository;
 import project.plantly.domain.company.repository.CompanyVerificationRepository;
@@ -38,13 +37,13 @@ public class CompanyDraftService {
 
     /**
      * 자동저장(upsert). 초안은 사용자·사업자번호당 1개라 그 짝으로 찾아 있으면 교체, 없으면 새로 만든다.
-     * 이미 등록에 소비된(CONSUMED) 인증이 있으면 회사가 이미 존재하므로 초안이 아니라 수정 대상 — 저장을 거절한다.
+     * 이 번호로 만든 회사가 살아 있으면 초안이 아니라 수정 대상 — 저장을 거절한다. 삭제된 회사의 번호는
+     * 재등록할 수 있으므로 막지 않는다(판정 근거는 {@link CompanyVerificationRepository#existsConsumedByLiveCompany}).
      */
     @Transactional
     public void save(Long userId, String rawBusinessNumber, MyCompanyCreateRequest payload) {
         String businessNumber = requireVerifiedBusinessNumber(userId, rawBusinessNumber);
-        if (verificationRepository.existsByUserIdAndBusinessNumberAndStatus(
-                userId, businessNumber, VerificationStatus.CONSUMED)) {
+        if (verificationRepository.existsConsumedByLiveCompany(userId, businessNumber)) {
             throw new BusinessException(CompanyErrorCode.VERIFICATION_ALREADY_USED);
         }
 

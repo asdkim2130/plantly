@@ -14,7 +14,6 @@ import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
 import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.entity.CompanyDraft;
-import project.plantly.domain.company.enums.VerificationStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
 import project.plantly.domain.company.repository.CompanyDraftRepository;
 import project.plantly.domain.company.repository.CompanyVerificationRepository;
@@ -73,10 +72,9 @@ class CompanyDraftServiceTest {
         given(verificationRepository.existsByUserIdAndBusinessNumber(USER_ID, BUSINESS_NUMBER)).willReturn(true);
     }
 
-    // 아직 회사 등록에 쓰이지 않은 상태.
+    // 이 번호로 만든 회사가 없거나(미소비) 삭제된 상태.
     private void givenNotConsumed() {
-        given(verificationRepository.existsByUserIdAndBusinessNumberAndStatus(
-                USER_ID, BUSINESS_NUMBER, VerificationStatus.CONSUMED)).willReturn(false);
+        given(verificationRepository.existsConsumedByLiveCompany(USER_ID, BUSINESS_NUMBER)).willReturn(false);
     }
 
     private String serialized(MyCompanyCreateRequest request) {
@@ -141,11 +139,10 @@ class CompanyDraftServiceTest {
         }
 
         @Test
-        @DisplayName("이미 등록에 소비된(CONSUMED) 인증이 있으면 저장을 거절한다 (409 VERIFICATION_ALREADY_USED)")
+        @DisplayName("이 번호로 만든 회사가 살아 있으면 저장을 거절한다 (409 VERIFICATION_ALREADY_USED)")
         void consumedVerification_isRejected() {
             givenVerifiedBusinessNumber();
-            given(verificationRepository.existsByUserIdAndBusinessNumberAndStatus(
-                    USER_ID, BUSINESS_NUMBER, VerificationStatus.CONSUMED)).willReturn(true);
+            given(verificationRepository.existsConsumedByLiveCompany(USER_ID, BUSINESS_NUMBER)).willReturn(true);
 
             assertThatThrownBy(() -> service.save(USER_ID, BUSINESS_NUMBER, payload))
                     .isInstanceOf(BusinessException.class)
