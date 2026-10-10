@@ -71,6 +71,29 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
         }
 
         @Test
+        @DisplayName("조회는 이어쓸 인증(식별자·신원·등급·한도)을 함께 준다 — 인증 식별자를 잃은 기기도 재인증 없이 이어 쓴다")
+        void get_includesResumableVerification() {
+            Session owner = signUpMember("draft-resume@example.com");
+            long vid = seeder.seedUsableVerification(owner.userId());
+            // payload 에는 낡은 식별자가 들어 있다고 가정한다 — 응답의 verification 이 지금 쓸 값이다
+            putDraft(owner, """
+                    {"verificationId":%d,"companyName":"이어쓰기"}
+                    """.formatted(vid + 1000)).then().statusCode(200);
+
+            given()
+                    .filter(owner.cookies())
+                    .when()
+                    .get(DRAFT_PATH, BUSINESS_NUMBER)
+                    .then()
+                    .statusCode(200)
+                    .body("data.verification.verificationId", equalTo((int) vid))
+                    .body("data.verification.businessNumber", equalTo(BUSINESS_NUMBER))
+                    .body("data.verification.ceoName", equalTo(CompanyAggregateSeeder.CEO_NAME))
+                    .body("data.verification.initialGrade", equalTo("ENTERPRISE"))
+                    .body("data.verification.limits.maxDetailImages", equalTo(30));
+        }
+
+        @Test
         @DisplayName("재저장은 payload 를 통째 교체한다 — 인증당 1개만 유지하며 이전 입력은 남지 않는다(upsert)")
         void save_isFullReplace_notMerge() {
             Session owner = signUpMember("draft-replace@example.com");

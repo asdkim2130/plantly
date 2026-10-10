@@ -4,7 +4,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import project.plantly.domain.company.entity.CompanyVerification;
+import project.plantly.domain.company.enums.VerificationStatus;
 
+import java.util.Collection;
 import java.util.Optional;
 
 public interface CompanyVerificationRepository extends JpaRepository<CompanyVerification, Long> {
@@ -21,6 +23,13 @@ public interface CompanyVerificationRepository extends JpaRepository<CompanyVeri
      * 인증이 만료돼 여러 번 재발급됐어도 그 이력 중 하나만 있으면 자기 초안에 계속 닿을 수 있다.
      */
     boolean existsByUserIdAndBusinessNumber(Long userId, String businessNumber);
+
+    /**
+     * 초안 이어쓰기에 붙여 줄 "지금 쓸 인증". 같은 번호로 재발급 이력이 여러 행일 수 있어 가장 최근 것을 고른다.
+     * 상태는 호출부가 정한다({@code CompanyDraftService} 참고).
+     */
+    Optional<CompanyVerification> findFirstByUserIdAndBusinessNumberAndStatusInOrderByIdDesc(
+            Long userId, String businessNumber, Collection<VerificationStatus> statuses);
 
     /**
      * 이 사용자가 이 번호로 만든 회사가 <b>지금 살아 있는지</b>. 살아 있으면 그 사업자번호는 초안이 아니라 수정 대상이다.

@@ -7,12 +7,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
 import project.plantly.domain.company.dto.MyCompanyCreateRequest;
+import project.plantly.domain.company.dto.CompanyVerificationResponse;
 import project.plantly.domain.company.entity.CompanyDraft;
+import project.plantly.domain.company.enums.CompanyGrade;
+import project.plantly.domain.company.enums.VerificationStatus;
 import project.plantly.domain.company.exception.CompanyErrorCode;
+import project.plantly.domain.company.policy.GradePolicyRegistry;
+import project.plantly.domain.company.policy.InitialSubscriptionPolicy;
 import project.plantly.domain.company.repository.CompanyDraftRepository;
 import project.plantly.domain.company.repository.CompanyVerificationRepository;
 import project.plantly.domain.company.support.BusinessNumbers;
 import project.plantly.global.exception.BusinessException;
+
+import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * 회사 자가등록 임시저장(초안) 서비스.
@@ -35,6 +43,13 @@ public class CompanyDraftService {
     private final CompanyVerificationRepository verificationRepository;
     private final ObjectMapper objectMapper;
 
+    // 이어쓰기 응답의 등급·한도 출처. 인증 발급(CompanyVerificationService)이 쓰는 것과 같은 정책이다.
+    private final InitialSubscriptionPolicy initialSubscriptionPolicy;
+    private final GradePolicyRegistry gradePolicyRegistry;
+
+    // 발행에 다시 쓸 수 있는 인증 상태. 이유는 findResumableVerification 주석 참고.
+    private static final Set<VerificationStatus> RESUMABLE = EnumSet.of(VerificationStatus.VERIFIED, VerificationStatus.EXPIRED);
+
     /**
      * 자동저장(upsert). 초안은 사용자·사업자번호당 1개라 그 짝으로 찾아 있으면 교체, 없으면 새로 만든다.
      * 이 번호로 만든 회사가 살아 있으면 초안이 아니라 수정 대상 — 저장을 거절한다. 삭제된 회사의 번호는
@@ -54,13 +69,38 @@ public class CompanyDraftService {
                         () -> draftRepository.save(CompanyDraft.create(userId, businessNumber, json)));
     }
 
-    /** 재진입 시 폼 복원용. 저장된 초안이 없으면 404. */
+    /**
+     * 재진입 시 폼 복원용. 저장된 초안이 없으면 404.
+     * 이어쓸 인증(신원 3종·초기 등급·한도)을 함께 실어, 클라이언트가 재인증 없이 폼을 다시 그리게 한다.
+     */
     @Transactional(readOnly = true)
     public CompanyDraftResponse get(Long userId, String rawBusinessNumber) {
         String businessNumber = requireVerifiedBusinessNumber(userId, rawBusinessNumber);
         CompanyDraft draft = draftRepository.findByUserIdAndBusinessNumber(userId, businessNumber)
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.DRAFT_NOT_FOUND));
-        return new CompanyDraftResponse(deserialize(draft.getPayload()), draft.getUpdatedAt());
+        return new CompanyDraftResponse(deserialize(draft.getPayload()), draft.getUpdatedAt(),
+                findResumableVerification(userId, businessNumber));
+    }
+
+    /**
+     * 발행에 쓸 수 있는 가장 최근 인증. 없으면 null.
+     *
+     * <p>VERIFIED 는 시간상 만료(expiresAt 경과)여도 포함한다 — 발행 직전 자동 재질의가 되살리므로 사용자에게는
+     * 만료가 아니다({@link CompanyVerificationService#refreshIfExpired}). EXPIRED 도 같은 이유로 포함한다 — 재질의
+     * 대상이고, 국세청 판정이 그사이 바뀌었으면(휴업 해제 등) 통과한다. 빠지는 것은 이미 회사에 쓰인 CONSUMED
+     * 와 관리자가 회수한 REVOKED 뿐이다(둘 다 되살리는 경로가 없다).
+     *
+     * <p>등급·한도는 인증 발급 응답과 같은 정책에서 계산한다 — 발급 때 안내한 한도와 이어쓰기 때 안내하는 한도가
+     * 갈리면 안 되기 때문이다.
+     */
+    private CompanyVerificationResponse findResumableVerification(Long userId, String businessNumber) {
+        return verificationRepository
+                .findFirstByUserIdAndBusinessNumberAndStatusInOrderByIdDesc(userId, businessNumber, RESUMABLE)
+                .map(verification -> {
+                    CompanyGrade grade = initialSubscriptionPolicy.initialGrade(verification);
+                    return CompanyVerificationResponse.from(verification, grade, gradePolicyRegistry.of(grade));
+                })
+                .orElse(null);
     }
 
     /** 수동 폐기. 발행 성공 시의 삭제는 {@code CompanyService} 가 담당한다. 초안이 없어도 멱등하게 성공한다. */

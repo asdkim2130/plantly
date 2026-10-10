@@ -329,10 +329,13 @@ public class CompanyControllerTest {
     }
 
     @Test
-    @DisplayName("재진입 시 초안 조회는 저장했던 폼 상태(payload)와 마지막 저장 시각을 반환한다")
+    @DisplayName("재진입 시 초안 조회는 저장했던 폼 상태(payload)·마지막 저장 시각·이어쓸 인증을 반환한다")
     void getDraft_success() throws Exception {
+        CompanyVerificationResponse verification = new CompanyVerificationResponse(
+                123L, BUSINESS_NUMBER, "홍길동", LocalDate.of(2018, 3, 2), LocalDateTime.of(2026, 7, 27, 9, 0),
+                CompanyGrade.ENTERPRISE, new GradeLimits(10, 30, 10, true));
         CompanyDraftResponse response = new CompanyDraftResponse(
-                CompanyCreateRequestSamples.myFull(), LocalDateTime.of(2026, 7, 23, 10, 0));
+                CompanyCreateRequestSamples.myFull(), LocalDateTime.of(2026, 7, 23, 10, 0), verification);
         given(companyDraftService.get(7L, BUSINESS_NUMBER)).willReturn(response);
         authenticate(7L, UserRole.MEMBER);
 
@@ -342,6 +345,8 @@ public class CompanyControllerTest {
                 .andExpect(jsonPath("$.data.payload.verificationId").value(99L))
                 .andExpect(jsonPath("$.data.payload.companyName").value("플랜틀리"))
                 .andExpect(jsonPath("$.data.updatedAt").value("2026-07-23T10:00:00"))
+                .andExpect(jsonPath("$.data.verification.verificationId").value(123L))
+                .andExpect(jsonPath("$.data.verification.limits.maxDetailImages").value(30))
                 // payload 내부 필드는 회사 등록 요청과 동일하므로 relaxed 로 봉투·저장시각만 문서화한다(중복 방지).
                 .andDo(document("company-draft-get",
                         pathParameters(parameterWithName("businessNumber").description(

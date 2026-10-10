@@ -271,8 +271,13 @@ NOTE: 요청 본문에 `businessNumber`/`ceoName`/`establishmentDate` 는 없습
 요청 본문은 회사 본체와 부속(연락처/이미지/레퍼런스/소재·설비·태그/링크 마스터 ID)을 한 번에 받습니다.
 `companyName` 외 항목은 임시저장(DRAFT) 호환을 위해 모두 선택이며, 일부 항목은 등급별 정책 제한을 받습니다.
 
-인증 식별자가 유효하지 않으면 등록이 거부됩니다 — 본인이 받은 것이 아니면 `400`(유효한 사업자 인증 정보가 없습니다),
-만료됐으면 `400`(사업자 인증이 만료되었습니다), 이미 다른 회사에 썼으면 `409`(이미 회사 등록에 사용된 사업자 인증입니다).
+인증 식별자가 유효하지 않으면 등록이 거부됩니다 — 본인이 받은 것이 아니면 `400`(`VERIFICATION_NOT_FOUND`),
+이미 다른 회사에 썼으면 `409`(`VERIFICATION_ALREADY_USED`).
+
+유효기간(`expiresAt`)이 지난 인증은 거부하지 않습니다. 서버가 저장된 신원 값으로 국세청에 다시 확인해 갱신한 뒤
+그대로 등록합니다(사용자 일일 인증 한도를 쓰지 않습니다). 이 확인에서 국세청이 휴업·폐업·불일치를 답하면 그 판정의
+`400`(`VERIFICATION_SUSPENDED`·`VERIFICATION_CLOSED`·`VERIFICATION_MISMATCH`·`VERIFICATION_NOT_REGISTERED`)이,
+국세청이 응답하지 않으면 `503`(`VERIFICATION_UNAVAILABLE`, 인증은 그대로 살아 있어 잠시 뒤 다시 누르면 됩니다)이 납니다.
 
 ==== 요청
 
@@ -342,7 +347,11 @@ include::{snippets}/company-create-policy-violation/response-fields.adoc[]
   `400`(`VERIFICATION_NOT_FOUND`), 번호 형식이 틀리면 `400`(`BUSINESS_NUMBER_INVALID_FORMAT`)입니다.
 * *저장은 검증하지 않습니다.* 부분 입력을 그대로 담으며, 필수값·마스터 ID 검증은 발행 때만 합니다.
   본문은 <<company-create>> 의 요청과 같은 형태이고(컬렉션 포함), 모든 필드가 선택입니다.
-* 복원한 `payload.verificationId` 는 저장 당시 값이라 낡았을 수 있습니다. 발행할 때는 현재 유효한 값으로 덮어써 보내세요.
+* 복원한 `payload.verificationId` 는 저장 당시 값이라 낡았을 수 있습니다. 발행할 때는 조회 응답의
+  `verification.verificationId` 로 덮어써 보내세요.
+* *초안 자체에는 유효기간이 없습니다.* 인증 유효기간(`expiresAt`)이 지나도 저장·조회·발행이 막히지 않습니다 —
+  발행할 때 서버가 저장된 신원 값으로 국세청에 다시 물어 갱신합니다. 사용자에게 다시 받을 값이 없으므로
+  화면에 만료를 알릴 필요가 없습니다. 국세청이 실제로 휴업·폐업·불일치를 답한 경우에만 발행이 실패합니다.
 
 ==== 저장 (자동저장)
 
@@ -365,6 +374,11 @@ include::{snippets}/company-draft-already-used/http-response.adoc[]
 include::{snippets}/company-draft-already-used/response-fields.adoc[]
 
 ==== 조회 (재진입 시 폼 복원)
+
+폼 상태(`payload`)와 함께 *지금 발행에 쓸 인증*(`verification`)을 돌려줍니다. 모양은 사업자 인증 응답의 `data` 와
+같아서(신원 3종·초기 등급·한도), 인증 식별자를 잃은 기기에서도 다시 인증하지 않고 읽기 전용 칸과 입력 한도를 그릴 수
+있습니다. 같은 번호로 여러 번 인증했다면 가장 최근 것이 실립니다. 이어쓸 인증이 없으면(관리자가 회수한 경우 등)
+`null` 이며, 이때는 사업자 인증부터 다시 받아야 합니다.
 
 include::{snippets}/company-draft-get/http-request.adoc[]
 
