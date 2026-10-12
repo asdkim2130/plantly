@@ -20,6 +20,7 @@ import project.plantly.domain.company.industry.Industry;
 import project.plantly.domain.company.repository.OwnedCompanyCardRepository;
 import project.plantly.domain.company.search.dto.CompanySummary;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -96,6 +97,29 @@ class OwnedCompanyCardRepositoryTest extends PostgresContainerTest {
         // 비공개 회사가 목록에서 빠지지 않는다는 것 자체도 계약이다(공개 목록과 갈리는 지점).
         assertThat(byId).containsEntry(open.getId(), CompanyVisibility.PUBLIC);
         assertThat(byId).containsEntry(hidden.getId(), CompanyVisibility.PRIVATE);
+    }
+
+    // 국세청 확인 여부·등록/수정 시각도 visibility 와 같은 길(공유 컬럼 → fromOwner)로 나간다. 컬럼이 빠지거나
+    // 매퍼 순서가 어긋나면 조용히 false/null 이 되므로 실 DB 로 확인한다.
+    @Test
+    @DisplayName("소유자 카드는 국세청 확인 여부와 등록·수정 시각을 담는다 (verified=에디터 선정과 별개)")
+    void ownerCardCarriesManagementFields() {
+        Company checked = persistCompany(OWNER, "국세청확인회사");
+        checked.markBusinessVerified(LocalDateTime.now());
+        Company unchecked = persistCompany(OWNER, "미확인회사");
+        em.flush();
+
+        Map<Long, CompanySummary> byId = repository.findOwnedBy(OWNER, PageRequest.of(0, 20))
+                .getContent().stream()
+                .collect(Collectors.toMap(CompanySummary::id, card -> card));
+
+        assertThat(byId.get(checked.getId()).businessVerified()).isTrue();
+        assertThat(byId.get(checked.getId()).verified()).isFalse(); // 축이 다르다 — 섞이지 않는다
+        assertThat(byId.get(unchecked.getId()).businessVerified()).isFalse();
+        assertThat(byId.values()).allSatisfy(card -> {
+            assertThat(card.createdAt()).isNotNull();
+            assertThat(card.updatedAt()).isNotNull();
+        });
     }
 
     // 카드 프로젝션(CompanyCardSql.CARD_COLUMNS)은 공개 검색·내 회사·즐겨찾기·스팟라이트·관리자 목록이 공유한다.

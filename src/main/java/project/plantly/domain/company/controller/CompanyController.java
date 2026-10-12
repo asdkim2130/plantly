@@ -26,6 +26,7 @@ import project.plantly.domain.company.dto.CompanyCreateRequest.ImageRequest;
 import project.plantly.domain.company.dto.CompanyCreateRequest.ReferenceRequest;
 import project.plantly.domain.company.dto.CompanyDetailResponse;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
+import project.plantly.domain.company.dto.CompanyDraftSummary;
 import project.plantly.domain.company.dto.CompanyPublicResponse;
 import project.plantly.domain.company.dto.CompanyShowcaseResponse;
 import project.plantly.domain.company.dto.CompanyStatsResponse;
@@ -108,8 +109,8 @@ public class CompanyController {
     // 덕분에 클라이언트는 인증 식별자를 잃어버려도(기기 변경·저장소 초기화) 폼 첫 칸의 사업자번호만으로 이어쓸 수 있다.
     // 하이픈은 있어도 되고 없어도 된다(서버가 정규화한다). 접근 권한은 여전히 인증 이력이 준다.
     //
-    // 'drafts' 는 두 세그먼트라 공개 상세(/{id}, 단일 세그먼트)와 겹치지 않으며, SecurityConfig 의 기본
-    // 규칙(anyRequest().authenticated())으로 보호된다.
+    // 'drafts/{businessNumber}' 는 두 세그먼트라 공개 상세(/{id}, 단일 세그먼트)와 겹치지 않으며, SecurityConfig 의
+    // 기본 규칙(anyRequest().authenticated())으로 보호된다. 목록(GET /drafts)만 단일 세그먼트라 따로 규칙을 둔다.
 
     // 자동저장(upsert). @Valid 를 붙이지 않아 부분 입력을 그대로 저장한다 — 필수값·마스터 검증은 발행 시점에만 한다.
     // 컬렉션도 요청 본문에 함께 실려 초안 payload 안에 보관되므로, 회사 생성 전까지 한 문서로 관리된다.
@@ -119,6 +120,14 @@ public class CompanyController {
                                        @RequestBody MyCompanyCreateRequest request) {
         companyDraftService.save(principal.getUser().getId(), businessNumber, request);
         return ApiResponse.ok();
+    }
+
+    // 내 초안 목록 — 이어쓸 초안을 사업자번호 없이 고르게 한다(최근 저장순, 페이징 없음). 폼 복원은 고른 뒤
+    // 단건 조회가 한다. 'drafts' 단일 세그먼트라 공개 상세(/{id}) permitAll 에 걸리므로 SecurityConfig 에서
+    // 그 앞에 인증 규칙을 둔다('my'/'favorites' 와 같은 처리).
+    @GetMapping("/api/v1/companies/drafts")
+    public ApiResponse<List<CompanyDraftSummary>> listDrafts(@AuthenticationPrincipal UserPrincipal principal) {
+        return ApiResponse.success(companyDraftService.list(principal.getUser().getId()));
     }
 
     // 재진입 시 폼 복원 — 저장했던 폼 상태(기본 필드 + 컬렉션)와 마지막 저장 시각을 반환한다. 초안이 없으면 404.

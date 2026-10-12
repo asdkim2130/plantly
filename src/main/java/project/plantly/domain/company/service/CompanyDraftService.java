@@ -1,11 +1,13 @@
 package project.plantly.domain.company.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
+import project.plantly.domain.company.dto.CompanyDraftSummary;
 import project.plantly.domain.company.dto.MyCompanyCreateRequest;
 import project.plantly.domain.company.dto.CompanyVerificationResponse;
 import project.plantly.domain.company.entity.CompanyDraft;
@@ -20,6 +22,7 @@ import project.plantly.domain.company.support.BusinessNumbers;
 import project.plantly.global.exception.BusinessException;
 
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -83,6 +86,23 @@ public class CompanyDraftService {
     }
 
     /**
+     * 내 초안 목록(최근 저장순). 사업자번호를 몰라도 이어쓸 초안을 고를 수 있게 한다 — 단건 조회는 번호를
+     * 알아야 해서, 번호를 기억해 둔 기기(브라우저 저장소)에서만 이어쓰기가 성립했다.
+     *
+     * <p>인증 이력 검사를 하지 않는다. 조회가 userId 로 스코프되므로 남의 초안이 섞일 수 없고, 내 초안은
+     * 저장 시점에 이미 인증 이력 검사를 통과했다.
+     *
+     * <p>페이징하지 않는다. 초안은 사업자번호당 1개이고 인증 시도에 일일 한도가 있으며, 발행하면 지워진다.
+     */
+    @Transactional(readOnly = true)
+    public List<CompanyDraftSummary> list(Long userId) {
+        return draftRepository.findByUserIdOrderByUpdatedAtDesc(userId).stream()
+                .map(draft -> new CompanyDraftSummary(
+                        draft.getBusinessNumber(), readCompanyName(draft.getPayload()), draft.getUpdatedAt()))
+                .toList();
+    }
+
+    /**
      * 발행에 쓸 수 있는 가장 최근 인증. 없으면 null.
      *
      * <p>VERIFIED 는 시간상 만료(expiresAt 경과)여도 포함한다 — 발행 직전 자동 재질의가 되살리므로 사용자에게는
@@ -134,6 +154,18 @@ public class CompanyDraftService {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {
             throw new BusinessException(CompanyErrorCode.DRAFT_SERIALIZATION_FAILED);
+        }
+    }
+
+    // 목록용으로 회사명 한 칸만 꺼낸다. 폼 전체를 역직렬화하지 않는 이유: 목록 한 줄이 깨진 payload 때문에
+    // 목록 전체를 실패시키면 안 된다 — 읽지 못하면 이름 없이(null) 내보내고, 그 초안을 실제로 열 때(단건 조회)
+    // 오류를 알린다. 비었거나 공백뿐이면 아직 안 쓴 것으로 본다.
+    private String readCompanyName(String json) {
+        try {
+            JsonNode name = objectMapper.readTree(json).path("companyName");
+            return name.isTextual() && !name.asText().isBlank() ? name.asText().strip() : null;
+        } catch (JsonProcessingException e) {
+            return null;
         }
     }
 

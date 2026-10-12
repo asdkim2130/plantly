@@ -110,6 +110,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/companies/my").authenticated()
                         // 내 즐겨찾기 목록도 인증 필수. 'my' 와 같은 이유로 /{id} permitAll 앞에 둔다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/companies/favorites").authenticated()
+                        // 내 임시저장 초안 목록도 인증 필수. 'my' 와 같은 이유로 /{id} permitAll 앞에 둔다.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/companies/drafts").authenticated()
                         // 공개 회사 상세 조회는 누구에게나 허용(공개 안전 필드만 반환). 소유자 전용(.../private)·관리자 경로는 제외된다.
                         .requestMatchers(HttpMethod.GET, "/api/v1/companies/{id}").permitAll()
                         // 관리자 전용 엔드포인트 추가 시: .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")

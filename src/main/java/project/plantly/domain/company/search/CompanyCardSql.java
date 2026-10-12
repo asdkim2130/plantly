@@ -7,6 +7,7 @@ import project.plantly.domain.company.support.RegionLabels;
 
 import java.sql.Array;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -46,6 +47,7 @@ public final class CompanyCardSql {
             c.id, c.company_name, c.intro_title, c.logo_url, c.cover_image_url, c.brand_color,
             c.road_address AS address,
             c.verified, c.featured, c.spotlight, c.visibility,
+            c.business_verified, c.created_at, c.updated_at,
             (SELECT array_agg(cat.category_name ORDER BY cc.display_order)
                FROM company_category cc JOIN category cat ON cat.id = cc.category_id
                WHERE cc.company_id = c.id AND cc.active) AS category_names,
@@ -71,7 +73,10 @@ public final class CompanyCardSql {
             toList(rs.getArray("category_names")),
             toList(rs.getArray("tag_names")),
             toList(rs.getArray("industry_names")),
-            CompanyVisibility.valueOf(rs.getString("visibility")));
+            CompanyVisibility.valueOf(rs.getString("visibility")),
+            rs.getBoolean("business_verified"),
+            rs.getObject("created_at", LocalDateTime.class),
+            rs.getObject("updated_at", LocalDateTime.class));
 
     // PG text[] → List<String>. 매칭 행이 없으면 array_agg 는 NULL → 빈 리스트. null 원소는 제거.
     // 관리자 카드 매퍼(AdminCompanyCardSql)도 같은 패키지에서 재사용한다.

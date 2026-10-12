@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import project.plantly.companyTest.support.CompanyCreateRequestBuilder;
 import project.plantly.domain.company.dto.CompanyDraftResponse;
+import project.plantly.domain.company.dto.CompanyDraftSummary;
 import project.plantly.domain.company.dto.CompanyVerificationResponse;
 import project.plantly.domain.company.entity.CompanyVerification;
 import project.plantly.domain.company.enums.CompanyGrade;
@@ -288,6 +289,44 @@ class CompanyDraftServiceTest {
                     .hasFieldOrPropertyWithValue("errorCode", CompanyErrorCode.VERIFICATION_NOT_FOUND);
 
             verify(draftRepository, never()).findByUserIdAndBusinessNumber(any(), anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("list (내 초안 목록)")
+    class ListDrafts {
+
+        @Test
+        @DisplayName("최근 저장순 그대로 사업자번호·payload 의 회사명·저장 시각을 돌려준다 — 인증 이력은 묻지 않는다")
+        void returnsSummariesInRepositoryOrder() {
+            CompanyDraft recent = CompanyDraft.create(USER_ID, BUSINESS_NUMBER, serialized(payload));
+            ReflectionTestUtils.setField(recent, "updatedAt", LocalDateTime.of(2026, 7, 23, 10, 0));
+            CompanyDraft older = CompanyDraft.create(USER_ID, "2222222222", "{\"companyName\":\"  이전회사  \"}");
+            given(draftRepository.findByUserIdOrderByUpdatedAtDesc(USER_ID)).willReturn(List.of(recent, older));
+
+            List<CompanyDraftSummary> result = service.list(USER_ID);
+
+            assertThat(result).extracting(CompanyDraftSummary::businessNumber)
+                    .containsExactly(BUSINESS_NUMBER, "2222222222");
+            assertThat(result.get(0).companyName()).isEqualTo(payload.companyName());
+            assertThat(result.get(0).updatedAt()).isEqualTo(LocalDateTime.of(2026, 7, 23, 10, 0));
+            assertThat(result.get(1).companyName()).isEqualTo("이전회사"); // 앞뒤 공백 제거
+            // 조회가 userId 로 스코프되므로 번호마다 인증 이력을 확인하지 않는다.
+            verify(verificationRepository, never()).existsByUserIdAndBusinessNumber(any(), anyString());
+        }
+
+        @Test
+        @DisplayName("회사명을 아직 안 썼거나 비었거나 payload 가 깨졌으면 이름만 null — 목록 전체는 실패하지 않는다")
+        void missingOrUnreadableName_isNull() {
+            given(draftRepository.findByUserIdOrderByUpdatedAtDesc(USER_ID)).willReturn(List.of(
+                    CompanyDraft.create(USER_ID, "1111111111", "{\"introTitle\":\"요약만\"}"),
+                    CompanyDraft.create(USER_ID, "2222222222", "{\"companyName\":\"   \"}"),
+                    CompanyDraft.create(USER_ID, "3333333333", "{깨진 json")));
+
+            assertThat(service.list(USER_ID))
+                    .hasSize(3)
+                    .extracting(CompanyDraftSummary::companyName)
+                    .containsOnlyNulls();
         }
     }
 
