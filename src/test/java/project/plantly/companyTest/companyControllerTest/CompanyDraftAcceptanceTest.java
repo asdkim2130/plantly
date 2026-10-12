@@ -37,6 +37,7 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
     // 경로 키는 인증 식별자가 아니라 사업자등록번호다 — 인증은 만료·재발급되며 id 가 바뀌지만 작성분은
     // 그 수명에 묶이면 안 되기 때문이다(CompanyDraft 주석). 시더의 인증은 모두 이 번호로 발급된다.
     private static final String DRAFT_PATH = "/api/v1/companies/drafts/{businessNumber}";
+    private static final String DRAFTS_PATH = "/api/v1/companies/drafts";
     private static final String BUSINESS_NUMBER = CompanyAggregateSeeder.BUSINESS_NUMBER;
     // seedDeletedCompany 가 쓰는 번호. 삭제 후 재등록 케이스에서 경로 키가 된다.
     private static final String DELETED_BUSINESS_NUMBER = "9998887776";
@@ -135,6 +136,42 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
     }
 
     @Nested
+    @DisplayName("목록 GET /api/v1/companies/drafts")
+    class ListDrafts {
+
+        @Test
+        @DisplayName("내 초안을 사업자번호·회사명·저장 시각으로 돌려준다 — 남의 초안은 섞이지 않는다")
+        void list_returnsOnlyMyDrafts() {
+            Session owner = signUpMember("draft-list@example.com");
+            long vid = seeder.seedUsableVerification(owner.userId());
+            putDraft(owner, "{\"verificationId\":%d,\"companyName\":\"목록회사\"}".formatted(vid))
+                    .then().statusCode(200);
+            Session other = signUpMember("draft-list-other@example.com");
+
+            given()
+                    .filter(owner.cookies())
+                    .when()
+                    .get(DRAFTS_PATH)
+                    .then()
+                    .statusCode(200)
+                    .body("data.size()", equalTo(1))
+                    .body("data[0].businessNumber", equalTo(BUSINESS_NUMBER))
+                    .body("data[0].companyName", equalTo("목록회사"))
+                    .body("data[0].updatedAt", notNullValue())
+                    // 목록은 고르는 화면이라 폼 전체를 싣지 않는다(복원은 단건 조회가 한다).
+                    .body("data[0].payload", nullValue());
+
+            given()
+                    .filter(other.cookies())
+                    .when()
+                    .get(DRAFTS_PATH)
+                    .then()
+                    .statusCode(200)
+                    .body("data.size()", equalTo(0));
+        }
+    }
+
+    @Nested
     @DisplayName("느슨한 저장 vs 엄격한 발행")
     class LooseSaveVsStrictPublish {
 
@@ -212,6 +249,18 @@ class CompanyDraftAcceptanceTest extends AcceptanceTest {
             given() // 세션 없음 = 익명
                     .when()
                     .get(DRAFT_PATH, BUSINESS_NUMBER)
+                    .then()
+                    .statusCode(401);
+        }
+
+        // 목록 경로는 단일 세그먼트('drafts')라 공개 상세(/{id}, permitAll)가 잡는다 — 그보다 앞선 인증 규칙이
+        // 실제 필터 체인에서 먹는지 본다. 401 이 아니라 404/500 이면 /{id} 로 샜다는 뜻이다(principal=null → NPE).
+        @Test
+        @DisplayName("미인증 목록 조회는 401 (공개 상세 /{id} 로 새지 않는다)")
+        void list_unauthenticated_isUnauthorized() {
+            given() // 세션 없음 = 익명
+                    .when()
+                    .get(DRAFTS_PATH)
                     .then()
                     .statusCode(401);
         }

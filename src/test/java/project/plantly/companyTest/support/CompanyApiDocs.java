@@ -200,6 +200,19 @@ public class CompanyApiDocs {
         };
     }
 
+    // 내 초안 목록 응답(ApiResponse<List<CompanyDraftSummary>>). 고르는 화면용이라 폼 전체(payload)는 없다.
+    public static FieldDescriptor[] companyDraftListResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("success").type(JsonFieldType.BOOLEAN).description("요청 성공 여부"),
+                fieldWithPath("data[]").type(JsonFieldType.ARRAY).description("내 초안 목록 (최근 저장순, 페이징 없음). 없으면 빈 배열"),
+                fieldWithPath("data[].businessNumber").type(JsonFieldType.STRING)
+                        .description("정규화된 사업자등록번호. 이어쓰기는 이 값으로 단건 조회(GET /companies/drafts/{businessNumber})"),
+                fieldWithPath("data[].companyName").type(JsonFieldType.STRING).optional()
+                        .description("초안에 적어 둔 회사명. 아직 안 썼으면 null — 화면이 사업자번호로 대신 부른다"),
+                fieldWithPath("data[].updatedAt").type(JsonFieldType.STRING).description("마지막 저장 시각")
+        };
+    }
+
     // 임시저장 초안 조회 응답(ApiResponse<CompanyDraftResponse>). data.payload 는 저장했던 자가등록 폼 전체로,
     // 필드 구성이 회사 등록 요청(company-create 스니펫)과 동일하다 — 28개 필드를 data.payload. 접두로 복제하지 않고
     // relaxedResponseFields 와 함께 써서 봉투·payload 객체·저장 시각만 문서화한다(payload 내부는 등록 요청 문서 참조).
@@ -321,7 +334,8 @@ public class CompanyApiDocs {
                 fieldWithPath(prefix + ".brandColor").type(JsonFieldType.STRING).optional()
                         .description("브랜드 컬러 #RRGGBB (없으면 null). 메인 스팟라이트 배너 배경에 쓴다 — 없으면 화면 기본색으로 폴백"),
                 fieldWithPath(prefix + ".address").type(JsonFieldType.STRING).description("지역 (시도+시군구, 예: \"서울시 강남구\"). 전체 주소는 상세 조회 참고"),
-                fieldWithPath(prefix + ".verified").type(JsonFieldType.BOOLEAN).description("관리자 인증 여부"),
+                fieldWithPath(prefix + ".verified").type(JsonFieldType.BOOLEAN)
+                        .description("에디터 선정 배지(관리자 큐레이션). 국세청 사업자 확인 여부가 아니다 — 그 값은 businessVerified"),
                 fieldWithPath(prefix + ".featured").type(JsonFieldType.BOOLEAN).description("추천 노출 여부"),
                 fieldWithPath(prefix + ".spotlight").type(JsonFieldType.BOOLEAN)
                         .description("스팟라이트 수동 고정(pin) 여부. 메인 노출 여부가 아니다 — 요금제 자격으로 노출되는 회사는 이 값이 false 다"),
@@ -333,7 +347,14 @@ public class CompanyApiDocs {
                 fieldWithPath(prefix + ".visibility").type(JsonFieldType.STRING).optional()
                         .description("공개 범위 PUBLIC/PRIVATE. **내 회사 목록에만 실린다** — 공개 목록·검색·"
                                 + "메인 노출·즐겨찾기에는 키가 없다(그쪽엔 비공개 회사가 들어오지 않아 항상 PUBLIC 이라서). "
-                                + "표시 문구(\"공개\"/\"비공개\")는 서버가 주지 않으므로 화면이 정한다"));
+                                + "표시 문구(\"공개\"/\"비공개\")는 서버가 주지 않으므로 화면이 정한다"),
+                fieldWithPath(prefix + ".businessVerified").type(JsonFieldType.BOOLEAN).optional()
+                        .description("국세청 사업자 확인 여부. **내 회사 목록에만 실린다** (다른 경로에는 키가 없다)"),
+                fieldWithPath(prefix + ".createdAt").type(JsonFieldType.STRING).optional()
+                        .description("등록 시각. **내 회사 목록에만 실린다**"),
+                fieldWithPath(prefix + ".updatedAt").type(JsonFieldType.STRING).optional()
+                        .description("기본 정보 마지막 수정 시각. **내 회사 목록에만 실린다**. "
+                                + "컬렉션(태그·이미지 등)만 바꾼 수정은 반영되지 않는다"));
     }
 
     // 목록/검색 응답(ApiResponse<PageResponse<CompanySummary>>). content[] = 요약 카드, pageInfo = 페이지 메타.

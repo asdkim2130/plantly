@@ -3,6 +3,7 @@ package project.plantly.domain.company.search;
 import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.search.dto.CompanySummary;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -24,6 +25,9 @@ import java.util.List;
  * 경로별로 쪼개면 프로젝션이 갈라진다. 공개 경로에서 이 값을 버리는 판단은 SQL 이 아니라
  * {@code fromPublic} 이 한다 — 어차피 공개 경로에는 비공개 회사가 쿼리 시점에 걸러져 들어오지 않으므로
  * 그 값은 항상 PUBLIC 이고, 응답에 실으면 상수 필드가 된다.
+ *
+ * <p>{@code businessVerified}·{@code createdAt}·{@code updatedAt} 도 같은 이유로 모든 경로가 읽고
+ * 소유자 목록({@code fromOwner})만 내보낸다.
  */
 public record CompanyCardProjection(
         Long id,
@@ -39,6 +43,9 @@ public record CompanyCardProjection(
         List<String> categoryNames,
         List<String> tagNames,
         List<String> industryNames,
-        CompanyVisibility visibility
+        CompanyVisibility visibility,
+        boolean businessVerified,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 }

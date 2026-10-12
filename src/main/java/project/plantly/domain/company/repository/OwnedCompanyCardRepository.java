@@ -19,7 +19,7 @@ import java.util.List;
  * 무관한 소유자 스코프 조회라 검색 인터페이스가 아닌 별도 경로로 둔다.
  *
  * <p>행 → 응답 변환은 {@code CompanySummary::fromOwner} 다. 카드 프로젝션은 공개 경로와 공유하지만
- * 소유자에게만 보여야 하는 값(공개 범위)이 있어 변환 지점에서 갈린다.
+ * 소유자에게만 보여야 하는 값(공개 범위·국세청 확인 여부·등록/수정 시각)이 있어 변환 지점에서 갈린다.
  */
 @Repository
 public class OwnedCompanyCardRepository {
@@ -48,7 +48,7 @@ public class OwnedCompanyCardRepository {
                 .addValue("limit", pageable.getPageSize())
                 .addValue("offset", pageable.getOffset());
 
-        // fromOwner — 이 목록만 공개 범위를 함께 내보낸다. 본인 회사가 지금 공개인지 비공개인지
+        // fromOwner — 이 목록만 공개 범위 등 소유자 전용 값을 함께 내보낸다. 본인 회사가 지금 공개인지 비공개인지
         // 목록에서 보여야 하기 때문이다(공개 경로는 fromPublic 을 쓴다).
         List<CompanySummary> content = jdbc.query(
                         "SELECT " + CompanyCardSql.CARD_COLUMNS + FROM + WHERE + ORDER_BY + " LIMIT :limit OFFSET :offset",

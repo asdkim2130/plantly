@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * 관리자 회사 목록 카드({@link AdminCompanySummary}) 프로젝션 SQL·RowMapper.
  *
  * <p>공개 카드 컬럼({@link CompanyCardSql#CARD_COLUMNS})을 그대로 이어붙이고 운영 컬럼(deleted/owner_user_id/
- * registration_source/created_at)과 구독 요약(effective_grade/status/expires_at)을 추가한다 — 카테고리/태그/산업군
+ * registration_source)과 구독 요약(effective_grade/status/expires_at)을 추가한다 — 카테고리/태그/산업군
  * array_agg 집계는 복붙 없이 공유한다. 소유자는 company_member(role=OWNER) 스칼라 서브쿼리로 뽑는다(미연동이면 null).
  *
  * <p>구독은 {@code company_subscription s}(회사당 1건, 호출부가 LEFT JOIN)에서 읽는다. effective_grade 는
@@ -29,10 +29,10 @@ public final class AdminCompanyCardSql {
     }
 
     public static final String COLUMNS = CompanyCardSql.CARD_COLUMNS
-            // visibility 는 공개 카드 컬럼(CARD_COLUMNS)에 이미 있다 — 여기서 다시 붙이면 같은 컬럼이 두 번 나간다.
+            // visibility·created_at 은 공개 카드 컬럼(CARD_COLUMNS)에 이미 있다 — 여기서 다시 붙이면 같은 컬럼이 두 번 나간다.
             + ", c.deleted"
             + ", (SELECT cm.user_id FROM company_member cm WHERE cm.company_id = c.id AND cm.role = 'OWNER' LIMIT 1) AS owner_user_id"
-            + ", c.registration_source, c.created_at"
+            + ", c.registration_source"
             // 구독 요약: effective_grade 는 엔티티 effectiveGrade() 규칙을 그대로 옮긴 CASE. status/만료일은 원본 그대로.
             + ", CASE WHEN s.status = 'ADMIN_EXEMPT' THEN s.grade"
             + "       WHEN s.expires_at IS NOT NULL AND s.expires_at < :today THEN 'FREE'"
