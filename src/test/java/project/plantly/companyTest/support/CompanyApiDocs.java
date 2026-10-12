@@ -608,6 +608,7 @@ public class CompanyApiDocs {
         return new FieldDescriptor[]{
                 fieldWithPath(p.substring(0, p.length() - 1)).type(JsonFieldType.OBJECT).description("내부·운영 메타데이터 (소유자/관리자 전용)"),
                 fieldWithPath(p + "businessNumber").type(JsonFieldType.STRING).optional().description("사업자번호"),
+                fieldWithPath(p + "postalCode").type(JsonFieldType.STRING).description("우편번호 (공개 profile 에는 없다 — 수정 화면용)"),
                 fieldWithPath(p + "registrationSource").type(JsonFieldType.STRING).description("등록 출처 (USER / ADMIN)"),
                 fieldWithPath(p + "registeredBy").type(JsonFieldType.NUMBER).optional().description("등록한 관리자 ID (유저 자가등록이면 null)"),
                 fieldWithPath(p + "ownerUserId").type(JsonFieldType.NUMBER).optional().description("소유 유저 ID (미연동이면 null)"),
@@ -623,6 +624,14 @@ public class CompanyApiDocs {
                 fieldWithPath(p + "videoVisibleToPublic").type(JsonFieldType.BOOLEAN)
                         .description("저장된 동영상이 방문자에게도 보이는지. false = 저장은 돼 있으나 등급이 낮아 공개 뷰에서 가려진 상태"
                                 + " (소유자/관리자 뷰의 profile.videoUrl 은 이 값과 무관하게 항상 저장값)"),
+                fieldWithPath(p + "representativeReferenceImages").type(JsonFieldType.ARRAY)
+                        .description("대표 레퍼런스의 이미지 전부 (꺼진 것 포함, 표시 순서). profile 의 레퍼런스는 표지 한 장뿐이라,"
+                                + " 레퍼런스 전체 교체(PUT) 전에 수정 화면이 이 목록으로 채운다. 레퍼런스가 없으면 빈 배열"),
+                fieldWithPath(p + "representativeReferenceImages[].imageUrl").type(JsonFieldType.STRING).description("이미지 URL"),
+                fieldWithPath(p + "representativeReferenceImages[].imageType").type(JsonFieldType.STRING).description("이미지 타입 (PROJECT)"),
+                fieldWithPath(p + "representativeReferenceImages[].displayOrder").type(JsonFieldType.NUMBER).description("표시 순서"),
+                fieldWithPath(p + "representativeReferenceImages[].active").type(JsonFieldType.BOOLEAN)
+                        .description("공개 노출 여부. false = 저장돼 있으나 등급 한도를 넘겨 가려진 상태"),
                 fieldWithPath(p + "createdAt").type(JsonFieldType.STRING).description("생성 시각"),
                 fieldWithPath(p + "updatedAt").type(JsonFieldType.STRING).description("수정 시각")
         };

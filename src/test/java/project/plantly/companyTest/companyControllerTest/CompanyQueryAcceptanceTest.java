@@ -18,6 +18,8 @@ import project.plantly.domain.user.repository.UserRepository;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
@@ -248,6 +250,48 @@ class CompanyQueryAcceptanceTest extends AcceptanceTest {
                     .body("data.meta.ownerUserId", equalTo((int) ownerId))
                     .body("data.meta.claimed", equalTo(true))
                     .body("data.meta.deleted", equalTo(false));
+        }
+
+        @Test
+        @DisplayName("수정 화면 재료: 우편번호와 대표 레퍼런스 이미지 전부를 meta 로 받는다(profile 은 표지 한 장)")
+        void member_receivesEditOnlyFields() {
+            CookieFilter owner = new CookieFilter();
+            long ownerId = signUpMember(owner, "owner-edit-fields@example.com");
+            long companyId = seeder.seedPublishedCompany(ownerId);
+
+            given()
+                    .filter(owner)
+                    .when()
+                    .get("/api/v1/companies/{id}/private", companyId)
+                    .then()
+                    .statusCode(200)
+                    .body("data.meta.postalCode", equalTo("06236"))
+                    // 레퍼런스 수정은 전체 교체라, 여기 두 장을 다 받아야 저장할 때 두 번째 장이 지워지지 않는다.
+                    .body("data.meta.representativeReferenceImages.size()", equalTo(2))
+                    .body("data.meta.representativeReferenceImages[0].imageUrl",
+                            equalTo(CompanyAggregateSeeder.REP_THUMBNAIL_URL))
+                    .body("data.meta.representativeReferenceImages[1].imageUrl",
+                            equalTo("https://cdn.plantly.test/ref/2.png"))
+                    .body("data.meta.representativeReferenceImages[1].imageType", equalTo("PROJECT"))
+                    .body("data.profile.representativeReference.thumbnailUrl",
+                            equalTo(CompanyAggregateSeeder.REP_THUMBNAIL_URL));
+        }
+
+        @Test
+        @DisplayName("공개 조회에는 우편번호·레퍼런스 이미지 목록이 나가지 않는다")
+        void publicView_hasNoEditOnlyFields() {
+            CookieFilter owner = new CookieFilter();
+            long ownerId = signUpMember(owner, "owner-edit-fields-pub@example.com");
+            long companyId = seeder.seedPublishedCompany(ownerId);
+
+            given()
+                    .when()
+                    .get("/api/v1/companies/{id}", companyId)
+                    .then()
+                    .statusCode(200)
+                    .body("data", not(hasKey("postalCode")))
+                    .body("data", not(hasKey("meta")))
+                    .body("data.representativeReference", not(hasKey("imageUrls")));
         }
 
         @Test
