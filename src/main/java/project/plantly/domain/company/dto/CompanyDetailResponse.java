@@ -5,6 +5,8 @@ import project.plantly.domain.company.enums.CompanyVisibility;
 import project.plantly.domain.company.enums.RegistrationSource;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import project.plantly.domain.company.dto.CompanyPublicResponse.GalleryImageResponse;
 
 // 소유자/관리자 전용 회사 상세 조회 응답.
 // 공개 필드는 CompanyPublicResponse(profile)를 통째로 재사용하고, 내부·운영 정보만 meta 로 덧붙인다.
@@ -31,6 +33,8 @@ public record CompanyDetailResponse(
     // 소유자/관리자에게만 보이는 내부·운영 메타데이터.
     public record ManagementMeta(
             String businessNumber,
+            // 우편번호. 공개 응답(profile)은 화면에 안 쓰여 뺐지만, 수정 화면은 현재 값을 보여줘야 한다.
+            String postalCode,
             RegistrationSource registrationSource,
             Long registeredBy,
             Long ownerUserId,
@@ -48,7 +52,10 @@ public record CompanyDetailResponse(
             // 이게 없으면 소유자는 자기 화면에서 동영상이 재생되니 잘 노출되고 있다고 오해한다.
             // 화면은 자물쇠 배지 + 업그레이드 안내를 띄우는 자리로 쓴다. (등급 자체는 별도 구독 조회 API 가 내려준다)
             boolean videoVisibleToPublic,
-
+            // 대표 레퍼런스의 이미지 전부(꺼진 것 포함, displayOrder 순). profile.representativeReference 는 공개 상세처럼
+            // 표지 한 장(thumbnailUrl)만 준다 — 레퍼런스 수정은 전체 교체(PUT)라 수정 화면이 이 목록으로 채워야
+            // 저장할 때 나머지 장이 지워지지 않는다. 레퍼런스가 없으면 빈 배열.
+            List<GalleryImageResponse> representativeReferenceImages,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {
@@ -57,6 +64,7 @@ public record CompanyDetailResponse(
             Long ownerUserId = aggregate.ownerUserId();   // OWNER 멤버 없음(관리자 대신등록·미연동) → null
             return new ManagementMeta(
                     c.getBusinessNumber(),
+                    c.getAddress().getPostalCode(),
                     c.getRegistrationSource(),
                     c.getRegisteredBy(),
                     ownerUserId,
@@ -70,6 +78,7 @@ public record CompanyDetailResponse(
                     c.isDeleted(),
                     c.getVisibility(),
                     videoVisibleToPublic,
+                    aggregate.representativeReferenceImages().stream().map(GalleryImageResponse::from).toList(),
                     c.getCreatedAt(),
                     c.getUpdatedAt());
         }

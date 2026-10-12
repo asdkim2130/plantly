@@ -60,13 +60,14 @@ public class CompanyResponseSamples {
         return new CompanyDetailResponse(
                 fullPublic(),
                 new ManagementMeta(
-                        "1234567890", RegistrationSource.USER, 7L, 7L,
+                        "1234567890", "06236", RegistrationSource.USER, 7L, 7L,
                         true, 0,
                         true,                                          // verified (에디터 선정)
                         true, LocalDateTime.of(2024, 1, 2, 3, 4, 5),   // businessVerified, businessVerifiedAt
                         true, false, false,                            // featured, spotlight, deleted
                         CompanyVisibility.PUBLIC,
                         true,                                          // videoVisibleToPublic (등급이 동영상 공개를 허용)
+                        List.of(new GalleryImageResponse("https://cdn.plantly.test/ref/1.png", ImageType.PROJECT, 0, true)),
                         LocalDateTime.of(2024, 1, 2, 3, 4, 5),
                         LocalDateTime.of(2024, 1, 2, 3, 4, 5)));
     }

@@ -62,13 +62,17 @@ class CompanyAggregateLoader {
         // 표지는 갤러리와 달리 '여러 장 중 하나'가 아니라 단일 슬롯이라, 여기서 활성인 것만 골라 뷰 구분 없이 같은 값을 준다.
         // 꺼진 이미지를 표지로 세우면 공개 화면에 그대로 나가고, 소유자 화면에도 회색 처리할 자리가 없다(배지를 붙일 목록이 아니다).
         // 레퍼런스 이미지의 개별 on/off 는 '레퍼런스 더보기' 조회가 생길 때 그 응답이 담당한다.
-        CompanyImage representativeReferenceThumbnail = representativeReferenceId == null ? null
+        // 대표 레퍼런스의 이미지 전부(꺼진 것 포함). 소유자/관리자 응답만 쓴다 — 레퍼런스 수정이 전체 교체라
+        // 수정 화면은 저장돼 있는 장을 전부 알아야 한다(표지 한 장만 알면 저장할 때 나머지를 지운다).
+        List<CompanyImage> representativeReferenceImages = representativeReferenceId == null ? List.of()
                 : allImages.stream()
                         .filter(image -> image.getProjectReference() != null
                                 && representativeReferenceId.equals(image.getProjectReference().getId()))
-                        .filter(CompanyImage::isActive)
-                        .findFirst()
-                        .orElse(null);
+                        .toList();
+        CompanyImage representativeReferenceThumbnail = representativeReferenceImages.stream()
+                .filter(CompanyImage::isActive)
+                .findFirst()
+                .orElse(null);
 
         // 소유자 id: OWNER 멤버(있으면 1건)에서 뽑는다. 관리자 대신등록·미연동이면 null.
         Long ownerUserId = memberRepository.findByCompanyIdAndRole(companyId, MemberRole.OWNER)
@@ -88,6 +92,7 @@ class CompanyAggregateLoader {
                 galleryImages,
                 representativeReference,
                 representativeReferenceThumbnail,
+                representativeReferenceImages,
                 materialRepository.findByCompanyIdOrderByDisplayOrderAsc(companyId),
                 equipmentRepository.findByCompanyIdOrderByDisplayOrderAsc(companyId),
                 tagRepository.findByCompanyIdOrderByDisplayOrderAsc(companyId),
