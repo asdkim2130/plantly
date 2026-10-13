@@ -239,7 +239,8 @@ public class CompanyQueryService {
 
         CompanySubscription subscription = companySubscriptionRepository.getByCompanyId(companyId);
 
-        return AdminCompanySubscriptionResponse.from(subscription, company.getCompanyName());
+        return AdminCompanySubscriptionResponse.from(subscription, company.getCompanyName(),
+                gradePolicyRegistry.of(subscription.effectiveGrade()));
     }
 
     // 유저 → '소유(OWNER)한 회사의 구독 요약' 매핑을 배치로 해석한다. 관리자 유저 목록의 등급 배지(연착륙)용.

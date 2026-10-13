@@ -488,7 +488,12 @@ public class CompanyApiDocs {
                 fieldWithPath("data.startedAt").type(JsonFieldType.STRING).description("구독 시작일 (yyyy-MM-dd)"),
                 fieldWithPath("data.expiresAt").type(JsonFieldType.STRING).optional().description("구독 만료일 (yyyy-MM-dd, null = 무기한)"),
                 fieldWithPath("data.createdAt").type(JsonFieldType.STRING).description("구독 생성 시각 (감사용)"),
-                fieldWithPath("data.updatedAt").type(JsonFieldType.STRING).description("구독 최종 수정 시각 (감사용)")
+                fieldWithPath("data.updatedAt").type(JsonFieldType.STRING).description("구독 최종 수정 시각 (감사용)"),
+                // 한도는 행위자가 아니라 회사의 구독이 정한다 — 관리자 수정도 같은 한도에 걸리므로 수정 화면이 이 값으로 막는다.
+                fieldWithPath("data.limits.maxCategories").type(JsonFieldType.NUMBER).description("선택 가능한 카테고리 최대 개수"),
+                fieldWithPath("data.limits.maxDetailImages").type(JsonFieldType.NUMBER).description("갤러리 상세 이미지 최대 장수"),
+                fieldWithPath("data.limits.maxReferenceImages").type(JsonFieldType.NUMBER).description("레퍼런스 1건당 이미지 최대 장수 (0 = 업로드 비활성)"),
+                fieldWithPath("data.limits.videoAllowed").type(JsonFieldType.BOOLEAN).description("동영상 공개 노출 가능 여부")
         };
     }
 
