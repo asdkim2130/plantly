@@ -28,6 +28,7 @@ import project.plantly.companyTest.support.CompanyApiDocs;
 import project.plantly.domain.company.controller.AdminCompanyController;
 import project.plantly.domain.company.dto.AdminCompanyFlagsRequest;
 import project.plantly.domain.company.dto.AdminCompanySubscriptionResponse;
+import project.plantly.domain.company.dto.GradeLimits;
 import project.plantly.domain.company.dto.AdminSubscriptionUpdateRequest;
 import project.plantly.domain.company.dto.CompanyUpdateRequest;
 import project.plantly.domain.company.enums.CompanyVisibility;
@@ -334,7 +335,8 @@ public class AdminCompanyUpdateControllerTest {
         AdminCompanySubscriptionResponse response = new AdminCompanySubscriptionResponse(
                 5L, "플랜틀리테크", CompanyGrade.PREMIUM, CompanyGrade.PREMIUM, SubscriptionStatus.ACTIVE,
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
-                LocalDateTime.of(2026, 1, 1, 9, 0), LocalDateTime.of(2026, 7, 7, 15, 0));
+                LocalDateTime.of(2026, 1, 1, 9, 0), LocalDateTime.of(2026, 7, 7, 15, 0),
+                new GradeLimits(10, 30, 10, true));
         given(companyQueryService.getSubscriptionForAdmin(eq(5L))).willReturn(response);
         authenticate(1L, UserRole.ADMIN);
 
@@ -348,6 +350,7 @@ public class AdminCompanyUpdateControllerTest {
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.data.createdAt").exists())
                 .andExpect(jsonPath("$.data.updatedAt").exists())
+                .andExpect(jsonPath("$.data.limits.maxCategories").value(10))
                 .andDo(document("admin-company-subscription",
                         pathParameters(parameterWithName("id").description("회사 ID")),
                         responseFields(CompanyApiDocs.adminCompanySubscriptionResponseFields())));

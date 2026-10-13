@@ -1,6 +1,7 @@
 package project.plantly.domain.company.dto;
 
 import project.plantly.domain.company.entity.CompanySubscription;
+import project.plantly.domain.company.policy.GradePolicy;
 import project.plantly.domain.company.enums.CompanyGrade;
 import project.plantly.domain.company.enums.SubscriptionStatus;
 
@@ -19,10 +20,15 @@ public record AdminCompanySubscriptionResponse(
         LocalDate startedAt,
         LocalDate expiresAt,         // null = 무기한(만료 없음)
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        // effectiveGrade 가 허용하는 입력 한도. 관리자 수정 화면이 개수를 막는 근거다 — 한도는 행위자(관리자)가 아니라
+        // 회사의 구독이 정하므로(CompanyUpdateService.applyGradedMutation) 관리자도 같은 한도에 걸린다.
+        // 소유자용 응답과 같은 출처(GradePolicyRegistry)라 두 화면의 숫자가 어긋나지 않는다.
+        GradeLimits limits
 ) {
 
-    public static AdminCompanySubscriptionResponse from(CompanySubscription subscription, String companyName) {
+    public static AdminCompanySubscriptionResponse from(CompanySubscription subscription, String companyName,
+                                                        GradePolicy policy) {
         return new AdminCompanySubscriptionResponse(
                 subscription.getCompanyId(),
                 companyName,
@@ -32,6 +38,7 @@ public record AdminCompanySubscriptionResponse(
                 subscription.getStartedAt(),
                 subscription.getExpiresAt(),
                 subscription.getCreatedAt(),
-                subscription.getUpdatedAt());
+                subscription.getUpdatedAt(),
+                GradeLimits.from(policy));
     }
 }
