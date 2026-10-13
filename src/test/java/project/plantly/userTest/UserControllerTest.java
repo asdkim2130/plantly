@@ -206,6 +206,7 @@ public class UserControllerTest {
                 null,
                 "01012345678",
                 UserStatus.ACTIVE,
+                UserRole.MEMBER,
                 LocalDateTime.of(2026, 1, 1, 0, 0)
         );
 
@@ -217,6 +218,7 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.data.email").value("email@example.com"))   // ApiResponse 래퍼 키 확인
                 .andExpect(jsonPath("$.data.name").value("홍길동"))
                 .andExpect(jsonPath("$.data.userStatus").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.userRole").value("MEMBER"))
                 .andDo(document("users-me",
                         responseFields(
                                 fieldWithPath("success").type(BOOLEAN).description("요청 성공 여부 (true)"),
@@ -225,6 +227,7 @@ public class UserControllerTest {
                                 fieldWithPath("data.nickname").type(STRING).optional().description("닉네임 (미설정 시 null)"),
                                 fieldWithPath("data.phone").type(STRING).description("휴대폰 번호"),
                                 fieldWithPath("data.userStatus").type(STRING).description("회원 상태 (ACTIVE, SUSPENDED 등)"),
+                                fieldWithPath("data.userRole").type(STRING).description("권한 (MEMBER, ADMIN). 관리자 메뉴 노출 판단용"),
                                 fieldWithPath("data.createdAt").type(STRING).description("가입 일시 (ISO-8601)")
                         )
                 ));
@@ -262,6 +265,7 @@ public class UserControllerTest {
                 null,
                 "01012345678",
                 UserStatus.ACTIVE,
+                UserRole.MEMBER,
                 LocalDateTime.of(2026, 1, 1, 0, 0)
         );
 
@@ -290,6 +294,7 @@ public class UserControllerTest {
                                 fieldWithPath("data.nickname").type(STRING).optional().description("닉네임 (미설정 시 null)"),
                                 fieldWithPath("data.phone").type(STRING).description("휴대폰 번호"),
                                 fieldWithPath("data.userStatus").type(STRING).description("회원 상태"),
+                                fieldWithPath("data.userRole").type(STRING).description("권한 (MEMBER, ADMIN)"),
                                 fieldWithPath("data.createdAt").type(STRING).description("가입 일시")
                         )
                 ));

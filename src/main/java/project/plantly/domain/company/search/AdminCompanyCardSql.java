@@ -29,7 +29,7 @@ public final class AdminCompanyCardSql {
     }
 
     public static final String COLUMNS = CompanyCardSql.CARD_COLUMNS
-            // visibility·created_at 은 공개 카드 컬럼(CARD_COLUMNS)에 이미 있다 — 여기서 다시 붙이면 같은 컬럼이 두 번 나간다.
+            // visibility·cover_image_url·business_verified·created_at·updated_at 은 공개 카드 컬럼(CARD_COLUMNS)에 이미 있다 — 여기서 다시 붙이면 같은 컬럼이 두 번 나간다.
             + ", c.deleted"
             + ", (SELECT cm.user_id FROM company_member cm WHERE cm.company_id = c.id AND cm.role = 'OWNER' LIMIT 1) AS owner_user_id"
             + ", c.registration_source"
@@ -44,8 +44,10 @@ public final class AdminCompanyCardSql {
             rs.getString("company_name"),
             rs.getString("intro_title"),
             rs.getString("logo_url"),
+            rs.getString("cover_image_url"),
             RegionLabels.fromRoadAddress(rs.getString("address")), // 공개 카드와 같은 시도+시군구 표기
             rs.getBoolean("verified"),
+            rs.getBoolean("business_verified"),
             rs.getBoolean("featured"),
             rs.getBoolean("spotlight"),
             rs.getBoolean("deleted"),
@@ -53,6 +55,7 @@ public final class AdminCompanyCardSql {
             rs.getObject("owner_user_id", Long.class),           // 미연동이면 null (getLong 은 0 으로 뭉갬)
             RegistrationSource.valueOf(rs.getString("registration_source")),
             rs.getObject("created_at", LocalDateTime.class),
+            rs.getObject("updated_at", LocalDateTime.class),
             toGrade(rs.getString("effective_grade")),            // 구독 없으면(LEFT JOIN) null
             toStatus(rs.getString("subscription_status")),
             rs.getObject("expires_at", LocalDate.class),
