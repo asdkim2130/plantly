@@ -142,6 +142,9 @@ class AdminCompanyCardRepositoryTest extends PostgresContainerTest {
         assertThat(userCard.ownerUserId()).isEqualTo(10L);
         assertThat(userCard.registrationSource()).isEqualTo(RegistrationSource.USER);
         assertThat(userCard.createdAt()).isNotNull();
+        assertThat(userCard.updatedAt()).isNotNull();
+        assertThat(userCard.businessVerified()).isFalse();
+        assertThat(userCard.coverImageUrl()).isNull(); // 커버 미지정 → null(프론트가 자리표시자로 폴백)
         assertThat(userCard.categoryNames()).containsExactly("정밀가공"); // closure 조상(제조) 제외
         assertThat(userCard.tagNames()).containsExactly("스마트팜", "IoT");
         assertThat(userCard.industryNames()).containsExactly("농업기술");

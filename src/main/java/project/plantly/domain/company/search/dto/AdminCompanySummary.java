@@ -24,9 +24,13 @@ public record AdminCompanySummary(
         String companyName,
         String introTitle,
         String logoUrl,
+        // 카드 커버(와이드 사진). 관리자 목록 카드가 소유자 목록 카드와 같은 몸통(커버+로고)으로 그려져서 싣는다. 없으면 null.
+        String coverImageUrl,
         String address,        // 공개 카드와 동일한 지역 라벨(시도+시군구). 전체 주소는 관리자 상세에서 본다.
-        boolean verified,
-        boolean featured,
+        boolean verified,       // 에디터 선정 배지(관리자 큐레이션). 국세청 확인은 아래 businessVerified 다
+        boolean businessVerified,
+        boolean featured,       // 추천 레일 노출. 순수 관리자 큐레이션이라 끄면 바로 레일에서 빠진다
+        // 스팟라이트 '수동 고정(pin)'. 유료 등급 회사는 이 값이 false 여도 구독만으로 스팟라이트에 오른다(ShowcaseCardRepository).
         boolean spotlight,
         // ----- 운영 필드 (관리자 전용) -----
         boolean deleted,
@@ -34,6 +38,7 @@ public record AdminCompanySummary(
         Long ownerUserId,                  // 소유자 미연동(관리자 등록 등)이면 null
         RegistrationSource registrationSource,
         LocalDateTime createdAt,
+        LocalDateTime updatedAt,           // 회사 본체 행 기준(컬렉션만 바꾼 수정은 반영되지 않는다)
         // ----- 구독 요약 (관리자 목록 배지) -----
         CompanyGrade effectiveGrade,       // 지금 유효한 등급 (만료 시 FREE 로 강등). 구독 없으면 null
         SubscriptionStatus status,         // ACTIVE(결제)/TRIAL(체험)/ADMIN_EXEMPT(면제) 구분. 구독 없으면 null

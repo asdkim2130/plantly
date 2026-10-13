@@ -2,6 +2,7 @@ package project.plantly.domain.user.dto.response;
 
 import lombok.Builder;
 import project.plantly.domain.user.User;
+import project.plantly.domain.user.enums.UserRole;
 import project.plantly.domain.user.enums.UserStatus;
 
 import java.time.LocalDateTime;
@@ -13,6 +14,8 @@ public record ProfileResponse(
         String nickname,
         String phone,
         UserStatus userStatus,
+        // 권한. 화면이 관리자 메뉴(관리자 기업 목록 등)를 보일지 정하는 근거다 — 접근 제어 자체는 서버의 @PreAuthorize 가 한다.
+        UserRole userRole,
         LocalDateTime createdAt
 ) {
 
@@ -24,6 +27,7 @@ public record ProfileResponse(
                 .nickname(user.getNickname())
                 .phone(user.getPhone())
                 .userStatus(user.getUserStatus())
+                .userRole(user.getUserRole())
                 .createdAt(user.getCreatedAt())
                 .build();
     }

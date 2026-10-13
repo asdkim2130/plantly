@@ -161,8 +161,9 @@ public class AdminCompanyControllerTest {
     @DisplayName("관리자 목록은 불리언 3-상태·회사명·소유자 id 필터로 운영 필드 포함 카드를 페이징해 반환한다")
     void listCompaniesByAdmin_success() throws Exception {
         AdminCompanySummary item = new AdminCompanySummary(1L, "플랜틀리", "스마트팜 솔루션",
-                "https://cdn/logo.png", "서울 강남구", true, true, false,
+                "https://cdn/logo.png", "https://cdn/cover.png", "서울 강남구", true, true, true, false,
                 true, CompanyVisibility.PUBLIC, 7L, RegistrationSource.USER, LocalDateTime.of(2024, 1, 2, 3, 4, 5),
+                LocalDateTime.of(2024, 2, 3, 4, 5, 6),
                 CompanyGrade.PREMIUM, SubscriptionStatus.TRIAL, LocalDate.of(2026, 12, 31),
                 List.of("제조", "정밀가공"), List.of("스마트팜", "IoT"), List.of("농업기술"));
         PageResponse<AdminCompanySummary> page = new PageResponse<>(List.of(item), new PageInfo(1, 20, 1, 1));
@@ -174,6 +175,9 @@ public class AdminCompanyControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].id").value(1L))
                 .andExpect(jsonPath("$.data.content[0].deleted").value(true))
+                .andExpect(jsonPath("$.data.content[0].coverImageUrl").value("https://cdn/cover.png"))
+                .andExpect(jsonPath("$.data.content[0].businessVerified").value(true))
+                .andExpect(jsonPath("$.data.content[0].updatedAt").exists())
                 .andExpect(jsonPath("$.data.content[0].ownerUserId").value(7L))
                 .andExpect(jsonPath("$.data.content[0].registrationSource").value("USER"))
                 .andExpect(jsonPath("$.data.content[0].effectiveGrade").value("PREMIUM"))
